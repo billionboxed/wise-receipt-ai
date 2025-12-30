@@ -1,0 +1,123 @@
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Layout } from '@/components/layout/Layout';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { CategoryChart } from '@/components/dashboard/CategoryChart';
+import { SpendingTrend } from '@/components/dashboard/SpendingTrend';
+import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
+import { AccountSummary } from '@/components/dashboard/AccountSummary';
+import { useExpense } from '@/context/ExpenseContext';
+import { Wallet, TrendingUp, TrendingDown, CreditCard } from 'lucide-react';
+
+export default function Dashboard() {
+  const { transactions } = useExpense();
+
+  const stats = useMemo(() => {
+    const confirmed = transactions.filter(t => t.status === 'confirmed');
+    
+    const totalIncome = confirmed
+      .filter(t => t.type === 'credit')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpense = confirmed
+      .filter(t => t.type === 'debit')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const balance = totalIncome - totalExpense;
+
+    // Calculate month-over-month change
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const thisMonthExpense = confirmed
+      .filter(t => {
+        const date = new Date(t.date);
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear && t.type === 'debit';
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const lastMonthExpense = confirmed
+      .filter(t => {
+        const date = new Date(t.date);
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const year = currentMonth === 0 ? currentYear - 1 : currentYear;
+        return date.getMonth() === lastMonth && date.getFullYear() === year && t.type === 'debit';
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const expenseChange = lastMonthExpense > 0
+      ? ((thisMonthExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)
+      : '0';
+
+    return {
+      totalIncome,
+      totalExpense,
+      balance,
+      thisMonthExpense,
+      expenseChange,
+      transactionCount: confirmed.length,
+    };
+  }, [transactions]);
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Track your expenses and manage your finances
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Balance"
+            value={`₹${stats.balance.toLocaleString('en-IN')}`}
+            icon={Wallet}
+            iconColor="text-primary"
+            delay={0}
+          />
+          <StatCard
+            title="Total Income"
+            value={`₹${stats.totalIncome.toLocaleString('en-IN')}`}
+            icon={TrendingUp}
+            iconColor="text-success"
+            delay={0.1}
+          />
+          <StatCard
+            title="Total Expenses"
+            value={`₹${stats.totalExpense.toLocaleString('en-IN')}`}
+            change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`}
+            changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'}
+            icon={TrendingDown}
+            iconColor="text-destructive"
+            delay={0.2}
+          />
+          <StatCard
+            title="This Month"
+            value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`}
+            change={`${stats.transactionCount} transactions`}
+            changeType="neutral"
+            icon={CreditCard}
+            iconColor="text-accent"
+            delay={0.3}
+          />
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <CategoryChart />
+          <SpendingTrend />
+        </div>
+
+        {/* Bottom Row */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <RecentTransactions />
+          <AccountSummary />
+        </div>
+      </div>
+    </Layout>
+  );
+}
