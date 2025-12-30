@@ -15,10 +15,34 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
-  const { accounts, categories } = useExpense();
+  const { accounts, categories, transactions } = useExpense();
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [processingMessage, setProcessingMessage] = useState('');
+
+  // Check for duplicate transactions based on date + amount
+  const checkForDuplicates = useCallback(
+    (parsedTransactions: ParsedTransaction[]): ParsedTransaction[] => {
+      return parsedTransactions.map(pt => {
+        // Check against existing transactions
+        const duplicate = transactions.find(
+          t => t.date === pt.date && Math.abs(t.amount - pt.amount) < 0.01 && t.type === pt.type
+        );
+        
+        if (duplicate) {
+          return {
+            ...pt,
+            isDuplicate: true,
+            duplicateOf: duplicate.id,
+            selected: false, // Auto-deselect duplicates
+          };
+        }
+        
+        return pt;
+      });
+    },
+    [transactions]
+  );
 
   const detectAccount = useCallback(
     (text: string): string | undefined => {
@@ -142,6 +166,47 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
     [findAccountIdByName, findCategoryIdByMain]
   );
 
+  const parseAmount = (value: any): number => {
+    if (typeof value === 'number') return Math.abs(value);
+    const strValue = String(value)
+      .replace(/[₹,\s]/g, '')
+      .replace(/[^\d.-]/g, '');
+    return Math.abs(parseFloat(strValue) || 0);
+  };
+
+  const parseDate = (value: any): string => {
+    if (!value) return new Date().toISOString().split('T')[0];
+    
+    if (typeof value === 'number') {
+      const excelDate = XLSX.SSF.parse_date_code(value);
+      return `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
+    }
+    
+    const dateStr = String(value).trim();
+    
+    // Handle DD-MM-YYYY or DD/MM/YYYY format
+    const ddmmyyyy = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (ddmmyyyy) {
+      const [, day, month, year] = ddmmyyyy;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    // Handle YYYY-MM-DD format
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr;
+    }
+    
+    // Try parsing as generic date
+    try {
+      const parsed = new Date(dateStr);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+    } catch {}
+    
+    return new Date().toISOString().split('T')[0];
+  };
+
   const parseExcelFile = useCallback(
     async (file: File): Promise<ParsedTransaction[]> => {
       return new Promise((resolve, reject) => {
@@ -154,51 +219,90 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
+            if (jsonData.length === 0) {
+              resolve([]);
+              return;
+            }
+
             const headerRow = jsonData[0] || [];
             const columnMap: Record<string, number> = {};
+            let hasHeaders = false;
 
-            headerRow.forEach((header: string, index: number) => {
+            // Check if first row contains headers
+            headerRow.forEach((header: any, index: number) => {
+              if (header == null) return;
               const lowerHeader = String(header).toLowerCase();
-              if (lowerHeader.includes('date')) columnMap.date = index;
-              if (lowerHeader.includes('description') || lowerHeader.includes('narration') || lowerHeader.includes('particular'))
-                columnMap.description = index;
-              if (lowerHeader.includes('amount') || lowerHeader.includes('value')) columnMap.amount = index;
-              if (lowerHeader.includes('debit') || lowerHeader.includes('withdrawal')) columnMap.debit = index;
-              if (lowerHeader.includes('credit') || lowerHeader.includes('deposit')) columnMap.credit = index;
+              if (lowerHeader.includes('date')) { columnMap.date = index; hasHeaders = true; }
+              if (lowerHeader.includes('description') || lowerHeader.includes('narration') || lowerHeader.includes('particular')) {
+                columnMap.description = index; hasHeaders = true;
+              }
+              if (lowerHeader.includes('amount') || lowerHeader.includes('value')) { columnMap.amount = index; hasHeaders = true; }
+              if (lowerHeader.includes('debit') || lowerHeader.includes('withdrawal')) { columnMap.debit = index; hasHeaders = true; }
+              if (lowerHeader.includes('credit') || lowerHeader.includes('deposit')) { columnMap.credit = index; hasHeaders = true; }
+              if (lowerHeader.includes('type') && (lowerHeader.length < 10)) { columnMap.type = index; hasHeaders = true; }
             });
+
+            // If no headers found, try to detect column structure from first data row
+            if (!hasHeaders) {
+              const firstRow = jsonData[0];
+              if (firstRow && firstRow.length >= 2) {
+                // Heuristic: Date | Amount | Type format (user's format)
+                for (let i = 0; i < firstRow.length; i++) {
+                  const val = firstRow[i];
+                  const strVal = String(val || '').toLowerCase();
+                  
+                  // Check if it looks like a date (DD-MM-YYYY)
+                  if (String(val).match(/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/)) {
+                    columnMap.date = i;
+                  }
+                  // Check if it contains currency symbol or is a number (amount)
+                  else if (String(val).includes('₹') || (typeof val === 'number' && val > 0)) {
+                    columnMap.amount = i;
+                  }
+                  // Check if it's a type indicator (Debit/Credit)
+                  else if (strVal === 'debit' || strVal === 'credit') {
+                    columnMap.type = i;
+                  }
+                }
+              }
+            }
 
             const transactions: ParsedTransaction[] = [];
             const allText = jsonData.flat().join(' ');
             const detectedAccount = detectAccount(allText);
+            const startIndex = hasHeaders ? 1 : 0;
 
-            for (let i = 1; i < jsonData.length; i++) {
+            for (let i = startIndex; i < jsonData.length; i++) {
               const row = jsonData[i];
-              if (!row || row.length === 0) continue;
+              if (!row || row.length === 0 || row.every(cell => cell == null || cell === '')) continue;
 
               let date = '';
               let description = '';
               let amount = 0;
               let type: 'debit' | 'credit' = 'debit';
 
+              // Parse date
               if (columnMap.date !== undefined) {
-                const dateValue = row[columnMap.date];
-                if (dateValue) {
-                  if (typeof dateValue === 'number') {
-                    const excelDate = XLSX.SSF.parse_date_code(dateValue);
-                    date = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
-                  } else {
-                    date = String(dateValue);
+                date = parseDate(row[columnMap.date]);
+              } else {
+                // Try to find a date-like value in the row
+                for (const cell of row) {
+                  if (cell && String(cell).match(/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/)) {
+                    date = parseDate(cell);
+                    break;
                   }
                 }
               }
 
+              // Parse description
               if (columnMap.description !== undefined) {
-                description = String(row[columnMap.description] || '');
+                description = String(row[columnMap.description] || '').trim();
               }
 
+              // Parse amount and type
               if (columnMap.debit !== undefined && columnMap.credit !== undefined) {
-                const debitVal = parseFloat(row[columnMap.debit]) || 0;
-                const creditVal = parseFloat(row[columnMap.credit]) || 0;
+                const debitVal = parseAmount(row[columnMap.debit]);
+                const creditVal = parseAmount(row[columnMap.credit]);
                 if (debitVal > 0) {
                   amount = debitVal;
                   type = 'debit';
@@ -207,22 +311,44 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
                   type = 'credit';
                 }
               } else if (columnMap.amount !== undefined) {
-                const amountVal = parseFloat(row[columnMap.amount]) || 0;
-                amount = Math.abs(amountVal);
-                type = amountVal < 0 ? 'debit' : 'credit';
+                amount = parseAmount(row[columnMap.amount]);
+                
+                // Check for type column
+                if (columnMap.type !== undefined) {
+                  const typeVal = String(row[columnMap.type] || '').toLowerCase();
+                  type = typeVal === 'credit' ? 'credit' : 'debit';
+                } else {
+                  // If no type column, check if amount was negative
+                  const rawAmount = row[columnMap.amount];
+                  if (typeof rawAmount === 'number' && rawAmount < 0) {
+                    type = 'debit';
+                  } else if (typeof rawAmount === 'string' && rawAmount.includes('-')) {
+                    type = 'debit';
+                  }
+                }
+              } else {
+                // No mapped columns - try to extract from any column
+                for (const cell of row) {
+                  const cellStr = String(cell || '');
+                  if (cellStr.includes('₹') || (typeof cell === 'number' && cell > 0)) {
+                    amount = parseAmount(cell);
+                    break;
+                  }
+                }
+                // Look for type indicator
+                for (const cell of row) {
+                  const cellLower = String(cell || '').toLowerCase();
+                  if (cellLower === 'credit') { type = 'credit'; break; }
+                  if (cellLower === 'debit') { type = 'debit'; break; }
+                }
               }
 
-              if (!description || amount === 0) continue;
+              // Skip if no amount found
+              if (amount === 0) continue;
 
-              if (date && !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                try {
-                  const parsedDate = new Date(date);
-                  if (!isNaN(parsedDate.getTime())) {
-                    date = parsedDate.toISOString().split('T')[0];
-                  }
-                } catch {
-                  date = new Date().toISOString().split('T')[0];
-                }
+              // Generate description if empty
+              if (!description) {
+                description = `Transaction on ${date || 'unknown date'}`;
               }
 
               transactions.push({
@@ -261,15 +387,15 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       setProcessingMessage('Processing file...');
 
       try {
-        let transactions: ParsedTransaction[];
+        let parsedTxns: ParsedTransaction[];
         
         if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-          transactions = await parsePdfWithAI(file);
+          parsedTxns = await parsePdfWithAI(file);
         } else {
-          transactions = await parseExcelFile(file);
+          parsedTxns = await parseExcelFile(file);
         }
         
-        if (transactions.length === 0) {
+        if (parsedTxns.length === 0) {
           toast({
             title: 'No transactions found',
             description: 'The file appears to be empty or in an unsupported format.',
@@ -278,12 +404,25 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           return;
         }
 
+        // Check for duplicates
+        setProcessingMessage('Checking for duplicates...');
+        const transactionsWithDuplicateCheck = checkForDuplicates(parsedTxns);
+        const duplicateCount = transactionsWithDuplicateCheck.filter(t => t.isDuplicate).length;
+
+        if (duplicateCount > 0) {
+          toast({
+            title: `Found ${duplicateCount} potential duplicate(s)`,
+            description: 'Duplicates are marked and auto-deselected. Review before confirming.',
+            variant: 'default',
+          });
+        }
+
         toast({
           title: 'File processed successfully',
-          description: `Found ${transactions.length} transactions. AI has suggested categories.`,
+          description: `Found ${parsedTxns.length} transactions${duplicateCount > 0 ? ` (${duplicateCount} duplicates)` : ''}.`,
         });
 
-        onTransactionsParsed(transactions);
+        onTransactionsParsed(transactionsWithDuplicateCheck);
       } catch (error) {
         console.error('Error parsing file:', error);
         toast({
@@ -296,7 +435,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         setProcessingMessage('');
       }
     },
-    [parseExcelFile, parsePdfWithAI, onTransactionsParsed]
+    [parseExcelFile, parsePdfWithAI, onTransactionsParsed, checkForDuplicates]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

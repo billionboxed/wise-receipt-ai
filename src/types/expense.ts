@@ -42,6 +42,8 @@ export interface ParsedTransaction {
   suggestedTagIds?: string[];
   selected: boolean;
   confirmed: boolean;
+  isDuplicate?: boolean;
+  duplicateOf?: string; // ID of the existing transaction this duplicates
 }
 
 export interface SpendingByCategory {
