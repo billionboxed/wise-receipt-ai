@@ -95,7 +95,7 @@ export function CategoryChart() {
           </div>
         </div>
 
-        <div className="flex-1 w-full space-y-2 max-h-52 overflow-y-auto scrollbar-thin pr-2">
+        <div className="flex-1 w-full space-y-2">
           {data.slice(0, 6).map((item, index) => (
             <motion.div
               key={item.name}

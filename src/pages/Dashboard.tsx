@@ -14,34 +14,26 @@ export default function Dashboard() {
   const { transactions } = useExpense();
 
   const stats = useMemo(() => {
-    const confirmed = transactions.filter(t => t.status === 'confirmed');
+    const expenses = transactions.filter(t => t.status === 'confirmed' && t.type === 'debit');
     
-    const totalIncome = confirmed
-      .filter(t => t.type === 'credit')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const totalExpense = confirmed
-      .filter(t => t.type === 'debit')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const balance = totalIncome - totalExpense;
+    const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
 
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
-    const thisMonthExpense = confirmed
+    const thisMonthExpense = expenses
       .filter(t => {
         const date = new Date(t.date);
-        return date.getMonth() === currentMonth && date.getFullYear() === currentYear && t.type === 'debit';
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const lastMonthExpense = confirmed
+    const lastMonthExpense = expenses
       .filter(t => {
         const date = new Date(t.date);
         const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
         const year = currentMonth === 0 ? currentYear - 1 : currentYear;
-        return date.getMonth() === lastMonth && date.getFullYear() === year && t.type === 'debit';
+        return date.getMonth() === lastMonth && date.getFullYear() === year;
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -49,7 +41,9 @@ export default function Dashboard() {
       ? ((thisMonthExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)
       : '0';
 
-    return { totalIncome, totalExpense, balance, thisMonthExpense, expenseChange, transactionCount: confirmed.length };
+    const avgTransaction = expenses.length > 0 ? totalExpense / expenses.length : 0;
+
+    return { totalExpense, thisMonthExpense, lastMonthExpense, expenseChange, transactionCount: expenses.length, avgTransaction };
   }, [transactions]);
 
   return (
@@ -61,10 +55,10 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total Balance" value={`₹${stats.balance.toLocaleString('en-IN')}`} icon={Wallet} iconColor="primary" delay={0} />
-          <StatCard title="Total Income" value={`₹${stats.totalIncome.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="success" delay={0.1} />
-          <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="destructive" delay={0.2} />
-          <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="accent" delay={0.3} />
+          <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} icon={Wallet} iconColor="destructive" delay={0} />
+          <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="accent" delay={0.1} />
+          <StatCard title="Last Month" value={`₹${stats.lastMonthExpense.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="primary" delay={0.2} />
+          <StatCard title="Avg. Transaction" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="success" delay={0.3} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">

@@ -165,34 +165,15 @@ export function TransactionDialog({
         </DialogHeader>
 
         <div className="grid gap-5 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                className="bg-background/50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: 'debit' | 'credit') =>
-                  setFormData(prev => ({ ...prev, type: value }))
-                }
-              >
-                <SelectTrigger className="bg-background/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="debit">Expense</SelectItem>
-                  <SelectItem value="credit">Income</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={formData.date}
+              onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              className="bg-background/50"
+            />
           </div>
 
           <div className="space-y-2">

@@ -16,7 +16,9 @@ export default function UploadPage() {
   } = useExpense();
 
   const handleTransactionsParsed = (transactions: ParsedTransaction[]) => {
-    setParsedTransactions(transactions);
+    // Filter out credit transactions - this app is for expense tracking only
+    const expenseTransactions = transactions.filter(t => t.type === 'debit');
+    setParsedTransactions(expenseTransactions);
   };
 
   return (
