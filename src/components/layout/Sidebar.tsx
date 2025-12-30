@@ -11,9 +11,11 @@ import {
   Menu,
   TrendingUp,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavItem {
   label: string;
@@ -37,6 +39,7 @@ const settingsNavItems: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { signOut, user } = useAuth();
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -150,16 +153,45 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Collapse Button - Desktop only */}
-      <div className="hidden lg:flex items-center justify-center p-4 border-t border-white/5">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-xl"
-        >
-          <Menu className="w-5 h-5" />
-        </Button>
+      {/* User & Logout Section */}
+      <div className="mt-auto p-4 border-t border-white/5">
+        {user && (
+          <div className={cn(
+            "flex items-center gap-3 mb-3",
+            isCollapsed && "justify-center"
+          )}>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-semibold text-primary-foreground">
+              {user.email?.charAt(0).toUpperCase()}
+            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={signOut}
+            className={cn(
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors",
+              isCollapsed ? "w-full justify-center" : "flex-1"
+            )}
+          >
+            <LogOut className="w-4 h-4" />
+            {!isCollapsed && <span className="ml-2">Logout</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-xl"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

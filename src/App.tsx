@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import CategoriesSettings from "./pages/settings/CategoriesSettings";
 import TagsSettings from "./pages/settings/TagsSettings";
 import AccountsSettings from "./pages/settings/AccountsSettings";
+import SettingsHub from "./pages/settings/SettingsHub";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -44,6 +45,7 @@ function AppRoutes() {
       <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
       <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><SettingsHub /></ProtectedRoute>} />
       <Route path="/settings/categories" element={<ProtectedRoute><CategoriesSettings /></ProtectedRoute>} />
       <Route path="/settings/tags" element={<ProtectedRoute><TagsSettings /></ProtectedRoute>} />
       <Route path="/settings/accounts" element={<ProtectedRoute><AccountsSettings /></ProtectedRoute>} />
