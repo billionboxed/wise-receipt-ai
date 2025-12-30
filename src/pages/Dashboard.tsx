@@ -6,6 +6,7 @@ import { CategoryChart } from '@/components/dashboard/CategoryChart';
 import { SpendingTrend } from '@/components/dashboard/SpendingTrend';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { AccountSummary } from '@/components/dashboard/AccountSummary';
+import { TagsSpending } from '@/components/dashboard/TagsSpending';
 import { useExpense } from '@/context/ExpenseContext';
 import { Wallet, TrendingUp, TrendingDown, CreditCard } from 'lucide-react';
 
@@ -25,7 +26,6 @@ export default function Dashboard() {
 
     const balance = totalIncome - totalExpense;
 
-    // Calculate month-over-month change
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
@@ -49,73 +49,33 @@ export default function Dashboard() {
       ? ((thisMonthExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)
       : '0';
 
-    return {
-      totalIncome,
-      totalExpense,
-      balance,
-      thisMonthExpense,
-      expenseChange,
-      transactionCount: confirmed.length,
-    };
+    return { totalIncome, totalExpense, balance, thisMonthExpense, expenseChange, transactionCount: confirmed.length };
   }, [transactions]);
 
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your expenses and manage your finances
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Track your expenses and manage your finances</p>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Balance"
-            value={`₹${stats.balance.toLocaleString('en-IN')}`}
-            icon={Wallet}
-            iconColor="primary"
-            delay={0}
-          />
-          <StatCard
-            title="Total Income"
-            value={`₹${stats.totalIncome.toLocaleString('en-IN')}`}
-            icon={TrendingUp}
-            iconColor="success"
-            delay={0.1}
-          />
-          <StatCard
-            title="Total Expenses"
-            value={`₹${stats.totalExpense.toLocaleString('en-IN')}`}
-            change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`}
-            changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'}
-            icon={TrendingDown}
-            iconColor="destructive"
-            delay={0.2}
-          />
-          <StatCard
-            title="This Month"
-            value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`}
-            change={`${stats.transactionCount} transactions`}
-            changeType="neutral"
-            icon={CreditCard}
-            iconColor="accent"
-            delay={0.3}
-          />
+          <StatCard title="Total Balance" value={`₹${stats.balance.toLocaleString('en-IN')}`} icon={Wallet} iconColor="primary" delay={0} />
+          <StatCard title="Total Income" value={`₹${stats.totalIncome.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="success" delay={0.1} />
+          <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="destructive" delay={0.2} />
+          <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="accent" delay={0.3} />
         </div>
 
-        {/* Charts Row */}
         <div className="grid lg:grid-cols-2 gap-6">
           <CategoryChart />
           <SpendingTrend />
         </div>
 
-        {/* Bottom Row */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-3 gap-6">
           <RecentTransactions />
           <AccountSummary />
+          <TagsSpending />
         </div>
       </div>
     </Layout>

@@ -222,6 +222,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
       'text/csv': ['.csv'],
+      'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
   });
@@ -291,14 +292,14 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               {isProcessing
                 ? 'Detecting accounts, categorizing transactions, and preparing for review'
-                : 'Drag and drop your bank statement or click to browse. Supports Excel (.xlsx, .xls) and CSV files.'}
+                : 'Drag and drop your bank statement or click to browse. Supports Excel, CSV, and PDF files.'}
             </p>
           </div>
 
           {!isProcessing && (
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-xs text-muted-foreground">
               <FileSpreadsheet className="w-4 h-4 text-primary" />
-              <span>Excel, CSV supported</span>
+              <span>Excel, CSV, PDF supported</span>
             </div>
           )}
         </div>

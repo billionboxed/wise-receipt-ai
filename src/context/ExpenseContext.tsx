@@ -18,8 +18,14 @@ interface ExpenseContextType {
   skipParsedTransactions: (ids: string[]) => void;
   clearParsedTransactions: () => void;
   addCategory: (category: Category) => void;
+  updateCategory: (id: string, updates: Partial<Category>) => void;
+  deleteCategory: (id: string) => void;
   addTag: (tag: Tag) => void;
+  updateTag: (id: string, updates: Partial<Tag>) => void;
+  deleteTag: (id: string) => void;
   addAccount: (account: Account) => void;
+  updateAccount: (id: string, updates: Partial<Account>) => void;
+  deleteAccount: (id: string) => void;
   getCategoryById: (id: string) => Category | undefined;
   getTagById: (id: string) => Tag | undefined;
   getAccountById: (id: string) => Account | undefined;
@@ -70,7 +76,7 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
       description: pt.description,
       amount: pt.amount,
       type: pt.type,
-      categoryId: pt.suggestedCategoryId || '23', // Misc as default
+      categoryId: pt.suggestedCategoryId || '23',
       accountId: pt.suggestedAccountId || '1',
       tagIds: pt.suggestedTagIds || [],
       status: 'confirmed' as const,
@@ -93,12 +99,36 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
     setCategories(prev => [...prev, category]);
   };
 
+  const updateCategory = (id: string, updates: Partial<Category>) => {
+    setCategories(prev => prev.map(c => (c.id === id ? { ...c, ...updates } : c)));
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+  };
+
   const addTag = (tag: Tag) => {
     setTags(prev => [...prev, tag]);
   };
 
+  const updateTag = (id: string, updates: Partial<Tag>) => {
+    setTags(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)));
+  };
+
+  const deleteTag = (id: string) => {
+    setTags(prev => prev.filter(t => t.id !== id));
+  };
+
   const addAccount = (account: Account) => {
     setAccounts(prev => [...prev, account]);
+  };
+
+  const updateAccount = (id: string, updates: Partial<Account>) => {
+    setAccounts(prev => prev.map(a => (a.id === id ? { ...a, ...updates } : a)));
+  };
+
+  const deleteAccount = (id: string) => {
+    setAccounts(prev => prev.filter(a => a.id !== id));
   };
 
   const getCategoryById = (id: string) => categories.find(c => c.id === id);
@@ -123,8 +153,14 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
         skipParsedTransactions,
         clearParsedTransactions,
         addCategory,
+        updateCategory,
+        deleteCategory,
         addTag,
+        updateTag,
+        deleteTag,
         addAccount,
+        updateAccount,
+        deleteAccount,
         getCategoryById,
         getTagById,
         getAccountById,
