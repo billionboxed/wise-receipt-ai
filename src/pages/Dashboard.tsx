@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { MobileStatPill } from '@/components/dashboard/MobileStatPill';
-import { MobileChartTabs } from '@/components/dashboard/MobileChartTabs';
 import { CategoryChart } from '@/components/dashboard/CategoryChart';
 import { SpendingTrend } from '@/components/dashboard/SpendingTrend';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
@@ -49,49 +48,28 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6">
-        {/* Header */}
+      <div className="space-y-6">
         <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Dashboard</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">Track your expenses</p>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Track your expenses and manage your finances</p>
         </div>
 
-        {/* Mobile Stats - Horizontal Scroll Pills */}
-        <div className="md:hidden -mx-4 px-4">
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-            <MobileStatPill title="Total" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} icon={Wallet} iconColor="destructive" delay={0} />
-            <MobileStatPill title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} icon={TrendingDown} iconColor="accent" delay={0.05} />
-            <MobileStatPill title="Last Month" value={`₹${stats.lastMonthExpense.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="primary" delay={0.1} />
-            <MobileStatPill title="Avg" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} icon={CreditCard} iconColor="success" delay={0.15} />
-          </div>
-        </div>
-
-        {/* Desktop Stats - Grid */}
-        <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} icon={Wallet} iconColor="destructive" delay={0} />
           <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="accent" delay={0.1} />
           <StatCard title="Last Month" value={`₹${stats.lastMonthExpense.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="primary" delay={0.2} />
           <StatCard title="Avg. Transaction" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="success" delay={0.3} />
         </div>
 
-        {/* Mobile Charts - Tabbed Interface */}
-        <div className="md:hidden">
-          <MobileChartTabs />
-        </div>
-
-        {/* Desktop Charts - Side by Side */}
-        <div className="hidden md:grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6">
           <CategoryChart />
           <SpendingTrend />
         </div>
 
-        {/* Bottom Section - More Compact on Mobile */}
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
+        <div className="grid lg:grid-cols-3 gap-6">
           <RecentTransactions />
           <AccountSummary />
-          <div className="hidden md:block">
-            <TagsSpending />
-          </div>
+          <TagsSpending />
         </div>
       </div>
     </Layout>
