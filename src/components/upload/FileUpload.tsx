@@ -45,16 +45,27 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
   );
 
   const detectAccount = useCallback(
-    (text: string): string | undefined => {
+    (text: string, fileName?: string): string | undefined => {
       const lowerText = text.toLowerCase();
+      const lowerFileName = (fileName || '').toLowerCase();
+      
+      // Check in both text content and filename
+      const searchText = lowerText + ' ' + lowerFileName;
+      
       for (const account of accounts) {
-        if (lowerText.includes(account.name.toLowerCase())) {
+        const accountNameLower = account.name.toLowerCase();
+        
+        // Direct name match
+        if (searchText.includes(accountNameLower)) {
           return account.id;
         }
-        if (account.name.includes('ICICI') && lowerText.includes('icici')) return account.id;
-        if (account.name.includes('HDFC') && lowerText.includes('hdfc')) return account.id;
-        if (account.name.includes('Axis') && lowerText.includes('axis')) return account.id;
-        if (account.name.includes('Kotak') && lowerText.includes('kotak')) return account.id;
+        
+        // Common bank keywords
+        if (accountNameLower.includes('kotak') && (searchText.includes('kotak') || searchText.includes('kmbl'))) return account.id;
+        if (accountNameLower.includes('icici') && searchText.includes('icici')) return account.id;
+        if (accountNameLower.includes('hdfc') && searchText.includes('hdfc')) return account.id;
+        if (accountNameLower.includes('axis') && searchText.includes('axis')) return account.id;
+        if (accountNameLower.includes('sbi') && searchText.includes('sbi')) return account.id;
       }
       return undefined;
     },
@@ -94,17 +105,32 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
   );
 
   const findAccountIdByName = useCallback(
-    (accountName: string | null): string | undefined => {
-      if (!accountName) return undefined;
-      const lowerName = accountName.toLowerCase();
-      for (const account of accounts) {
-        if (account.name.toLowerCase().includes(lowerName) || lowerName.includes(account.name.toLowerCase())) {
-          return account.id;
+    (accountName: string | null, fileName?: string): string | undefined => {
+      if (!accountName && !fileName) return undefined;
+      
+      // First try to match by detected account name from AI
+      if (accountName) {
+        const lowerName = accountName.toLowerCase();
+        for (const account of accounts) {
+          if (account.name.toLowerCase().includes(lowerName) || lowerName.includes(account.name.toLowerCase())) {
+            return account.id;
+          }
+          // Check for partial matches
+          if (lowerName.includes('kotak') && account.name.toLowerCase().includes('kotak')) return account.id;
+          if (lowerName.includes('icici') && account.name.toLowerCase().includes('icici')) return account.id;
+          if (lowerName.includes('hdfc') && account.name.toLowerCase().includes('hdfc')) return account.id;
+          if (lowerName.includes('axis') && account.name.toLowerCase().includes('axis')) return account.id;
         }
       }
+      
+      // Fallback to filename detection
+      if (fileName) {
+        return detectAccount('', fileName);
+      }
+      
       return undefined;
     },
-    [accounts]
+    [accounts, detectAccount]
   );
 
   const findCategoryIdByMain = useCallback(
@@ -146,7 +172,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       }
 
       const parsedData = data.data;
-      const detectedAccountId = findAccountIdByName(parsedData.detectedAccount);
+      const detectedAccountId = findAccountIdByName(parsedData.detectedAccount, file.name);
 
       const transactions: ParsedTransaction[] = parsedData.transactions.map((t: any, index: number) => ({
         id: `parsed_${Date.now()}_${index}`,
@@ -269,7 +295,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
 
             const transactions: ParsedTransaction[] = [];
             const allText = jsonData.flat().join(' ');
-            const detectedAccount = detectAccount(allText);
+            const detectedAccount = detectAccount(allText, file.name);
             const startIndex = hasHeaders ? 1 : 0;
 
             for (let i = startIndex; i < jsonData.length; i++) {

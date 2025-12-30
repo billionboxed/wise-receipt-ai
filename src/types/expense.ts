@@ -14,7 +14,7 @@ export interface Tag {
 export interface Account {
   id: string;
   name: string;
-  type: 'bank' | 'credit';
+  type: 'bank' | 'credit' | 'cash' | 'wallet';
   icon?: string;
 }
 
@@ -24,8 +24,8 @@ export interface Transaction {
   description: string;
   amount: number;
   type: 'debit' | 'credit';
-  categoryId: string;
-  accountId: string;
+  categoryId: string | null;
+  accountId: string | null;
   tagIds: string[];
   status: 'confirmed' | 'pending' | 'skipped';
   aiSuggested?: boolean;
