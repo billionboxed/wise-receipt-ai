@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   AlertTriangle,
+  Pencil,
 } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { ParsedTransaction } from '@/types/expense';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -60,6 +62,8 @@ export function TransactionReview({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(transactions.filter(t => t.selected).map(t => t.id))
   );
+  const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
+  const [editedDescription, setEditedDescription] = useState('');
 
   const selectedCount = selectedIds.size;
   const allSelected = selectedCount === transactions.length && transactions.length > 0;
@@ -334,10 +338,62 @@ export function TransactionReview({
                               <ArrowUpRight className="w-4 h-4" />
                             )}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium line-clamp-2 text-sm">
-                              {transaction.description}
-                            </span>
+                          <div className="flex flex-col flex-1 min-w-0">
+                            {editingDescriptionId === transaction.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={editedDescription}
+                                  onChange={e => setEditedDescription(e.target.value)}
+                                  className="h-7 text-sm"
+                                  autoFocus
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      onUpdate(transaction.id, { description: editedDescription });
+                                      setEditingDescriptionId(null);
+                                    }
+                                    if (e.key === 'Escape') {
+                                      setEditingDescriptionId(null);
+                                    }
+                                  }}
+                                />
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7 flex-shrink-0"
+                                  onClick={() => {
+                                    onUpdate(transaction.id, { description: editedDescription });
+                                    setEditingDescriptionId(null);
+                                  }}
+                                >
+                                  <Check className="w-3 h-3 text-success" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7 flex-shrink-0"
+                                  onClick={() => setEditingDescriptionId(null)}
+                                >
+                                  <X className="w-3 h-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 group/desc">
+                                <span className="font-medium line-clamp-2 text-sm">
+                                  {transaction.description}
+                                </span>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 flex-shrink-0 opacity-0 group-hover/desc:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    setEditingDescriptionId(transaction.id);
+                                    setEditedDescription(transaction.description);
+                                  }}
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
                             {transaction.isDuplicate && (
                               <span className="text-xs text-destructive">Duplicate detected</span>
                             )}

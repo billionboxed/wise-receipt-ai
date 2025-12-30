@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useExpense } from '@/context/ExpenseContext';
 import { Transaction } from '@/types/expense';
@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { X, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface TransactionDialogProps {
@@ -36,7 +37,7 @@ export function TransactionDialog({
   transaction,
   mode,
 }: TransactionDialogProps) {
-  const { categories, accounts, tags, addTransaction, updateTransaction } = useExpense();
+  const { categories, accounts, tags, transactions, addTransaction, updateTransaction } = useExpense();
 
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -71,6 +72,21 @@ export function TransactionDialog({
       });
     }
   }, [transaction, mode, open, categories, accounts]);
+
+  // Check for duplicate transactions
+  const duplicateTransaction = useMemo(() => {
+    if (mode !== 'add') return null;
+    if (!formData.date || !formData.amount) return null;
+    
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) return null;
+    
+    return transactions.find(t => 
+      t.date === formData.date && 
+      Math.abs(t.amount - amount) < 0.01 && 
+      t.type === formData.type
+    );
+  }, [mode, formData.date, formData.amount, formData.type, transactions]);
 
   const handleSubmit = () => {
     if (!formData.description || !formData.amount || !formData.categoryId || !formData.accountId) {
@@ -187,6 +203,15 @@ export function TransactionDialog({
               className="bg-background/50"
             />
           </div>
+
+          {duplicateTransaction && (
+            <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Possible duplicate: A {formData.type === 'debit' ? 'expense' : 'income'} of ₹{parseFloat(formData.amount).toLocaleString('en-IN')} on {formData.date} already exists.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (₹)</Label>
