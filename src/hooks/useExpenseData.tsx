@@ -50,34 +50,6 @@ export interface ParsedTransaction {
   duplicateOf?: string;
 }
 
-// Default categories to seed for new users
-const defaultCategories = [
-  { main: 'Food', sub: 'Food' },
-  { main: 'Social Life', sub: 'Social Life' },
-  { main: 'Entertainment', sub: 'Entertainment' },
-  { main: 'Fuel', sub: 'Fuel' },
-  { main: 'Household', sub: 'Grocery' },
-  { main: 'Household', sub: 'Bills' },
-  { main: 'Apparel', sub: 'Apparel' },
-  { main: 'Health', sub: 'Medical' },
-  { main: 'Education', sub: 'Education' },
-  { main: 'Transportation', sub: 'Maintenance' },
-  { main: 'Vacation', sub: 'Vacation' },
-  { main: 'Subscriptions', sub: 'Subscriptions' },
-  { main: 'Misc', sub: 'Misc' },
-];
-
-const defaultAccounts = [
-  { name: 'Kotak Bank', type: 'bank' as const },
-  { name: 'ICICI Credit Card', type: 'credit' as const },
-  { name: 'HDFC Credit Card', type: 'credit' as const },
-  { name: 'Axis Credit Card', type: 'credit' as const },
-];
-
-const defaultTags = [
-  { name: 'Yearly Major Expenses', color: 'hsl(280, 70%, 60%)' },
-  { name: 'Shared', color: 'hsl(200, 80%, 50%)' },
-];
 
 export function useExpenseData() {
   const { user } = useAuth();
@@ -88,39 +60,6 @@ export function useExpenseData() {
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Seed default data for new users
-  const seedDefaultData = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      // Insert default categories
-      const categoryInserts = defaultCategories.map(c => ({
-        user_id: user.id,
-        main: c.main,
-        sub: c.sub,
-        combined: `${c.main} > ${c.sub}`,
-      }));
-      await supabase.from('categories').insert(categoryInserts);
-
-      // Insert default accounts
-      const accountInserts = defaultAccounts.map(a => ({
-        user_id: user.id,
-        name: a.name,
-        type: a.type,
-      }));
-      await supabase.from('accounts').insert(accountInserts);
-
-      // Insert default tags
-      const tagInserts = defaultTags.map(t => ({
-        user_id: user.id,
-        name: t.name,
-        color: t.color,
-      }));
-      await supabase.from('tags').insert(tagInserts);
-    } catch (error) {
-      console.error('Error seeding default data:', error);
-    }
-  }, [user]);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -139,39 +78,12 @@ export function useExpenseData() {
         .order('main', { ascending: true });
 
       if (catError) throw catError;
-
-      // If no categories, seed default data
-      if (!categoriesData || categoriesData.length === 0) {
-        await seedDefaultData();
-        // Refetch after seeding
-        const { data: newCats } = await supabase.from('categories').select('*');
-        const { data: newAccounts } = await supabase.from('accounts').select('*');
-        const { data: newTags } = await supabase.from('tags').select('*');
-        
-        setCategories((newCats || []).map(c => ({
-          id: c.id,
-          main: c.main,
-          sub: c.sub,
-          combined: c.combined,
-        })));
-        setAccounts((newAccounts || []).map(a => ({
-          id: a.id,
-          name: a.name,
-          type: a.type as Account['type'],
-        })));
-        setTags((newTags || []).map(t => ({
-          id: t.id,
-          name: t.name,
-          color: t.color,
-        })));
-      } else {
-        setCategories(categoriesData.map(c => ({
-          id: c.id,
-          main: c.main,
-          sub: c.sub,
-          combined: c.combined,
-        })));
-      }
+      setCategories((categoriesData || []).map(c => ({
+        id: c.id,
+        main: c.main,
+        sub: c.sub,
+        combined: c.combined,
+      })));
 
       // Fetch accounts
       const { data: accountsData, error: accError } = await supabase
@@ -229,7 +141,7 @@ export function useExpenseData() {
     } finally {
       setLoading(false);
     }
-  }, [user, seedDefaultData]);
+  }, [user]);
 
   useEffect(() => {
     fetchData();
