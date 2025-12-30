@@ -1,0 +1,4 @@
+project_id = "kgfnmpcglocnbasbwdep"
+
+[functions.parse-pdf-transactions]
+verify_jwt = false

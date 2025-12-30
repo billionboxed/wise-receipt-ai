@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, X, Sparkles, AlertCircle, Zap } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, Sparkles, AlertCircle, Zap, FileText } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { useExpense } from '@/context/ExpenseContext';
@@ -8,6 +8,7 @@ import { ParsedTransaction } from '@/types/expense';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FileUploadProps {
   onTransactionsParsed: (transactions: ParsedTransaction[]) => void;
@@ -17,6 +18,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
   const { accounts, categories } = useExpense();
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [processingMessage, setProcessingMessage] = useState('');
 
   const detectAccount = useCallback(
     (text: string): string | undefined => {
@@ -65,6 +67,79 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       return miscCategory?.id || '23';
     },
     [categories]
+  );
+
+  const findAccountIdByName = useCallback(
+    (accountName: string | null): string | undefined => {
+      if (!accountName) return undefined;
+      const lowerName = accountName.toLowerCase();
+      for (const account of accounts) {
+        if (account.name.toLowerCase().includes(lowerName) || lowerName.includes(account.name.toLowerCase())) {
+          return account.id;
+        }
+      }
+      return undefined;
+    },
+    [accounts]
+  );
+
+  const findCategoryIdByMain = useCallback(
+    (categoryMain: string): string => {
+      const category = categories.find(c => c.main.toLowerCase() === categoryMain.toLowerCase());
+      if (category) return category.id;
+      const miscCategory = categories.find(c => c.main === 'Misc');
+      return miscCategory?.id || '23';
+    },
+    [categories]
+  );
+
+  const parsePdfWithAI = useCallback(
+    async (file: File): Promise<ParsedTransaction[]> => {
+      setProcessingMessage('Converting PDF to base64...');
+      
+      // Convert file to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      setProcessingMessage('AI is analyzing your bank statement...');
+
+      const { data, error } = await supabase.functions.invoke('parse-pdf-transactions', {
+        body: { pdfBase64: base64, fileName: file.name },
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to parse PDF');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to parse PDF');
+      }
+
+      const parsedData = data.data;
+      const detectedAccountId = findAccountIdByName(parsedData.detectedAccount);
+
+      const transactions: ParsedTransaction[] = parsedData.transactions.map((t: any, index: number) => ({
+        id: `parsed_${Date.now()}_${index}`,
+        date: t.date || new Date().toISOString().split('T')[0],
+        description: t.description?.trim() || 'Unknown',
+        amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount) || 0,
+        type: t.type === 'credit' ? 'credit' : 'debit',
+        suggestedCategoryId: findCategoryIdByMain(t.suggestedCategory || 'Misc'),
+        suggestedAccountId: detectedAccountId,
+        suggestedTagIds: [],
+        selected: true,
+        confirmed: false,
+      }));
+
+      return transactions.filter(t => t.amount > 0);
+    },
+    [findAccountIdByName, findCategoryIdByMain]
   );
 
   const parseExcelFile = useCallback(
@@ -183,9 +258,16 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
 
       setUploadedFile(file);
       setIsProcessing(true);
+      setProcessingMessage('Processing file...');
 
       try {
-        const transactions = await parseExcelFile(file);
+        let transactions: ParsedTransaction[];
+        
+        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+          transactions = await parsePdfWithAI(file);
+        } else {
+          transactions = await parseExcelFile(file);
+        }
         
         if (transactions.length === 0) {
           toast({
@@ -206,14 +288,15 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         console.error('Error parsing file:', error);
         toast({
           title: 'Error processing file',
-          description: 'Please check the file format and try again.',
+          description: error instanceof Error ? error.message : 'Please check the file format and try again.',
           variant: 'destructive',
         });
       } finally {
         setIsProcessing(false);
+        setProcessingMessage('');
       }
     },
-    [parseExcelFile, onTransactionsParsed]
+    [parseExcelFile, parsePdfWithAI, onTransactionsParsed]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -284,7 +367,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           <div className="space-y-3">
             <h3 className="text-xl font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
               {isProcessing
-                ? 'AI is analyzing your transactions...'
+                ? processingMessage || 'AI is analyzing your transactions...'
                 : isDragActive
                 ? 'Drop your file here'
                 : 'Upload Transaction File'}
@@ -297,9 +380,16 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           </div>
 
           {!isProcessing && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-xs text-muted-foreground">
-              <FileSpreadsheet className="w-4 h-4 text-primary" />
-              <span>Excel, CSV, PDF supported</span>
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-xs text-muted-foreground">
+                <FileSpreadsheet className="w-4 h-4 text-primary" />
+                <span>Excel, CSV</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 text-xs text-primary">
+                <FileText className="w-4 h-4" />
+                <span>PDF with AI</span>
+                <Sparkles className="w-3 h-3" />
+              </div>
             </div>
           )}
         </div>
@@ -313,7 +403,10 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent opacity-30 blur-xl animate-pulse" />
                 <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
               </div>
-              <p className="text-sm font-medium text-foreground">Processing with AI...</p>
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">{processingMessage || 'Processing with AI...'}</p>
+                <p className="text-xs text-muted-foreground mt-1">This may take a moment</p>
+              </div>
             </div>
           </div>
         )}
@@ -327,7 +420,11 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           className="flex items-center gap-4 p-5 glass-card border-white/5"
         >
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <FileSpreadsheet className="w-6 h-6 text-primary" />
+            {uploadedFile.name.endsWith('.pdf') ? (
+              <FileText className="w-6 h-6 text-primary" />
+            ) : (
+              <FileSpreadsheet className="w-6 h-6 text-primary" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-foreground truncate">{uploadedFile.name}</p>
@@ -346,14 +443,14 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         {[
           {
             icon: Sparkles,
-            title: 'Smart Categorization',
-            description: 'AI automatically suggests categories based on transaction descriptions',
+            title: 'AI-Powered PDF Parsing',
+            description: 'Upload bank statement PDFs and let AI extract transactions automatically',
             color: 'primary',
           },
           {
             icon: Zap,
-            title: 'Account Detection',
-            description: 'Detects which account the statement belongs to from file content',
+            title: 'Smart Account Detection',
+            description: 'Automatically detects which bank/card the statement belongs to',
             color: 'accent',
           },
           {
