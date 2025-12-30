@@ -18,11 +18,13 @@ import { cn } from '@/lib/utils';
 export function CategoryManager() {
   const { categories, addCategory, updateCategory, deleteCategory } = useExpense();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addSubToMain, setAddSubToMain] = useState<string | null>(null); // For adding subcategory to existing main
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newMain, setNewMain] = useState('');
   const [newSub, setNewSub] = useState('');
   const [editMain, setEditMain] = useState('');
   const [editSub, setEditSub] = useState('');
+  const [newSubForExisting, setNewSubForExisting] = useState('');
 
   const mainCategories = [...new Set(categories.map(c => c.main))];
 
@@ -44,6 +46,25 @@ export function CategoryManager() {
     setIsAddOpen(false);
     setNewMain('');
     setNewSub('');
+  };
+
+  const handleAddSubcategory = () => {
+    if (!addSubToMain || !newSubForExisting.trim()) {
+      toast({ title: 'Error', description: 'Subcategory name is required', variant: 'destructive' });
+      return;
+    }
+
+    const newCategory: Category = {
+      id: `cat_${Date.now()}`,
+      main: addSubToMain,
+      sub: newSubForExisting.trim(),
+      combined: `${addSubToMain} > ${newSubForExisting.trim()}`,
+    };
+
+    addCategory(newCategory);
+    toast({ title: 'Subcategory Added', description: `${newCategory.combined} has been added.` });
+    setAddSubToMain(null);
+    setNewSubForExisting('');
   };
 
   const handleEdit = (category: Category) => {
@@ -100,8 +121,42 @@ export function CategoryManager() {
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <FolderTree className="w-5 h-5 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground">{main}</h3>
+              <h3 className="font-semibold text-foreground flex-1">{main}</h3>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => {
+                  setAddSubToMain(main);
+                  setNewSubForExisting('');
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
+            
+            {/* Add subcategory inline form */}
+            {addSubToMain === main && (
+              <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-white/5">
+                <Input
+                  value={newSubForExisting}
+                  onChange={e => setNewSubForExisting(e.target.value)}
+                  className="h-8 text-sm flex-1"
+                  placeholder="New subcategory name"
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleAddSubcategory();
+                    if (e.key === 'Escape') setAddSubToMain(null);
+                  }}
+                />
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleAddSubcategory}>
+                  <Check className="w-4 h-4 text-success" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setAddSubToMain(null)}>
+                  <X className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            )}
             <div className="space-y-2">
               {categories
                 .filter(c => c.main === main)
