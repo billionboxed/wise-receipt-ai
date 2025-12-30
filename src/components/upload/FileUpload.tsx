@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, X, Sparkles, AlertCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, Sparkles, AlertCircle, Zap } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { useExpense } from '@/context/ExpenseContext';
@@ -25,7 +25,6 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         if (lowerText.includes(account.name.toLowerCase())) {
           return account.id;
         }
-        // Check for common variations
         if (account.name.includes('ICICI') && lowerText.includes('icici')) return account.id;
         if (account.name.includes('HDFC') && lowerText.includes('hdfc')) return account.id;
         if (account.name.includes('Axis') && lowerText.includes('axis')) return account.id;
@@ -40,7 +39,6 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
     (description: string): string => {
       const lowerDesc = description.toLowerCase();
 
-      // Category detection rules
       const rules: { keywords: string[]; categoryMain: string }[] = [
         { keywords: ['grocery', 'supermarket', 'big bazaar', 'dmart', 'reliance fresh'], categoryMain: 'Household' },
         { keywords: ['fuel', 'petrol', 'diesel', 'hp', 'indian oil', 'bharat petroleum'], categoryMain: 'Fuel' },
@@ -63,7 +61,6 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         }
       }
 
-      // Default to Misc
       const miscCategory = categories.find(c => c.main === 'Misc');
       return miscCategory?.id || '23';
     },
@@ -82,7 +79,6 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-            // Detect header row and column mapping
             const headerRow = jsonData[0] || [];
             const columnMap: Record<string, number> = {};
 
@@ -96,7 +92,6 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
               if (lowerHeader.includes('credit') || lowerHeader.includes('deposit')) columnMap.credit = index;
             });
 
-            // Parse transactions
             const transactions: ParsedTransaction[] = [];
             const allText = jsonData.flat().join(' ');
             const detectedAccount = detectAccount(allText);
@@ -110,12 +105,10 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
               let amount = 0;
               let type: 'debit' | 'credit' = 'debit';
 
-              // Extract date
               if (columnMap.date !== undefined) {
                 const dateValue = row[columnMap.date];
                 if (dateValue) {
                   if (typeof dateValue === 'number') {
-                    // Excel date serial number
                     const excelDate = XLSX.SSF.parse_date_code(dateValue);
                     date = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
                   } else {
@@ -124,12 +117,10 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
                 }
               }
 
-              // Extract description
               if (columnMap.description !== undefined) {
                 description = String(row[columnMap.description] || '');
               }
 
-              // Extract amount and type
               if (columnMap.debit !== undefined && columnMap.credit !== undefined) {
                 const debitVal = parseFloat(row[columnMap.debit]) || 0;
                 const creditVal = parseFloat(row[columnMap.credit]) || 0;
@@ -146,10 +137,8 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
                 type = amountVal < 0 ? 'debit' : 'credit';
               }
 
-              // Skip invalid rows
               if (!description || amount === 0) continue;
 
-              // Format date if needed
               if (date && !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
                 try {
                   const parsedDate = new Date(date);
@@ -251,40 +240,55 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       <div
         {...getRootProps()}
         className={cn(
-          'relative border-2 border-dashed rounded-xl p-8 lg:p-12 text-center cursor-pointer transition-all duration-300',
+          'relative overflow-hidden border-2 border-dashed rounded-2xl p-10 lg:p-16 text-center cursor-pointer transition-all duration-500',
           isDragActive
-            ? 'border-primary bg-primary/5 scale-[1.02]'
-            : 'border-border hover:border-primary/50 hover:bg-muted/50',
-          isProcessing && 'pointer-events-none opacity-70'
+            ? 'border-primary bg-primary/5 scale-[1.01] shadow-[0_0_60px_hsl(195_100%_50%/0.2)]'
+            : 'border-white/10 hover:border-primary/50 hover:bg-white/[0.02]',
+          isProcessing && 'pointer-events-none'
         )}
       >
         <input {...getInputProps()} />
+        
+        {/* Background glow effect */}
+        <div className={cn(
+          'absolute inset-0 opacity-0 transition-opacity duration-500',
+          isDragActive && 'opacity-100'
+        )}>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-primary/20 to-accent/20 rounded-full blur-3xl" />
+        </div>
 
-        <div className="flex flex-col items-center gap-4">
+        <div className="relative flex flex-col items-center gap-6">
           <div
             className={cn(
-              'w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300',
+              'w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500 relative',
               isDragActive
-                ? 'bg-primary text-primary-foreground scale-110'
-                : 'bg-primary/10 text-primary'
+                ? 'bg-gradient-to-br from-primary to-accent shadow-[0_0_40px_hsl(195_100%_50%/0.5)]'
+                : 'bg-gradient-to-br from-primary/20 to-accent/20',
+              isProcessing && 'animate-pulse'
             )}
           >
             {isProcessing ? (
-              <Sparkles className="w-8 h-8 animate-pulse" />
+              <Sparkles className="w-10 h-10 text-primary-foreground animate-pulse" />
             ) : (
-              <Upload className="w-8 h-8" />
+              <Upload className={cn(
+                'w-10 h-10 transition-colors duration-300',
+                isDragActive ? 'text-primary-foreground' : 'text-primary'
+              )} />
+            )}
+            {isDragActive && (
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary to-accent animate-pulse-glow" />
             )}
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">
+          <div className="space-y-3">
+            <h3 className="text-xl font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
               {isProcessing
                 ? 'AI is analyzing your transactions...'
                 : isDragActive
                 ? 'Drop your file here'
                 : 'Upload Transaction File'}
             </h3>
-            <p className="text-sm text-muted-foreground max-w-md">
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
               {isProcessing
                 ? 'Detecting accounts, categorizing transactions, and preparing for review'
                 : 'Drag and drop your bank statement or click to browse. Supports Excel (.xlsx, .xls) and CSV files.'}
@@ -292,8 +296,8 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           </div>
 
           {!isProcessing && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <FileSpreadsheet className="w-4 h-4" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-xs text-muted-foreground">
+              <FileSpreadsheet className="w-4 h-4 text-primary" />
               <span>Excel, CSV supported</span>
             </div>
           )}
@@ -301,13 +305,14 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
 
         {/* Processing animation */}
         {isProcessing && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-xl">
-            <div className="flex flex-col items-center gap-4">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
+            <div className="flex flex-col items-center gap-6">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-primary" />
+                <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-accent opacity-30 blur-xl animate-pulse" />
+                <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
               </div>
-              <p className="text-sm font-medium">Processing with AI...</p>
+              <p className="text-sm font-medium text-foreground">Processing with AI...</p>
             </div>
           </div>
         )}
@@ -318,16 +323,18 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 p-4 bg-card rounded-lg border border-border shadow-sm"
+          className="flex items-center gap-4 p-5 glass-card border-white/5"
         >
-          <FileSpreadsheet className="w-10 h-10 text-primary" />
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <FileSpreadsheet className="w-6 h-6 text-primary" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{uploadedFile.name}</p>
+            <p className="font-semibold text-foreground truncate">{uploadedFile.name}</p>
             <p className="text-sm text-muted-foreground">
               {(uploadedFile.size / 1024).toFixed(1)} KB
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={clearFile}>
+          <Button variant="ghost" size="icon" onClick={clearFile} className="hover:bg-white/5">
             <X className="w-4 h-4" />
           </Button>
         </motion.div>
@@ -340,16 +347,19 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             icon: Sparkles,
             title: 'Smart Categorization',
             description: 'AI automatically suggests categories based on transaction descriptions',
+            color: 'primary',
           },
           {
-            icon: FileSpreadsheet,
+            icon: Zap,
             title: 'Account Detection',
             description: 'Detects which account the statement belongs to from file content',
+            color: 'accent',
           },
           {
             icon: AlertCircle,
             title: 'Review Before Adding',
             description: 'Edit categories, tags, and skip transactions before confirming',
+            color: 'success',
           },
         ].map((feature, index) => (
           <motion.div
@@ -357,11 +367,18 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 + index * 0.1 }}
-            className="p-4 rounded-lg bg-muted/50 border border-border/50"
+            className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all duration-300 group"
           >
-            <feature.icon className="w-6 h-6 text-primary mb-3" />
-            <h4 className="font-medium text-sm mb-1">{feature.title}</h4>
-            <p className="text-xs text-muted-foreground">{feature.description}</p>
+            <div className={cn(
+              'w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-300',
+              feature.color === 'primary' && 'bg-primary/10 text-primary group-hover:shadow-[0_0_20px_hsl(195_100%_50%/0.3)]',
+              feature.color === 'accent' && 'bg-accent/10 text-accent group-hover:shadow-[0_0_20px_hsl(280_100%_65%/0.3)]',
+              feature.color === 'success' && 'bg-success/10 text-success group-hover:shadow-[0_0_20px_hsl(160_100%_45%/0.3)]'
+            )}>
+              <feature.icon className="w-5 h-5" />
+            </div>
+            <h4 className="font-semibold text-foreground text-sm mb-1">{feature.title}</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
           </motion.div>
         ))}
       </div>

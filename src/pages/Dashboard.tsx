@@ -76,14 +76,14 @@ export default function Dashboard() {
             title="Total Balance"
             value={`₹${stats.balance.toLocaleString('en-IN')}`}
             icon={Wallet}
-            iconColor="text-primary"
+            iconColor="primary"
             delay={0}
           />
           <StatCard
             title="Total Income"
             value={`₹${stats.totalIncome.toLocaleString('en-IN')}`}
             icon={TrendingUp}
-            iconColor="text-success"
+            iconColor="success"
             delay={0.1}
           />
           <StatCard
@@ -92,7 +92,7 @@ export default function Dashboard() {
             change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`}
             changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'}
             icon={TrendingDown}
-            iconColor="text-destructive"
+            iconColor="destructive"
             delay={0.2}
           />
           <StatCard
@@ -101,7 +101,7 @@ export default function Dashboard() {
             change={`${stats.transactionCount} transactions`}
             changeType="neutral"
             icon={CreditCard}
-            iconColor="text-accent"
+            iconColor="accent"
             delay={0.3}
           />
         </div>

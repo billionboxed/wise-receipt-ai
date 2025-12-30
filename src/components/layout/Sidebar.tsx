@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,9 +44,12 @@ export function Sidebar() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-6 border-b border-sidebar-border">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-glow">
-          <Wallet className="w-5 h-5 text-primary-foreground" />
+      <div className="flex items-center gap-3 px-5 py-6 border-b border-white/5">
+        <div className="relative">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-neon">
+            <Sparkles className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-accent opacity-50 blur-xl" />
         </div>
         {!isCollapsed && (
           <motion.div
@@ -53,17 +57,21 @@ export function Sidebar() {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col"
           >
-            <span className="font-bold text-lg text-sidebar-foreground">ExpenseAI</span>
-            <span className="text-xs text-sidebar-foreground/60">Smart Finance</span>
+            <span className="font-bold text-lg bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+              ExpenseAI
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-primary/80">
+              Smart Finance
+            </span>
           </motion.div>
         )}
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
-        <div className="mb-2">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto scrollbar-thin">
+        <div className="mb-4">
           {!isCollapsed && (
-            <span className="px-3 text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">
+            <span className="px-3 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-[0.15em]">
               Menu
             </span>
           )}
@@ -75,23 +83,37 @@ export function Sidebar() {
             onClick={() => setIsMobileOpen(false)}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+                'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md'
-                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                  ? 'text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
               )
             }
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="font-medium text-sm">{item.label}</span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 rounded-xl shadow-neon"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <item.icon className={cn(
+                  'w-5 h-5 flex-shrink-0 relative z-10 transition-all duration-300',
+                  isActive && 'drop-shadow-[0_0_8px_hsl(var(--primary))]'
+                )} />
+                {!isCollapsed && (
+                  <span className="font-medium text-sm relative z-10">{item.label}</span>
+                )}
+              </>
             )}
           </NavLink>
         ))}
 
-        <div className="pt-6 mb-2">
+        <div className="pt-8 mb-4">
           {!isCollapsed && (
-            <span className="px-3 text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">
+            <span className="px-3 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-[0.15em]">
               Settings
             </span>
           )}
@@ -103,28 +125,42 @@ export function Sidebar() {
             onClick={() => setIsMobileOpen(false)}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+                'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md'
-                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                  ? 'text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
               )
             }
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="font-medium text-sm">{item.label}</span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNavSettings"
+                    className="absolute inset-0 bg-gradient-to-r from-accent to-accent/80 rounded-xl shadow-neon-accent"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <item.icon className={cn(
+                  'w-5 h-5 flex-shrink-0 relative z-10 transition-all duration-300',
+                  isActive && 'drop-shadow-[0_0_8px_hsl(var(--accent))]'
+                )} />
+                {!isCollapsed && (
+                  <span className="font-medium text-sm relative z-10">{item.label}</span>
+                )}
+              </>
             )}
           </NavLink>
         ))}
       </nav>
 
       {/* Collapse Button - Desktop only */}
-      <div className="hidden lg:flex items-center justify-center p-4 border-t border-sidebar-border">
+      <div className="hidden lg:flex items-center justify-center p-4 border-t border-white/5">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          className="text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-xl"
         >
           <Menu className="w-5 h-5" />
         </Button>
@@ -137,9 +173,9 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card shadow-md border border-border"
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl glass-card border-white/10"
       >
-        <Menu className="w-5 h-5" />
+        <Menu className="w-5 h-5 text-foreground" />
       </button>
 
       {/* Mobile Overlay */}
@@ -149,7 +185,7 @@ export function Sidebar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40"
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-md z-40"
             onClick={() => setIsMobileOpen(false)}
           />
         )}
@@ -163,12 +199,12 @@ export function Sidebar() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="lg:hidden fixed left-0 top-0 bottom-0 w-64 z-50"
-            style={{ background: 'var(--gradient-sidebar)' }}
+            className="lg:hidden fixed left-0 top-0 bottom-0 w-72 z-50 border-r border-white/5"
+            style={{ background: 'linear-gradient(180deg, hsl(220, 20%, 6%) 0%, hsl(220, 25%, 4%) 100%)' }}
           >
             <button
               onClick={() => setIsMobileOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              className="absolute top-4 right-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5"
             >
               <X className="w-5 h-5" />
             </button>
@@ -179,10 +215,10 @@ export function Sidebar() {
 
       {/* Desktop Sidebar */}
       <motion.aside
-        animate={{ width: isCollapsed ? 80 : 256 }}
+        animate={{ width: isCollapsed ? 80 : 280 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="hidden lg:block fixed left-0 top-0 bottom-0 z-30 border-r border-sidebar-border"
-        style={{ background: 'var(--gradient-sidebar)' }}
+        className="hidden lg:block fixed left-0 top-0 bottom-0 z-30 border-r border-white/5"
+        style={{ background: 'linear-gradient(180deg, hsl(220, 20%, 6%) 0%, hsl(220, 25%, 4%) 100%)' }}
       >
         <SidebarContent />
       </motion.aside>
