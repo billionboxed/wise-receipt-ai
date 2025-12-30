@@ -75,18 +75,20 @@ export function TransactionDialog({
 
   // Check for duplicate transactions
   const duplicateTransaction = useMemo(() => {
-    if (mode !== 'add') return null;
+    if (mode !== 'add' || !open) return null;
     if (!formData.date || !formData.amount) return null;
     
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) return null;
     
-    return transactions.find(t => 
+    const found = transactions.find(t => 
       t.date === formData.date && 
       Math.abs(t.amount - amount) < 0.01 && 
       t.type === formData.type
     );
-  }, [mode, formData.date, formData.amount, formData.type, transactions]);
+    
+    return found;
+  }, [mode, open, formData.date, formData.amount, formData.type, transactions]);
 
   const handleSubmit = () => {
     if (!formData.description || !formData.amount || !formData.categoryId || !formData.accountId) {
