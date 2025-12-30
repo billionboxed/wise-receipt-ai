@@ -91,11 +91,11 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-4 md:space-y-6"
     >
       {/* Filters */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 md:gap-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search transactions..."
@@ -105,9 +105,9 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           />
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:gap-3">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -121,7 +121,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           </Select>
 
           <Select value={accountFilter} onValueChange={setAccountFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
               <SelectValue placeholder="Account" />
             </SelectTrigger>
             <SelectContent>
@@ -135,7 +135,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           </Select>
 
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-full md:w-32 text-xs md:text-sm">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -147,8 +147,114 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
         </div>
       </div>
 
-      {/* Transaction Table */}
-      <div className="glass-card overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filteredTransactions.map((transaction, index) => {
+          const category = getCategoryById(transaction.categoryId);
+          const account = getAccountById(transaction.accountId);
+          const transactionTags = transaction.tagIds
+            .map(id => getTagById(id))
+            .filter(Boolean);
+
+          return (
+            <motion.div
+              key={transaction.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: index * 0.02 }}
+              className="glass-card p-4 space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div
+                    className={cn(
+                      'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
+                      transaction.type === 'credit'
+                        ? 'bg-success/10 text-success'
+                        : 'bg-destructive/10 text-destructive'
+                    )}
+                  >
+                    {transaction.type === 'credit' ? (
+                      <ArrowDownRight className="w-5 h-5" />
+                    ) : (
+                      <ArrowUpRight className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground truncate">
+                      {transaction.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(parseISO(transaction.date), 'dd MMM yyyy')}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    'font-semibold text-sm whitespace-nowrap',
+                    transaction.type === 'credit'
+                      ? 'text-success'
+                      : 'text-foreground'
+                  )}
+                >
+                  {transaction.type === 'credit' ? '+' : '-'}₹
+                  {transaction.amount.toLocaleString('en-IN')}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0 flex-1">
+                  {category && (
+                    <span className="truncate max-w-[120px]">{category.combined}</span>
+                  )}
+                  {account && (
+                    <>
+                      <span className="text-border">•</span>
+                      <span className="truncate max-w-[80px]">{account.name}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => onEditTransaction?.(transaction)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteTransaction(transaction.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {transactionTags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {transactionTags.map(tag => (
+                    <Badge
+                      key={tag!.id}
+                      variant="secondary"
+                      className="text-xs"
+                      style={{ backgroundColor: `${tag!.color}20`, color: tag!.color }}
+                    >
+                      {tag!.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block glass-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -263,14 +369,14 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
             </TableBody>
           </Table>
         </div>
-
-        {filteredTransactions.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-lg font-medium">No transactions found</p>
-            <p className="text-sm">Try adjusting your filters</p>
-          </div>
-        )}
       </div>
+
+      {filteredTransactions.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="text-lg font-medium">No transactions found</p>
+          <p className="text-sm">Try adjusting your filters</p>
+        </div>
+      )}
     </motion.div>
   );
 }
