@@ -5,12 +5,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Search,
-  Filter,
   MoreHorizontal,
   Edit2,
   Trash2,
 } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
+import { Transaction } from '@/types/expense';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-export function TransactionList() {
+interface TransactionListProps {
+  onEditTransaction?: (transaction: Transaction) => void;
+}
+
+export function TransactionList({ onEditTransaction }: TransactionListProps) {
   const {
     transactions,
     categories,
@@ -151,11 +155,11 @@ export function TransactionList() {
       </div>
 
       {/* Transaction Table */}
-      <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
+      <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="hover:bg-transparent border-white/5">
                 <TableHead className="w-24">Date</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Category</TableHead>
@@ -179,7 +183,7 @@ export function TransactionList() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.02 }}
-                    className="group hover:bg-muted/50"
+                    className="group hover:bg-white/[0.02] border-white/5"
                   >
                     <TableCell className="font-medium text-muted-foreground">
                       {format(parseISO(transaction.date), 'dd MMM')}
@@ -200,7 +204,7 @@ export function TransactionList() {
                             <ArrowUpRight className="w-4 h-4" />
                           )}
                         </div>
-                        <span className="font-medium line-clamp-1">
+                        <span className="font-medium line-clamp-1 text-foreground">
                           {transaction.description}
                         </span>
                       </div>
@@ -211,7 +215,7 @@ export function TransactionList() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{account?.name}</span>
+                      <span className="text-sm text-foreground">{account?.name}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
@@ -252,7 +256,7 @@ export function TransactionList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditTransaction?.(transaction)}>
                             <Edit2 className="w-4 h-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
