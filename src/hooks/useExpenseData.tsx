@@ -50,7 +50,6 @@ export interface ParsedTransaction {
   duplicateOf?: string;
 }
 
-
 export function useExpenseData() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -59,7 +58,6 @@ export function useExpenseData() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -230,7 +228,7 @@ export function useExpenseData() {
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.date !== undefined) updateData.date = updates.date;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.amount !== undefined) updateData.amount = updates.amount;
@@ -410,9 +408,9 @@ export function useExpenseData() {
   };
 
   // Helpers
-  const getCategoryById = (id: string) => categories.find(c => c.id === id);
+  const getCategoryById = (id: string | null) => categories.find(c => c.id === id);
   const getTagById = (id: string) => tags.find(t => t.id === id);
-  const getAccountById = (id: string) => accounts.find(a => a.id === id);
+  const getAccountById = (id: string | null) => accounts.find(a => a.id === id);
 
   // Parsed transactions (for upload flow)
   const updateParsedTransaction = (id: string, updates: Partial<ParsedTransaction>) => {
