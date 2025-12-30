@@ -27,9 +27,9 @@ export function AccountManager() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState<'bank' | 'credit'>('bank');
+  const [newType, setNewType] = useState<'bank' | 'credit' | 'cash' | 'wallet'>('bank');
   const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<'bank' | 'credit'>('bank');
+  const [editType, setEditType] = useState<'bank' | 'credit' | 'cash' | 'wallet'>('bank');
 
   const handleAdd = () => {
     if (!newName.trim()) {
@@ -37,14 +37,11 @@ export function AccountManager() {
       return;
     }
 
-    const newAccount: Account = {
-      id: `acc_${Date.now()}`,
+    addAccount({
       name: newName.trim(),
       type: newType,
-    };
-
-    addAccount(newAccount);
-    toast({ title: 'Account Added', description: `${newAccount.name} has been added.` });
+    });
+    toast({ title: 'Account Added', description: `${newName.trim()} has been added.` });
     setIsAddOpen(false);
     setNewName('');
     setNewType('bank');
@@ -69,7 +66,7 @@ export function AccountManager() {
   const startEdit = (account: Account) => {
     setEditingId(account.id);
     setEditName(account.name);
-    setEditType(account.type);
+    setEditType(account.type as 'bank' | 'credit' | 'cash' | 'wallet');
   };
 
   return (
@@ -108,13 +105,15 @@ export function AccountManager() {
                   onChange={e => setEditName(e.target.value)}
                   className="bg-background/50"
                 />
-                <Select value={editType} onValueChange={(v: 'bank' | 'credit') => setEditType(v)}>
+                <Select value={editType} onValueChange={(v: 'bank' | 'credit' | 'cash' | 'wallet') => setEditType(v)}>
                   <SelectTrigger className="bg-background/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="bank">Bank Account</SelectItem>
                     <SelectItem value="credit">Credit Card</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="wallet">Wallet</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
@@ -185,13 +184,15 @@ export function AccountManager() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Account Type</label>
-              <Select value={newType} onValueChange={(v: 'bank' | 'credit') => setNewType(v)}>
+              <Select value={newType} onValueChange={(v: 'bank' | 'credit' | 'cash' | 'wallet') => setNewType(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="bank">Bank Account</SelectItem>
                   <SelectItem value="credit">Credit Card</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="wallet">Wallet</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Category, Tag, Account, Transaction, ParsedTransaction } from '@/types/expense';
-import { initialCategories, initialTags, initialAccounts, sampleTransactions } from '@/data/initialData';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useExpenseData, Category, Tag, Account, Transaction, ParsedTransaction } from '@/hooks/useExpenseData';
 
 interface ExpenseContextType {
   categories: Category[];
@@ -8,164 +7,38 @@ interface ExpenseContextType {
   accounts: Account[];
   transactions: Transaction[];
   parsedTransactions: ParsedTransaction[];
-  addTransaction: (transaction: Transaction) => void;
-  addTransactions: (transactions: Transaction[]) => void;
-  updateTransaction: (id: string, updates: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
+  loading: boolean;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransactions: (transactions: Omit<Transaction, 'id'>[]) => Promise<void>;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   setParsedTransactions: (transactions: ParsedTransaction[]) => void;
   updateParsedTransaction: (id: string, updates: Partial<ParsedTransaction>) => void;
-  confirmParsedTransactions: (ids: string[]) => void;
+  confirmParsedTransactions: (ids: string[]) => Promise<void>;
   skipParsedTransactions: (ids: string[]) => void;
   clearParsedTransactions: () => void;
-  addCategory: (category: Category) => void;
-  updateCategory: (id: string, updates: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
-  addTag: (tag: Tag) => void;
-  updateTag: (id: string, updates: Partial<Tag>) => void;
-  deleteTag: (id: string) => void;
-  addAccount: (account: Account) => void;
-  updateAccount: (id: string, updates: Partial<Account>) => void;
-  deleteAccount: (id: string) => void;
+  addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
+  updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  addTag: (tag: Omit<Tag, 'id'>) => Promise<void>;
+  updateTag: (id: string, updates: Partial<Tag>) => Promise<void>;
+  deleteTag: (id: string) => Promise<void>;
+  addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
+  updateAccount: (id: string, updates: Partial<Account>) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
   getCategoryById: (id: string) => Category | undefined;
   getTagById: (id: string) => Tag | undefined;
   getAccountById: (id: string) => Account | undefined;
+  refetch: () => Promise<void>;
 }
 
 const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
 export function ExpenseProvider({ children }: { children: ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [tags, setTags] = useState<Tag[]>(initialTags);
-  const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
-  const [transactions, setTransactions] = useState<Transaction[]>(sampleTransactions);
-  const [parsedTransactions, setParsedTransactionsState] = useState<ParsedTransaction[]>([]);
-
-  const addTransaction = (transaction: Transaction) => {
-    setTransactions(prev => [transaction, ...prev]);
-  };
-
-  const addTransactions = (newTransactions: Transaction[]) => {
-    setTransactions(prev => [...newTransactions, ...prev]);
-  };
-
-  const updateTransaction = (id: string, updates: Partial<Transaction>) => {
-    setTransactions(prev =>
-      prev.map(t => (t.id === id ? { ...t, ...updates } : t))
-    );
-  };
-
-  const deleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  };
-
-  const setParsedTransactions = (transactions: ParsedTransaction[]) => {
-    setParsedTransactionsState(transactions);
-  };
-
-  const updateParsedTransaction = (id: string, updates: Partial<ParsedTransaction>) => {
-    setParsedTransactionsState(prev =>
-      prev.map(t => (t.id === id ? { ...t, ...updates } : t))
-    );
-  };
-
-  const confirmParsedTransactions = (ids: string[]) => {
-    const toConfirm = parsedTransactions.filter(t => ids.includes(t.id));
-    const newTransactions: Transaction[] = toConfirm.map(pt => ({
-      id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      date: pt.date,
-      description: pt.description,
-      amount: pt.amount,
-      type: pt.type,
-      categoryId: pt.suggestedCategoryId || '23',
-      accountId: pt.suggestedAccountId || '1',
-      tagIds: pt.suggestedTagIds || [],
-      status: 'confirmed' as const,
-      aiSuggested: true,
-    }));
-    
-    addTransactions(newTransactions);
-    setParsedTransactionsState(prev => prev.filter(t => !ids.includes(t.id)));
-  };
-
-  const skipParsedTransactions = (ids: string[]) => {
-    setParsedTransactionsState(prev => prev.filter(t => !ids.includes(t.id)));
-  };
-
-  const clearParsedTransactions = () => {
-    setParsedTransactionsState([]);
-  };
-
-  const addCategory = (category: Category) => {
-    setCategories(prev => [...prev, category]);
-  };
-
-  const updateCategory = (id: string, updates: Partial<Category>) => {
-    setCategories(prev => prev.map(c => (c.id === id ? { ...c, ...updates } : c)));
-  };
-
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
-  };
-
-  const addTag = (tag: Tag) => {
-    setTags(prev => [...prev, tag]);
-  };
-
-  const updateTag = (id: string, updates: Partial<Tag>) => {
-    setTags(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)));
-  };
-
-  const deleteTag = (id: string) => {
-    setTags(prev => prev.filter(t => t.id !== id));
-  };
-
-  const addAccount = (account: Account) => {
-    setAccounts(prev => [...prev, account]);
-  };
-
-  const updateAccount = (id: string, updates: Partial<Account>) => {
-    setAccounts(prev => prev.map(a => (a.id === id ? { ...a, ...updates } : a)));
-  };
-
-  const deleteAccount = (id: string) => {
-    setAccounts(prev => prev.filter(a => a.id !== id));
-  };
-
-  const getCategoryById = (id: string) => categories.find(c => c.id === id);
-  const getTagById = (id: string) => tags.find(t => t.id === id);
-  const getAccountById = (id: string) => accounts.find(a => a.id === id);
+  const expenseData = useExpenseData();
 
   return (
-    <ExpenseContext.Provider
-      value={{
-        categories,
-        tags,
-        accounts,
-        transactions,
-        parsedTransactions,
-        addTransaction,
-        addTransactions,
-        updateTransaction,
-        deleteTransaction,
-        setParsedTransactions,
-        updateParsedTransaction,
-        confirmParsedTransactions,
-        skipParsedTransactions,
-        clearParsedTransactions,
-        addCategory,
-        updateCategory,
-        deleteCategory,
-        addTag,
-        updateTag,
-        deleteTag,
-        addAccount,
-        updateAccount,
-        deleteAccount,
-        getCategoryById,
-        getTagById,
-        getAccountById,
-      }}
-    >
+    <ExpenseContext.Provider value={expenseData}>
       {children}
     </ExpenseContext.Provider>
   );
@@ -178,3 +51,6 @@ export function useExpense() {
   }
   return context;
 }
+
+// Re-export types for convenience
+export type { Category, Tag, Account, Transaction, ParsedTransaction };

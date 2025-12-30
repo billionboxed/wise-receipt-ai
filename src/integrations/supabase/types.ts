@@ -14,7 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          combined: string
+          created_at: string
+          id: string
+          main: string
+          sub: string
+          user_id: string
+        }
+        Insert: {
+          combined: string
+          created_at?: string
+          id?: string
+          main: string
+          sub: string
+          user_id: string
+        }
+        Update: {
+          combined?: string
+          created_at?: string
+          id?: string
+          main?: string
+          sub?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          account_id: string | null
+          ai_suggested: boolean | null
+          amount: number
+          category_id: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          status: string
+          tag_ids: string[] | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          ai_suggested?: boolean | null
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          status?: string
+          tag_ids?: string[] | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          ai_suggested?: boolean | null
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          status?: string
+          tag_ids?: string[] | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
