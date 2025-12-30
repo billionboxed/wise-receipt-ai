@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Receipt,
   Upload,
-  Settings,
   Tags,
   Wallet,
   FolderTree,
   Menu,
-  X,
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
@@ -39,7 +37,6 @@ const settingsNavItems: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -80,7 +77,6 @@ export function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={() => setIsMobileOpen(false)}
             className={({ isActive }) =>
               cn(
                 'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
@@ -122,7 +118,7 @@ export function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={() => setIsMobileOpen(false)}
+            
             className={({ isActive }) =>
               cn(
                 'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
@@ -170,50 +166,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl glass-card border-white/10"
-      >
-        <Menu className="w-5 h-5 text-foreground" />
-      </button>
-
-      {/* Mobile Overlay */}
-      <AnimatePresence>
-        {isMobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-md z-40"
-            onClick={() => setIsMobileOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Sidebar */}
-      <AnimatePresence>
-        {isMobileOpen && (
-          <motion.aside
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="lg:hidden fixed left-0 top-0 bottom-0 w-72 z-50 border-r border-white/5"
-            style={{ background: 'linear-gradient(180deg, hsl(220, 20%, 6%) 0%, hsl(220, 25%, 4%) 100%)' }}
-          >
-            <button
-              onClick={() => setIsMobileOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <SidebarContent />
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar Only - Mobile uses BottomNav */}
       <motion.aside
         animate={{ width: isCollapsed ? 80 : 280 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
