@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 export function RecentTransactions() {
   const { transactions, getCategoryById, getAccountById } = useExpense();
@@ -18,20 +19,23 @@ export function RecentTransactions() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.4, duration: 0.4 }}
-      className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+      transition={{ delay: 0.4, duration: 0.5 }}
+      className="glass-card p-6 border-white/5"
     >
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">Recent Transactions</h3>
-        <a
-          href="/transactions"
-          className="text-sm font-medium text-primary hover:underline"
+        <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          Recent Transactions
+        </h3>
+        <Link
+          to="/transactions"
+          className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 group"
         >
           View all
-        </a>
+          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+        </Link>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {recentTransactions.map((transaction, index) => {
           const category = getCategoryById(transaction.categoryId);
           const account = getAccountById(transaction.accountId);
@@ -42,15 +46,15 @@ export function RecentTransactions() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 + index * 0.05 }}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08] transition-all duration-300 group"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div
                   className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center',
+                    'w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300',
                     transaction.type === 'credit'
-                      ? 'bg-success/10 text-success'
-                      : 'bg-destructive/10 text-destructive'
+                      ? 'bg-success/10 text-success group-hover:shadow-[0_0_20px_hsl(160_100%_45%/0.3)]'
+                      : 'bg-destructive/10 text-destructive group-hover:shadow-[0_0_20px_hsl(0_85%_60%/0.3)]'
                   )}
                 >
                   {transaction.type === 'credit' ? (
@@ -60,10 +64,10 @@ export function RecentTransactions() {
                   )}
                 </div>
                 <div>
-                  <p className="font-medium text-sm line-clamp-1">
+                  <p className="font-medium text-sm text-foreground line-clamp-1">
                     {transaction.description}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {category?.combined} • {account?.name}
                   </p>
                 </div>
@@ -78,7 +82,7 @@ export function RecentTransactions() {
                   {transaction.type === 'credit' ? '+' : '-'}₹
                   {transaction.amount.toLocaleString('en-IN')}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {format(parseISO(transaction.date), 'dd MMM')}
                 </p>
               </div>
@@ -87,9 +91,12 @@ export function RecentTransactions() {
         })}
 
         {recentTransactions.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No transactions yet</p>
-            <p className="text-sm">Upload a file to get started</p>
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <ArrowUpRight className="w-8 h-8 text-primary" />
+            </div>
+            <p className="text-muted-foreground font-medium">No transactions yet</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">Upload a file to get started</p>
           </div>
         )}
       </div>

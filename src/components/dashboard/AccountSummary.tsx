@@ -34,10 +34,12 @@ export function AccountSummary() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5, duration: 0.4 }}
-      className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+      transition={{ delay: 0.5, duration: 0.5 }}
+      className="glass-card p-6 border-white/5"
     >
-      <h3 className="text-lg font-semibold mb-4">Account Summary</h3>
+      <h3 className="text-lg font-semibold mb-6 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+        Account Summary
+      </h3>
 
       <div className="space-y-3">
         {accountBalances.map((account, index) => (
@@ -47,40 +49,40 @@ export function AccountSummary() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 + index * 0.05 }}
             className={cn(
-              'p-4 rounded-lg border border-border/50 transition-all duration-200 hover:shadow-md',
+              'p-4 rounded-xl border border-white/[0.04] transition-all duration-300 hover:border-white/[0.1] group',
               account.type === 'credit'
-                ? 'bg-gradient-to-r from-primary/5 to-transparent'
-                : 'bg-gradient-to-r from-success/5 to-transparent'
+                ? 'bg-gradient-to-r from-primary/[0.05] to-transparent hover:shadow-[0_0_30px_hsl(195_100%_50%/0.1)]'
+                : 'bg-gradient-to-r from-success/[0.05] to-transparent hover:shadow-[0_0_30px_hsl(160_100%_45%/0.1)]'
             )}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div
                   className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center',
+                    'w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300',
                     account.type === 'credit'
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-success/10 text-success'
+                      ? 'bg-primary/10 text-primary group-hover:shadow-[0_0_20px_hsl(195_100%_50%/0.3)]'
+                      : 'bg-success/10 text-success group-hover:shadow-[0_0_20px_hsl(160_100%_45%/0.3)]'
                   )}
                 >
                   {account.type === 'credit' ? (
-                    <CreditCard className="w-5 h-5" />
+                    <CreditCard className="w-6 h-6" />
                   ) : (
-                    <Building2 className="w-5 h-5" />
+                    <Building2 className="w-6 h-6" />
                   )}
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{account.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
+                  <p className="font-semibold text-foreground">{account.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize mt-0.5">
                     {account.type === 'credit' ? 'Credit Card' : 'Bank Account'}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-destructive">
+                <p className="text-sm font-bold text-destructive">
                   ₹{account.spent.toLocaleString('en-IN')}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {account.transactionCount} transactions
                 </p>
               </div>
