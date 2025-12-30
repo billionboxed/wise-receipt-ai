@@ -81,6 +81,12 @@ export default {
           teal: "hsl(var(--tag-teal))",
         },
       },
+      spacing: {
+        'safe': 'env(safe-area-inset-bottom, 0px)',
+      },
+      padding: {
+        'safe': 'env(safe-area-inset-bottom, 0px)',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
