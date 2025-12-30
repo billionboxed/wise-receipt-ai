@@ -60,22 +60,19 @@ export default function Analytics() {
       return {
         week: format(weekStart, 'dd MMM'),
         expense: 0,
-        income: 0,
       };
     });
 
-    confirmedTransactions.forEach(t => {
-      const txDate = parseISO(t.date);
-      const weekStart = startOfWeek(txDate);
-      const weekData = weeks.find(w => w.week === format(weekStart, 'dd MMM'));
-      if (weekData) {
-        if (t.type === 'debit') {
+    confirmedTransactions
+      .filter(t => t.type === 'debit')
+      .forEach(t => {
+        const txDate = parseISO(t.date);
+        const weekStart = startOfWeek(txDate);
+        const weekData = weeks.find(w => w.week === format(weekStart, 'dd MMM'));
+        if (weekData) {
           weekData.expense += t.amount;
-        } else {
-          weekData.income += t.amount;
         }
-      }
-    });
+      });
 
     return weeks;
   }, [confirmedTransactions]);
@@ -226,9 +223,7 @@ export default function Analytics() {
                   <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
                   <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="income" name="Income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
