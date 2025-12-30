@@ -10,6 +10,7 @@ import {
   Square,
   ArrowUpRight,
   ArrowDownRight,
+  AlertTriangle,
 } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { ParsedTransaction } from '@/types/expense';
@@ -32,6 +33,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 
 interface TransactionReviewProps {
@@ -164,9 +171,17 @@ export function TransactionReview({
             <Sparkles className="w-5 h-5 text-primary" />
             <h3 className="font-semibold">Review Transactions</h3>
           </div>
-          <Badge variant="secondary">
-            {transactions.length} found • {selectedCount} selected
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">
+              {transactions.length} found • {selectedCount} selected
+            </Badge>
+            {transactions.some(t => t.isDuplicate) && (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {transactions.filter(t => t.isDuplicate).length} duplicate(s)
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -271,46 +286,64 @@ export function TransactionReview({
                   .filter(Boolean);
 
                 return (
-                  <motion.tr
-                    key={transaction.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.02 }}
-                    className={cn(
-                      'group transition-colors',
-                      isSelected ? 'bg-primary/5' : 'hover:bg-muted/50'
-                    )}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(transaction.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium text-muted-foreground">
-                      {transaction.date ? format(parseISO(transaction.date), 'dd MMM') : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                            transaction.type === 'credit'
-                              ? 'bg-success/10 text-success'
-                              : 'bg-destructive/10 text-destructive'
-                          )}
-                        >
-                          {transaction.type === 'credit' ? (
-                            <ArrowDownRight className="w-4 h-4" />
-                          ) : (
-                            <ArrowUpRight className="w-4 h-4" />
+                  <TooltipProvider key={transaction.id}>
+                    <motion.tr
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.02 }}
+                      className={cn(
+                        'group transition-colors',
+                        transaction.isDuplicate && 'bg-destructive/5 border-l-2 border-l-destructive',
+                        isSelected ? 'bg-primary/5' : 'hover:bg-muted/50'
+                      )}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(transaction.id)}
+                          />
+                          {transaction.isDuplicate && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertTriangle className="w-4 h-4 text-destructive" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Potential duplicate: Same date and amount found in existing transactions</p>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
-                        <span className="font-medium line-clamp-2 text-sm">
-                          {transaction.description}
-                        </span>
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                      <TableCell className="font-medium text-muted-foreground">
+                        {transaction.date ? format(parseISO(transaction.date), 'dd MMM') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                              transaction.type === 'credit'
+                                ? 'bg-success/10 text-success'
+                                : 'bg-destructive/10 text-destructive'
+                            )}
+                          >
+                            {transaction.type === 'credit' ? (
+                              <ArrowDownRight className="w-4 h-4" />
+                            ) : (
+                              <ArrowUpRight className="w-4 h-4" />
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-medium line-clamp-2 text-sm">
+                              {transaction.description}
+                            </span>
+                            {transaction.isDuplicate && (
+                              <span className="text-xs text-destructive">Duplicate detected</span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
                     <TableCell>
                       <Select
                         value={transaction.suggestedCategoryId || ''}
@@ -415,7 +448,8 @@ export function TransactionReview({
                         {transaction.amount.toLocaleString('en-IN')}
                       </span>
                     </TableCell>
-                  </motion.tr>
+                    </motion.tr>
+                  </TooltipProvider>
                 );
               })}
             </TableBody>
