@@ -20,7 +20,7 @@ const navItems: NavItem[] = [
   { label: 'Transactions', path: '/transactions', icon: Receipt },
   { label: 'Upload', path: '/upload', icon: Upload },
   { label: 'Analytics', path: '/analytics', icon: TrendingUp },
-  { label: 'Settings', path: '/settings/categories', icon: Settings },
+  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 export function BottomNav() {
@@ -40,7 +40,7 @@ export function BottomNav() {
       >
         <div className="flex items-center justify-around px-2 py-2">
           {navItems.map((item) => {
-            const isActive = item.path === '/settings/categories' 
+            const isActive = item.path === '/settings' 
               ? isSettingsActive 
               : location.pathname === item.path;
             
