@@ -12,6 +12,7 @@ import Analytics from "./pages/Analytics";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import About from "./pages/About";
+import AboutPrint from "./pages/AboutPrint";
 import CategoriesSettings from "./pages/settings/CategoriesSettings";
 import TagsSettings from "./pages/settings/TagsSettings";
 import AccountsSettings from "./pages/settings/AccountsSettings";
@@ -45,6 +46,7 @@ function AppRoutes() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/install" element={<Install />} />
       <Route path="/about" element={<About />} />
+      <Route path="/about/print" element={<AboutPrint />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
       <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
