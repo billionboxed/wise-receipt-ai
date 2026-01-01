@@ -13,7 +13,7 @@ export function AIFloatingButton() {
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
-        className="fixed bottom-4 right-4 z-50 md:bottom-6 md:right-6"
+        className="fixed bottom-24 right-4 z-40 lg:bottom-6 lg:right-6"
       >
         <Button
           onClick={() => setIsOpen(!isOpen)}
