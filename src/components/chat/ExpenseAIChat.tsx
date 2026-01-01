@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2, Plus } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useExpense } from '@/context/ExpenseContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -22,6 +24,10 @@ interface ExpenseAction {
   suggestedCategory?: string;
 }
 
+interface PendingExpense extends ExpenseAction {
+  selectedCategoryId: string | null;
+}
+
 interface ExpenseAIChatProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,9 +37,10 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingExpense, setPendingExpense] = useState<PendingExpense | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { transactions, categories, accounts, tags, addTransaction, getCategoryById } = useExpense();
+  const { transactions, categories, accounts, addTransaction, getCategoryById } = useExpense();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, pendingExpense]);
 
   const getExpenseContext = useCallback(() => {
     const confirmedTransactions = transactions.filter(t => t.status === 'confirmed');
@@ -92,28 +99,32 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     return null;
   };
 
-  const handleAddExpense = async (action: ExpenseAction) => {
-    try {
-      const matchingCategory = categories.find(
-        c => c.combined.toLowerCase().includes(action.suggestedCategory?.toLowerCase() || '')
-      );
+  const handleConfirmExpense = async () => {
+    if (!pendingExpense) return;
 
+    try {
       await addTransaction({
-        date: action.date,
-        description: action.description,
-        amount: action.amount,
-        type: action.type,
-        categoryId: matchingCategory?.id || null,
+        date: pendingExpense.date,
+        description: pendingExpense.description,
+        amount: pendingExpense.amount,
+        type: pendingExpense.type,
+        categoryId: pendingExpense.selectedCategoryId,
         accountId: null,
         tagIds: [],
         status: 'confirmed',
         aiSuggested: true,
       });
 
+      const categoryName = pendingExpense.selectedCategoryId 
+        ? getCategoryById(pendingExpense.selectedCategoryId)?.combined 
+        : 'Uncategorized';
+
       toast({
         title: 'Expense Added',
-        description: `Added ₹${action.amount.toLocaleString('en-IN')} for "${action.description}"`,
+        description: `₹${pendingExpense.amount.toLocaleString('en-IN')} for "${pendingExpense.description}" in ${categoryName}`,
       });
+
+      setPendingExpense(null);
     } catch (error) {
       toast({
         title: 'Error',
@@ -200,10 +211,18 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
         }
       }
 
-      // Check for expense action in response
+      // Check for expense action in response - show pending card instead of auto-adding
       const expenseAction = parseExpenseAction(assistantContent);
       if (expenseAction) {
-        await handleAddExpense(expenseAction);
+        // Find matching category
+        const matchingCategory = categories.find(
+          c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
+        );
+        
+        setPendingExpense({
+          ...expenseAction,
+          selectedCategoryId: matchingCategory?.id || null,
+        });
       }
     } catch (error) {
       toast({
@@ -218,12 +237,85 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
 
   const formatMessage = (content: string) => {
     // Remove expense code blocks from display
-    return content.replace(/```expense[\s\S]*?```/g, '').trim();
+    let formatted = content.replace(/```expense[\s\S]*?```/g, '').trim();
+    return formatted;
+  };
+
+  // Render formatted text with basic markdown support
+  const renderFormattedText = (text: string) => {
+    const lines = text.split('\n');
+    
+    return lines.map((line, lineIdx) => {
+      // Handle headers
+      if (line.startsWith('### ')) {
+        return <h4 key={lineIdx} className="font-semibold text-sm mt-2 mb-1">{line.slice(4)}</h4>;
+      }
+      if (line.startsWith('## ')) {
+        return <h3 key={lineIdx} className="font-semibold text-sm mt-2 mb-1">{line.slice(3)}</h3>;
+      }
+      if (line.startsWith('# ')) {
+        return <h2 key={lineIdx} className="font-bold text-sm mt-2 mb-1">{line.slice(2)}</h2>;
+      }
+
+      // Handle bullet points
+      if (line.match(/^[-•*]\s/)) {
+        const content = line.slice(2);
+        return (
+          <div key={lineIdx} className="flex gap-2 ml-1">
+            <span className="text-primary">•</span>
+            <span>{renderInlineFormatting(content)}</span>
+          </div>
+        );
+      }
+
+      // Handle numbered lists
+      if (line.match(/^\d+\.\s/)) {
+        const match = line.match(/^(\d+)\.\s(.*)$/);
+        if (match) {
+          return (
+            <div key={lineIdx} className="flex gap-2 ml-1">
+              <span className="text-muted-foreground min-w-[1.2rem]">{match[1]}.</span>
+              <span>{renderInlineFormatting(match[2])}</span>
+            </div>
+          );
+        }
+      }
+
+      // Empty lines
+      if (line.trim() === '') {
+        return <div key={lineIdx} className="h-2" />;
+      }
+
+      // Regular paragraph
+      return <p key={lineIdx} className="leading-relaxed">{renderInlineFormatting(line)}</p>;
+    });
+  };
+
+  // Handle inline formatting (bold, italic, code)
+  const renderInlineFormatting = (text: string) => {
+    // Handle **bold**, *italic*, `code`, and ₹ amounts
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|₹[\d,]+)/g);
+    
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} className="font-semibold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={idx}>{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={idx} className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
+      }
+      if (part.match(/^₹[\d,]+$/)) {
+        return <span key={idx} className="text-primary font-semibold">{part}</span>;
+      }
+      return part;
+    });
   };
 
   const quickActions = [
     { label: 'Spending insights', prompt: 'Give me insights on my spending patterns' },
-    { label: 'This month summary', prompt: 'Summarize my expenses this month' },
+    { label: 'This month', prompt: 'Summarize my expenses this month' },
     { label: 'Top categories', prompt: 'What are my top spending categories?' },
   ];
 
@@ -235,7 +327,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-20 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[70vh] glass-card flex flex-col"
+          className="fixed bottom-20 right-4 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[70vh] glass-card flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border/50">
@@ -291,16 +383,87 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                   >
                     <div
                       className={cn(
-                        'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm',
+                        'max-w-[90%] rounded-2xl px-4 py-3 text-sm',
                         message.role === 'user'
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary text-secondary-foreground'
+                          : 'bg-secondary/80 text-secondary-foreground'
                       )}
                     >
-                      <p className="whitespace-pre-wrap">{formatMessage(message.content)}</p>
+                      {message.role === 'assistant' 
+                        ? renderFormattedText(formatMessage(message.content))
+                        : <p>{message.content}</p>
+                      }
                     </div>
                   </motion.div>
                 ))}
+
+                {/* Pending Expense Card */}
+                {pendingExpense && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/30 rounded-xl p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-primary uppercase tracking-wide">Add Expense</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => setPendingExpense(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Description</span>
+                        <span className="text-sm font-medium">{pendingExpense.description}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Amount</span>
+                        <span className="text-lg font-bold text-primary">₹{pendingExpense.amount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Date</span>
+                        <span className="text-sm">{format(new Date(pendingExpense.date), 'MMM d, yyyy')}</span>
+                      </div>
+                      
+                      <div className="pt-2">
+                        <label className="text-sm text-muted-foreground block mb-1.5">Category</label>
+                        <Select
+                          value={pendingExpense.selectedCategoryId || 'none'}
+                          onValueChange={(value) => setPendingExpense(prev => 
+                            prev ? { ...prev, selectedCategoryId: value === 'none' ? null : value } : null
+                          )}
+                        >
+                          <SelectTrigger className="w-full bg-background/50">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No category</SelectItem>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.combined}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={handleConfirmExpense} 
+                      className="w-full btn-glow"
+                      size="sm"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Confirm & Add
+                    </Button>
+                  </motion.div>
+                )}
+
                 {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <motion.div
                     initial={{ opacity: 0 }}
