@@ -41,7 +41,6 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<PendingExpense | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { transactions, categories, accounts, addTransaction, getCategoryById } = useExpense();
@@ -451,18 +450,17 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[300px] p-0" align="start">
-                            <Command>
+                          <PopoverContent className="w-[300px] p-0 z-[100]" align="start">
+                            <Command shouldFilter={true}>
                               <CommandInput 
-                                placeholder="Search categories..." 
-                                value={categorySearch}
-                                onValueChange={setCategorySearch}
+                                placeholder="Type to search categories..." 
+                                className="h-10"
                               />
-                              <CommandList>
+                              <CommandList className="max-h-[200px]">
                                 <CommandEmpty>No category found.</CommandEmpty>
                                 <CommandGroup>
                                   <CommandItem
-                                    value="none"
+                                    value="no-category"
                                     onSelect={() => {
                                       setPendingExpense(prev => 
                                         prev ? { ...prev, selectedCategoryId: null } : null

@@ -57,35 +57,32 @@ function SwipeableTransactionCard({
   formatAmount,
 }: SwipeableTransactionCardProps) {
   const x = useMotionValue(0);
-  const [isRevealed, setIsRevealed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = -60;
     if (info.offset.x < threshold) {
-      animate(x, -80);
-      setIsRevealed(true);
-    } else {
-      animate(x, 0);
-      setIsRevealed(false);
+      // Directly open edit dialog on swipe
+      onEdit();
     }
-  };
-
-  const handleEditClick = () => {
     animate(x, 0);
-    setIsRevealed(false);
-    onEdit();
   };
 
   return (
     <div className="relative overflow-hidden rounded-2xl" ref={containerRef}>
-      {/* Background action button */}
+      {/* Background action buttons */}
       <div className="absolute right-0 top-0 bottom-0 flex items-center">
         <button
-          onClick={handleEditClick}
-          className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center"
+          onClick={onEdit}
+          className="h-full px-4 bg-primary text-primary-foreground flex items-center justify-center"
         >
           <Edit2 className="w-5 h-5" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="h-full px-4 bg-destructive text-destructive-foreground flex items-center justify-center"
+        >
+          <Trash2 className="w-5 h-5" />
         </button>
       </div>
 
