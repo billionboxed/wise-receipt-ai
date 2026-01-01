@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ExpenseProvider } from "@/context/ExpenseContext";
+import { CurrencyProvider } from "@/context/CurrencyContext";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
@@ -16,6 +17,7 @@ import AboutPrint from "./pages/AboutPrint";
 import CategoriesSettings from "./pages/settings/CategoriesSettings";
 import TagsSettings from "./pages/settings/TagsSettings";
 import AccountsSettings from "./pages/settings/AccountsSettings";
+import CurrencySettings from "./pages/settings/CurrencySettings";
 import SettingsHub from "./pages/settings/SettingsHub";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -55,6 +57,7 @@ function AppRoutes() {
       <Route path="/settings/categories" element={<ProtectedRoute><CategoriesSettings /></ProtectedRoute>} />
       <Route path="/settings/tags" element={<ProtectedRoute><TagsSettings /></ProtectedRoute>} />
       <Route path="/settings/accounts" element={<ProtectedRoute><AccountsSettings /></ProtectedRoute>} />
+      <Route path="/settings/currency" element={<ProtectedRoute><CurrencySettings /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -63,13 +66,15 @@ function AppRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+      <CurrencyProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </CurrencyProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

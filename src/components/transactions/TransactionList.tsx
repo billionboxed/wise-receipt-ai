@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, useState, useRef } from 'react';
+import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import {
   ArrowUpRight,
@@ -9,6 +9,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { Transaction } from '@/types/expense';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,161 @@ interface TransactionListProps {
   onEditTransaction?: (transaction: Transaction) => void;
 }
 
+interface SwipeableTransactionCardProps {
+  transaction: Transaction;
+  index: number;
+  onEdit: () => void;
+  onDelete: () => void;
+  category?: { combined: string } | null;
+  account?: { name: string } | null;
+  transactionTags: Array<{ id: string; name: string; color: string }>;
+  formatAmount: (amount: number) => string;
+}
+
+function SwipeableTransactionCard({
+  transaction,
+  index,
+  onEdit,
+  onDelete,
+  category,
+  account,
+  transactionTags,
+  formatAmount,
+}: SwipeableTransactionCardProps) {
+  const x = useMotionValue(0);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = -60;
+    if (info.offset.x < threshold) {
+      animate(x, -80);
+      setIsRevealed(true);
+    } else {
+      animate(x, 0);
+      setIsRevealed(false);
+    }
+  };
+
+  const handleEditClick = () => {
+    animate(x, 0);
+    setIsRevealed(false);
+    onEdit();
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl" ref={containerRef}>
+      {/* Background action button */}
+      <div className="absolute right-0 top-0 bottom-0 flex items-center">
+        <button
+          onClick={handleEditClick}
+          className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center"
+        >
+          <Edit2 className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Swipeable card */}
+      <motion.div
+        style={{ x }}
+        drag="x"
+        dragConstraints={{ left: -80, right: 0 }}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: index * 0.02 }}
+        className="glass-card p-4 space-y-3 relative bg-card cursor-grab active:cursor-grabbing"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div
+              className={cn(
+                'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
+                transaction.type === 'credit'
+                  ? 'bg-success/10 text-success'
+                  : 'bg-destructive/10 text-destructive'
+              )}
+            >
+              {transaction.type === 'credit' ? (
+                <ArrowDownRight className="w-5 h-5" />
+              ) : (
+                <ArrowUpRight className="w-5 h-5" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground truncate">
+                {transaction.description}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {format(parseISO(transaction.date), 'dd MMM yyyy')}
+              </p>
+            </div>
+          </div>
+          <span
+            className={cn(
+              'font-semibold text-sm whitespace-nowrap',
+              transaction.type === 'credit'
+                ? 'text-success'
+                : 'text-foreground'
+            )}
+          >
+            {transaction.type === 'credit' ? '+' : ''}{formatAmount(transaction.amount)}
+          </span>
+        </div>
+        
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0 flex-1">
+            {category && (
+              <span className="truncate max-w-[120px]">{category.combined}</span>
+            )}
+            {account && (
+              <>
+                <span className="text-border">•</span>
+                <span className="truncate max-w-[80px]">{account.name}</span>
+              </>
+            )}
+          </div>
+          {/* Hidden on mobile - use swipe instead */}
+          <div className="hidden items-center gap-1 flex-shrink-0">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={onEdit}
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {transactionTags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {transactionTags.map(tag => (
+              <Badge
+                key={tag.id}
+                variant="secondary"
+                className="text-xs"
+                style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+              >
+                {tag.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 export function TransactionList({ onEditTransaction }: TransactionListProps) {
   const {
     transactions,
@@ -45,6 +201,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
     getTagById,
     deleteTransaction,
   } = useExpense();
+  const { formatAmount } = useCurrency();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -147,108 +304,28 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
         </div>
       </div>
 
-      {/* Mobile Card View */}
+      {/* Mobile Card View with Swipe */}
       <div className="md:hidden space-y-3">
+        <p className="text-xs text-muted-foreground text-center">Swipe left to edit</p>
         {filteredTransactions.map((transaction, index) => {
           const category = getCategoryById(transaction.categoryId);
           const account = getAccountById(transaction.accountId);
           const transactionTags = transaction.tagIds
             .map(id => getTagById(id))
-            .filter(Boolean);
+            .filter((tag): tag is { id: string; name: string; color: string } => tag !== undefined);
 
           return (
-            <motion.div
+            <SwipeableTransactionCard
               key={transaction.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: index * 0.02 }}
-              className="glass-card p-4 space-y-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div
-                    className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
-                      transaction.type === 'credit'
-                        ? 'bg-success/10 text-success'
-                        : 'bg-destructive/10 text-destructive'
-                    )}
-                  >
-                    {transaction.type === 'credit' ? (
-                      <ArrowDownRight className="w-5 h-5" />
-                    ) : (
-                      <ArrowUpRight className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground truncate">
-                      {transaction.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(parseISO(transaction.date), 'dd MMM yyyy')}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    'font-semibold text-sm whitespace-nowrap',
-                    transaction.type === 'credit'
-                      ? 'text-success'
-                      : 'text-foreground'
-                  )}
-                >
-                  {transaction.type === 'credit' ? '+' : '-'}₹
-                  {transaction.amount.toLocaleString('en-IN')}
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0 flex-1">
-                  {category && (
-                    <span className="truncate max-w-[120px]">{category.combined}</span>
-                  )}
-                  {account && (
-                    <>
-                      <span className="text-border">•</span>
-                      <span className="truncate max-w-[80px]">{account.name}</span>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => onEditTransaction?.(transaction)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteTransaction(transaction.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {transactionTags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {transactionTags.map(tag => (
-                    <Badge
-                      key={tag!.id}
-                      variant="secondary"
-                      className="text-xs"
-                      style={{ backgroundColor: `${tag!.color}20`, color: tag!.color }}
-                    >
-                      {tag!.name}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </motion.div>
+              transaction={transaction}
+              index={index}
+              onEdit={() => onEditTransaction?.(transaction)}
+              onDelete={() => deleteTransaction(transaction.id)}
+              category={category}
+              account={account}
+              transactionTags={transactionTags}
+              formatAmount={formatAmount}
+            />
           );
         })}
       </div>
@@ -339,8 +416,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
                             : 'text-foreground'
                         )}
                       >
-                        {transaction.type === 'credit' ? '+' : '-'}₹
-                        {transaction.amount.toLocaleString('en-IN')}
+                        {transaction.type === 'credit' ? '+' : ''}{formatAmount(transaction.amount)}
                       </span>
                     </TableCell>
                     <TableCell>

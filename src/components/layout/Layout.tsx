@@ -14,7 +14,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Desktop Sidebar */}
       <Sidebar />
       
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation (includes AI chat) */}
       <BottomNav />
       
       <motion.main
@@ -28,8 +28,10 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </motion.main>
 
-      {/* AI Chat Button */}
-      <AIFloatingButton />
+      {/* AI Chat Button - Desktop only */}
+      <div className="hidden lg:block">
+        <AIFloatingButton />
+      </div>
     </div>
   );
 }
