@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
+import { AIFloatingButton } from '@/components/chat/AIFloatingButton';
 import { motion } from 'framer-motion';
 
 interface LayoutProps {
@@ -26,6 +27,9 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </div>
       </motion.main>
+
+      {/* AI Chat Button */}
+      <AIFloatingButton />
     </div>
   );
 }
