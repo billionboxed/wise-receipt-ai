@@ -60,38 +60,39 @@ function SwipeableTransactionCard({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = -60;
-    if (info.offset.x < threshold) {
-      // Directly open edit dialog on swipe
+    const threshold = 60;
+    if (info.offset.x < -threshold) {
+      // Swipe left -> Edit
       onEdit();
+    } else if (info.offset.x > threshold) {
+      // Swipe right -> Delete
+      onDelete();
     }
     animate(x, 0);
   };
 
   return (
     <div className="relative overflow-hidden rounded-2xl" ref={containerRef}>
-      {/* Background action buttons */}
-      <div className="absolute right-0 top-0 bottom-0 flex items-center">
-        <button
-          onClick={onEdit}
-          className="h-full px-4 bg-primary text-primary-foreground flex items-center justify-center"
-        >
-          <Edit2 className="w-5 h-5" />
-        </button>
-        <button
-          onClick={onDelete}
-          className="h-full px-4 bg-destructive text-destructive-foreground flex items-center justify-center"
-        >
+      {/* Left side - Delete (revealed on swipe right) */}
+      <div className="absolute left-0 top-0 bottom-0 flex items-center">
+        <div className="h-full px-6 bg-destructive text-destructive-foreground flex items-center justify-center">
           <Trash2 className="w-5 h-5" />
-        </button>
+        </div>
+      </div>
+      
+      {/* Right side - Edit (revealed on swipe left) */}
+      <div className="absolute right-0 top-0 bottom-0 flex items-center">
+        <div className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center">
+          <Edit2 className="w-5 h-5" />
+        </div>
       </div>
 
       {/* Swipeable card */}
       <motion.div
         style={{ x }}
         drag="x"
-        dragConstraints={{ left: -80, right: 0 }}
-        dragElastic={0.1}
+        dragConstraints={{ left: -80, right: 80 }}
+        dragElastic={0.2}
         onDragEnd={handleDragEnd}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -303,7 +304,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
 
       {/* Mobile Card View with Swipe */}
       <div className="md:hidden space-y-3">
-        <p className="text-xs text-muted-foreground text-center">Swipe left to edit</p>
+        <p className="text-xs text-muted-foreground text-center">← Swipe left to edit • Swipe right to delete →</p>
         {filteredTransactions.map((transaction, index) => {
           const category = getCategoryById(transaction.categoryId);
           const account = getAccountById(transaction.accountId);

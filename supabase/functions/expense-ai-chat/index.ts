@@ -31,19 +31,23 @@ When the user wants to add an expense, extract these details and respond with a 
 - description (what was purchased)
 - amount (number only)
 - type ("debit" for expenses, "credit" for income)
-- categoryId (suggest from available categories if possible)
+- suggestedCategory (suggest from available categories if possible, or leave empty)
+
+IMPORTANT: Always add the expense even if no category is specified. The user can select a category later. Never refuse to add an expense due to missing category.
 
 Format expense additions like this:
 \`\`\`expense
 {
   "action": "add_expense",
   "date": "2025-01-01",
-  "description": "Coffee at Starbucks",
-  "amount": 250,
+  "description": "Fuel",
+  "amount": 1000,
   "type": "debit",
-  "suggestedCategory": "Food & Dining"
+  "suggestedCategory": "Transportation"
 }
 \`\`\`
+
+Always include the expense JSON block when the user wants to add an expense. After the JSON block, briefly confirm what you're about to add.
 
 For insights, analyze the spending patterns, identify trends, suggest savings opportunities, and highlight unusual spending.
 
