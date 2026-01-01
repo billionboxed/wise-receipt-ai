@@ -327,7 +327,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-20 right-4 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[70vh] glass-card flex flex-col"
+          className="fixed bottom-36 right-4 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[450px] max-h-[60vh] lg:bottom-20 lg:h-[520px] lg:max-h-[70vh] glass-card flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border/50">
