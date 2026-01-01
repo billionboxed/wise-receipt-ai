@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2, Check, ChevronDown } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useExpense } from '@/context/ExpenseContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -38,9 +40,12 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingExpense, setPendingExpense] = useState<PendingExpense | null>(null);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { transactions, categories, accounts, addTransaction, getCategoryById } = useExpense();
+  const { formatAmount } = useCurrency();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -423,7 +428,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Amount</span>
-                        <span className="text-lg font-bold text-primary">₹{pendingExpense.amount.toLocaleString('en-IN')}</span>
+                        <span className="text-lg font-bold text-primary">{formatAmount(pendingExpense.amount)}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Date</span>
@@ -432,24 +437,72 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                       
                       <div className="pt-2">
                         <label className="text-sm text-muted-foreground block mb-1.5">Category</label>
-                        <Select
-                          value={pendingExpense.selectedCategoryId || 'none'}
-                          onValueChange={(value) => setPendingExpense(prev => 
-                            prev ? { ...prev, selectedCategoryId: value === 'none' ? null : value } : null
-                          )}
-                        >
-                          <SelectTrigger className="w-full bg-background/50">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No category</SelectItem>
-                            {categories.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.combined}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={categoryOpen}
+                              className="w-full justify-between bg-background/50"
+                            >
+                              {pendingExpense.selectedCategoryId
+                                ? categories.find(c => c.id === pendingExpense.selectedCategoryId)?.combined
+                                : "Select category..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[300px] p-0" align="start">
+                            <Command>
+                              <CommandInput 
+                                placeholder="Search categories..." 
+                                value={categorySearch}
+                                onValueChange={setCategorySearch}
+                              />
+                              <CommandList>
+                                <CommandEmpty>No category found.</CommandEmpty>
+                                <CommandGroup>
+                                  <CommandItem
+                                    value="none"
+                                    onSelect={() => {
+                                      setPendingExpense(prev => 
+                                        prev ? { ...prev, selectedCategoryId: null } : null
+                                      );
+                                      setCategoryOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        !pendingExpense.selectedCategoryId ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    No category
+                                  </CommandItem>
+                                  {categories.map((cat) => (
+                                    <CommandItem
+                                      key={cat.id}
+                                      value={cat.combined}
+                                      onSelect={() => {
+                                        setPendingExpense(prev => 
+                                          prev ? { ...prev, selectedCategoryId: cat.id } : null
+                                        );
+                                        setCategoryOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          pendingExpense.selectedCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {cat.combined}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
 

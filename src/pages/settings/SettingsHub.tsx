@@ -1,7 +1,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderTree, Tags, Wallet, LogOut, ChevronRight, User } from 'lucide-react';
+import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,12 @@ const settingsItems = [
     description: 'Bank and credit accounts',
     path: '/settings/accounts',
     icon: Wallet,
+  },
+  {
+    label: 'Currency',
+    description: 'Choose your currency',
+    path: '/settings/currency',
+    icon: Coins,
   },
 ];
 
