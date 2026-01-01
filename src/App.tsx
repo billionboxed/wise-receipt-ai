@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ExpenseProvider } from "@/context/ExpenseContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
+import { TransactionDialogProvider } from "@/context/TransactionDialogContext";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
@@ -39,7 +40,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth" replace />;
   }
 
-  return <ExpenseProvider>{children}</ExpenseProvider>;
+  return (
+    <ExpenseProvider>
+      <TransactionDialogProvider>
+        {children}
+      </TransactionDialogProvider>
+    </ExpenseProvider>
+  );
 }
 
 function AppRoutes() {

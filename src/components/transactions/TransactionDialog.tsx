@@ -24,11 +24,20 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { X, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
+export interface PrefillData {
+  date: string;
+  description: string;
+  amount: number;
+  type: 'debit' | 'credit';
+  categoryId?: string | null;
+}
+
 interface TransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
   mode: 'add' | 'edit';
+  prefillData?: PrefillData | null;
 }
 
 export function TransactionDialog({
@@ -36,6 +45,7 @@ export function TransactionDialog({
   onOpenChange,
   transaction,
   mode,
+  prefillData,
 }: TransactionDialogProps) {
   const { categories, accounts, tags, transactions, addTransaction, updateTransaction } = useExpense();
 
@@ -60,6 +70,17 @@ export function TransactionDialog({
         accountId: transaction.accountId,
         tagIds: transaction.tagIds,
       });
+    } else if (prefillData && mode === 'add') {
+      // Prefill from AI chat
+      setFormData({
+        date: prefillData.date,
+        description: prefillData.description,
+        amount: prefillData.amount.toString(),
+        type: prefillData.type,
+        categoryId: prefillData.categoryId || categories[0]?.id || '',
+        accountId: accounts[0]?.id || '',
+        tagIds: [],
+      });
     } else {
       setFormData({
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -71,7 +92,7 @@ export function TransactionDialog({
         tagIds: [],
       });
     }
-  }, [transaction, mode, open, categories, accounts]);
+  }, [transaction, mode, open, categories, accounts, prefillData]);
 
   // Check for duplicate transactions
   const duplicateTransaction = useMemo(() => {

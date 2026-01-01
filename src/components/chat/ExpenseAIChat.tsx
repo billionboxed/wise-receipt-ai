@@ -1,16 +1,13 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useExpense } from '@/context/ExpenseContext';
-import { useCurrency } from '@/context/CurrencyContext';
+import { useTransactionDialog } from '@/context/TransactionDialogContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -26,10 +23,6 @@ interface ExpenseAction {
   suggestedCategory?: string;
 }
 
-interface PendingExpense extends ExpenseAction {
-  selectedCategoryId: string | null;
-}
-
 interface ExpenseAIChatProps {
   isOpen: boolean;
   onClose: () => void;
@@ -39,12 +32,10 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingExpense, setPendingExpense] = useState<PendingExpense | null>(null);
-  const [categoryOpen, setCategoryOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { transactions, categories, accounts, addTransaction, getCategoryById } = useExpense();
-  const { formatAmount } = useCurrency();
+  const { transactions, categories, accounts, getCategoryById } = useExpense();
+  const { openAddDialog } = useTransactionDialog();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -57,7 +48,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, pendingExpense]);
+  }, [messages]);
 
   const getExpenseContext = useCallback(() => {
     const confirmedTransactions = transactions.filter(t => t.status === 'confirmed');
@@ -101,41 +92,6 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
       }
     }
     return null;
-  };
-
-  const handleConfirmExpense = async () => {
-    if (!pendingExpense) return;
-
-    try {
-      await addTransaction({
-        date: pendingExpense.date,
-        description: pendingExpense.description,
-        amount: pendingExpense.amount,
-        type: pendingExpense.type,
-        categoryId: pendingExpense.selectedCategoryId,
-        accountId: null,
-        tagIds: [],
-        status: 'confirmed',
-        aiSuggested: true,
-      });
-
-      const categoryName = pendingExpense.selectedCategoryId 
-        ? getCategoryById(pendingExpense.selectedCategoryId)?.combined 
-        : 'Uncategorized';
-
-      toast({
-        title: 'Expense Added',
-        description: `₹${pendingExpense.amount.toLocaleString('en-IN')} for "${pendingExpense.description}" in ${categoryName}`,
-      });
-
-      setPendingExpense(null);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to add expense',
-        variant: 'destructive',
-      });
-    }
   };
 
   const sendMessage = async () => {
@@ -215,7 +171,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
         }
       }
 
-      // Check for expense action in response - show pending card instead of auto-adding
+      // Check for expense action in response - open the transaction dialog with prefilled data
       const expenseAction = parseExpenseAction(assistantContent);
       if (expenseAction) {
         // Find matching category
@@ -223,9 +179,13 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
           c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
         );
         
-        setPendingExpense({
-          ...expenseAction,
-          selectedCategoryId: matchingCategory?.id || null,
+        // Open the transaction dialog with prefilled data
+        openAddDialog({
+          date: expenseAction.date,
+          description: expenseAction.description,
+          amount: expenseAction.amount,
+          type: expenseAction.type,
+          categoryId: matchingCategory?.id || null,
         });
       }
     } catch (error) {
@@ -401,120 +361,6 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                   </motion.div>
                 ))}
 
-                {/* Pending Expense Card */}
-                {pendingExpense && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/30 rounded-xl p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-primary uppercase tracking-wide">Add Expense</span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        onClick={() => setPendingExpense(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Description</span>
-                        <span className="text-sm font-medium">{pendingExpense.description}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Amount</span>
-                        <span className="text-lg font-bold text-primary">{formatAmount(pendingExpense.amount)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Date</span>
-                        <span className="text-sm">{format(new Date(pendingExpense.date), 'MMM d, yyyy')}</span>
-                      </div>
-                      
-                      <div className="pt-2">
-                        <label className="text-sm text-muted-foreground block mb-1.5">Category</label>
-                        <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={categoryOpen}
-                              className="w-full justify-between bg-background/50"
-                            >
-                              {pendingExpense.selectedCategoryId
-                                ? categories.find(c => c.id === pendingExpense.selectedCategoryId)?.combined
-                                : "Select category..."}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[300px] p-0 z-[100]" align="start">
-                            <Command shouldFilter={true}>
-                              <CommandInput 
-                                placeholder="Type to search categories..." 
-                                className="h-10"
-                              />
-                              <CommandList className="max-h-[200px]">
-                                <CommandEmpty>No category found.</CommandEmpty>
-                                <CommandGroup>
-                                  <CommandItem
-                                    value="no-category"
-                                    onSelect={() => {
-                                      setPendingExpense(prev => 
-                                        prev ? { ...prev, selectedCategoryId: null } : null
-                                      );
-                                      setCategoryOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        !pendingExpense.selectedCategoryId ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    No category
-                                  </CommandItem>
-                                  {categories.map((cat) => (
-                                    <CommandItem
-                                      key={cat.id}
-                                      value={cat.combined}
-                                      onSelect={() => {
-                                        setPendingExpense(prev => 
-                                          prev ? { ...prev, selectedCategoryId: cat.id } : null
-                                        );
-                                        setCategoryOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          pendingExpense.selectedCategoryId === cat.id ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {cat.combined}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-
-                    <Button 
-                      onClick={handleConfirmExpense} 
-                      className="w-full btn-glow"
-                      size="sm"
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      Confirm & Add
-                    </Button>
-                  </motion.div>
-                )}
-
                 {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -543,17 +389,21 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about spending or add expense..."
-                className="flex-1 bg-secondary/50 border-border/50"
+                placeholder="Ask about expenses or add one..."
+                className="flex-1 bg-background/50"
                 disabled={isLoading}
               />
               <Button
                 type="submit"
                 size="icon"
-                disabled={!input.trim() || isLoading}
+                disabled={isLoading || !input.trim()}
                 className="btn-glow"
               >
-                <Send className="w-4 h-4" />
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </form>
           </div>
