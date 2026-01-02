@@ -13,16 +13,22 @@ import {
   Cell,
   LineChart,
   Line,
-  Legend,
 } from 'recharts';
 import { Layout } from '@/components/layout/Layout';
 import { useExpense } from '@/context/ExpenseContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { categoryColors } from '@/data/initialData';
 import { format, parseISO, startOfWeek, subWeeks, eachDayOfInterval, subDays } from 'date-fns';
 import { TrendingUp, TrendingDown, Calendar, Target } from 'lucide-react';
+import { YearOverYearChart } from '@/components/analytics/YearOverYearChart';
+import { SpendingHeatmap } from '@/components/analytics/SpendingHeatmap';
+import { DayOfWeekChart } from '@/components/analytics/DayOfWeekChart';
+import { RecurringExpenses } from '@/components/analytics/RecurringExpenses';
+import { SpendingForecast } from '@/components/analytics/SpendingForecast';
 
 export default function Analytics() {
   const { transactions, getCategoryById, getAccountById } = useExpense();
+  const { formatAmount } = useCurrency();
 
   const confirmedTransactions = useMemo(
     () => transactions.filter(t => t.status === 'confirmed'),
@@ -133,7 +139,7 @@ export default function Analytics() {
           <p className="font-semibold text-foreground mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: ₹{entry.value.toLocaleString('en-IN')}
+              {entry.name}: {formatAmount(entry.value)}
             </p>
           ))}
         </div>
@@ -156,9 +162,9 @@ export default function Analytics() {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total Spent', value: `₹${stats.total.toLocaleString('en-IN')}`, icon: TrendingDown, color: 'text-destructive' },
-            { label: 'Avg. Transaction', value: `₹${Math.round(stats.average).toLocaleString('en-IN')}`, icon: Target, color: 'text-primary' },
-            { label: 'Highest Expense', value: `₹${stats.highest.toLocaleString('en-IN')}`, icon: TrendingUp, color: 'text-accent' },
+            { label: 'Total Spent', value: formatAmount(stats.total), icon: TrendingDown, color: 'text-destructive' },
+            { label: 'Avg. Transaction', value: formatAmount(Math.round(stats.average)), icon: Target, color: 'text-primary' },
+            { label: 'Highest Expense', value: formatAmount(stats.highest), icon: TrendingUp, color: 'text-accent' },
             { label: 'Total Transactions', value: stats.count.toString(), icon: Calendar, color: 'text-success' },
           ].map((stat, index) => (
             <motion.div
@@ -181,13 +187,24 @@ export default function Analytics() {
           ))}
         </div>
 
+        {/* Spending Forecast - Full Width */}
+        <SpendingForecast transactions={transactions} />
+
         {/* Charts Grid */}
         <div className="grid lg:grid-cols-2 gap-6">
+          {/* Year over Year */}
+          <YearOverYearChart transactions={transactions} />
+
+          {/* Day of Week */}
+          <DayOfWeekChart transactions={transactions} />
+
+          {/* Recurring Expenses */}
+          <RecurringExpenses transactions={transactions} />
+
           {/* Category Breakdown */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
             className="bg-card rounded-xl p-6 shadow-card border border-border/50"
           >
             <h3 className="text-lg font-semibold mb-4">Spending by Category</h3>
@@ -195,7 +212,7 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryData.slice(0, 8)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+                  <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                   <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
@@ -207,12 +224,17 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           </motion.div>
+        </div>
 
+        {/* Spending Heatmap - Full Width */}
+        <SpendingHeatmap transactions={transactions} />
+
+        {/* More Charts */}
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Weekly Trend */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
             className="bg-card rounded-xl p-6 shadow-card border border-border/50"
           >
             <h3 className="text-lg font-semibold mb-4">Weekly Spending</h3>
@@ -221,7 +243,7 @@ export default function Analytics() {
                 <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -233,7 +255,6 @@ export default function Analytics() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
             className="bg-card rounded-xl p-6 shadow-card border border-border/50"
           >
             <h3 className="text-lg font-semibold mb-4">Last 30 Days</h3>
@@ -242,7 +263,7 @@ export default function Analytics() {
                 <LineChart data={dailyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={2} />
-                  <YAxis tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line
                     type="monotone"
@@ -262,7 +283,6 @@ export default function Analytics() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
             className="bg-card rounded-xl p-6 shadow-card border border-border/50"
           >
             <h3 className="text-lg font-semibold mb-4">Spending by Account</h3>

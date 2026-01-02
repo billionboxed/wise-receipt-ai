@@ -2,3 +2,9 @@ project_id = "kgfnmpcglocnbasbwdep"
 
 [functions.parse-pdf-transactions]
 verify_jwt = false
+
+[functions.expense-ai-chat]
+verify_jwt = false
+
+[functions.spending-forecast]
+verify_jwt = false
