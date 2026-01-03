@@ -36,9 +36,9 @@ export default function ThemeSettings() {
       description: 'Elegant black & white',
       icon: Circle,
       preview: {
-        bg: 'bg-gradient-to-br from-neutral-950 to-black',
-        card: 'bg-neutral-900/60',
-        accent: 'bg-white',
+        bg: 'bg-gradient-to-br from-neutral-50 to-white',
+        card: 'bg-white border border-neutral-200',
+        accent: 'bg-black',
       },
     },
   ];
