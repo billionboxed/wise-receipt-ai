@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit2, RefreshCcw, Calendar, Pause, Play } from 'lucide-react';
+import { Plus, Trash2, Edit2, RefreshCcw, Calendar, Pause, Play, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { useRecurringExpenses, RecurringExpense } from '@/hooks/useRecurringExpe
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const frequencyOptions = [
   { value: 'weekly', label: 'Weekly' },
@@ -28,7 +29,7 @@ const frequencyColors: Record<string, string> = {
 
 export function RecurringExpenseManager() {
   const { recurringExpenses, loading, addRecurringExpense, updateRecurringExpense, deleteRecurringExpense } = useRecurringExpenses();
-  const { categories, accounts } = useExpense();
+  const { categories, accounts, tags } = useExpense();
   const { formatAmount } = useCurrency();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<RecurringExpense | null>(null);
@@ -39,6 +40,7 @@ export function RecurringExpenseManager() {
     frequency: 'monthly' as RecurringExpense['frequency'],
     categoryId: '',
     accountId: '',
+    tagIds: [] as string[],
     dayOfMonth: 1,
   });
 
@@ -49,6 +51,7 @@ export function RecurringExpenseManager() {
       frequency: 'monthly',
       categoryId: '',
       accountId: '',
+      tagIds: [],
       dayOfMonth: 1,
     });
     setEditingExpense(null);
@@ -67,6 +70,7 @@ export function RecurringExpenseManager() {
       frequency: expense.frequency,
       categoryId: expense.categoryId || '',
       accountId: expense.accountId || '',
+      tagIds: expense.tagIds || [],
       dayOfMonth: expense.dayOfMonth,
     });
     setIsDialogOpen(true);
@@ -81,7 +85,7 @@ export function RecurringExpenseManager() {
       frequency: formData.frequency,
       categoryId: formData.categoryId || null,
       accountId: formData.accountId || null,
-      tagIds: [],
+      tagIds: formData.tagIds,
       dayOfMonth: formData.dayOfMonth,
       isActive: true,
     };
@@ -235,6 +239,56 @@ export function RecurringExpenseManager() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tags (optional)</Label>
+              <Select
+                value=""
+                onValueChange={(value) => {
+                  if (value && !formData.tagIds.includes(value)) {
+                    setFormData({ ...formData, tagIds: [...formData.tagIds, value] });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Add tags" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tags.filter(tag => !formData.tagIds.includes(tag.id)).map(tag => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
+                        {tag.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formData.tagIds.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {formData.tagIds.map(tagId => {
+                    const tag = tags.find(t => t.id === tagId);
+                    if (!tag) return null;
+                    return (
+                      <Badge
+                        key={tag.id}
+                        variant="secondary"
+                        className="flex items-center gap-1 pr-1"
+                        style={{ backgroundColor: `${tag.color}20`, color: tag.color, borderColor: tag.color }}
+                      >
+                        {tag.name}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, tagIds: formData.tagIds.filter(id => id !== tagId) })}
+                          className="ml-0.5 hover:bg-white/20 rounded-full p-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
