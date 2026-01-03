@@ -270,27 +270,29 @@ export function TransactionDialog({
           <div className="space-y-2">
             <Label>Tags</Label>
             <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-background/50 border border-border/50 min-h-[48px]">
-              {tags.map(tag => (
-                <Badge
-                  key={tag.id}
-                  variant="secondary"
-                  className="cursor-pointer transition-all hover:scale-105"
-                  style={{
-                    backgroundColor: formData.tagIds.includes(tag.id)
-                      ? `${tag.color}30`
-                      : 'transparent',
-                    color: tag.color,
-                    borderColor: tag.color,
-                    borderWidth: '1px',
-                  }}
-                  onClick={() => toggleTag(tag.id)}
-                >
-                  {tag.name}
-                  {formData.tagIds.includes(tag.id) && (
-                    <X className="w-3 h-3 ml-1" />
-                  )}
-                </Badge>
-              ))}
+              {tags.map(tag => {
+                const isSelected = formData.tagIds.includes(tag.id);
+                return (
+                  <Badge
+                    key={tag.id}
+                    variant="secondary"
+                    className="cursor-pointer transition-all hover:scale-105"
+                    style={{
+                      backgroundColor: isSelected ? tag.color : 'transparent',
+                      color: isSelected ? '#ffffff' : tag.color,
+                      borderColor: tag.color,
+                      borderWidth: '1px',
+                      textShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                    }}
+                    onClick={() => toggleTag(tag.id)}
+                  >
+                    {tag.name}
+                    {isSelected && (
+                      <X className="w-3 h-3 ml-1" />
+                    )}
+                  </Badge>
+                );
+              })}
             </div>
           </div>
         </div>
