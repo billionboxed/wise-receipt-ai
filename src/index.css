@@ -163,79 +163,79 @@
 
   /* ===== MONOCHROME THEME ===== */
   .mono {
-    --background: 0 0% 2%;
-    --foreground: 0 0% 95%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 5%;
 
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 5%;
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
 
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 15%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 0 0% 85%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 0% 70%;
-    --destructive-foreground: 0 0% 0%;
+    --destructive: 0 0% 25%;
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 0 0% 80%;
-    --success-foreground: 0 0% 0%;
+    --success: 0 0% 30%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 10%;
-    --ring: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
 
     /* Expense tracker colors - grayscale */
-    --income: 0 0% 80%;
-    --expense: 0 0% 55%;
+    --income: 0 0% 30%;
+    --expense: 0 0% 50%;
     
     /* Tag colors - grayscale spectrum */
-    --tag-purple: 0 0% 70%;
-    --tag-blue: 0 0% 65%;
-    --tag-green: 0 0% 75%;
-    --tag-orange: 0 0% 60%;
-    --tag-pink: 0 0% 68%;
-    --tag-teal: 0 0% 72%;
+    --tag-purple: 0 0% 35%;
+    --tag-blue: 0 0% 40%;
+    --tag-green: 0 0% 30%;
+    --tag-orange: 0 0% 45%;
+    --tag-pink: 0 0% 38%;
+    --tag-teal: 0 0% 32%;
 
-    /* Glow effects - subtle white */
-    --glow-primary: 0 0% 100%;
-    --glow-accent: 0 0% 85%;
-    --glow-success: 0 0% 80%;
-    --glow-danger: 0 0% 55%;
+    /* Glow effects - subtle black */
+    --glow-primary: 0 0% 0%;
+    --glow-accent: 0 0% 20%;
+    --glow-success: 0 0% 30%;
+    --glow-danger: 0 0% 50%;
 
     /* Gradients - elegant grayscale */
-    --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 70%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 7%) 0%, hsl(0, 0%, 3%) 100%);
-    --gradient-sidebar: linear-gradient(180deg, hsl(0, 0%, 4%) 0%, hsl(0, 0%, 2%) 100%);
-    --gradient-glow: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 75%) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 25%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 97%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(0, 0%, 99%) 0%, hsl(0, 0%, 96%) 100%);
+    --gradient-glow: linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 30%) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
 
     /* Refined shadows */
-    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.5);
-    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.6);
-    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.7);
-    --shadow-xl: 0 16px 48px hsl(0 0% 0% / 0.8);
-    --shadow-glow: 0 0 30px hsl(0 0% 100% / 0.08), 0 0 60px hsl(0 0% 100% / 0.04);
-    --shadow-glow-accent: 0 0 30px hsl(0 0% 85% / 0.1), 0 0 60px hsl(0 0% 85% / 0.05);
-    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.6), inset 0 1px 0 hsl(0 0% 15% / 0.4);
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.06), 0 1px 2px hsl(0 0% 0% / 0.04);
+    --shadow-md: 0 4px 6px hsl(0 0% 0% / 0.05), 0 2px 4px hsl(0 0% 0% / 0.03);
+    --shadow-lg: 0 10px 15px hsl(0 0% 0% / 0.06), 0 4px 6px hsl(0 0% 0% / 0.03);
+    --shadow-xl: 0 20px 25px hsl(0 0% 0% / 0.08), 0 8px 10px hsl(0 0% 0% / 0.03);
+    --shadow-glow: 0 4px 20px hsl(0 0% 0% / 0.1);
+    --shadow-glow-accent: 0 4px 20px hsl(0 0% 0% / 0.12);
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.05), 0 1px 2px hsl(0 0% 0% / 0.03);
 
-    --sidebar-background: 0 0% 3%;
-    --sidebar-foreground: 0 0% 65%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 0 0% 12%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 0 0% 30%;
+    --sidebar-primary: 0 0% 0%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 0%;
   }
 }
 
@@ -270,7 +270,7 @@
   }
 
   .mono body {
-    background: linear-gradient(180deg, hsl(0, 0%, 2%) 0%, hsl(0, 0%, 0%) 100%);
+    background: linear-gradient(180deg, hsl(0, 0%, 98%) 0%, hsl(0, 0%, 95%) 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -314,8 +314,8 @@
   }
 
   .mono .glass-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    border: 1px solid hsl(0 0% 88%);
   }
 
   .glass-card::before {
@@ -330,7 +330,11 @@
 
   .dark .glass-card::before,
   .mono .glass-card::before {
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(0,0,0,0.05), transparent);
+  }
+
+  .mono .glass-card::before {
+    background: linear-gradient(90deg, transparent, hsl(0 0% 88%), transparent);
   }
 
   /* Glowing border effect */
@@ -371,8 +375,8 @@
   }
 
   .mono .stat-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%);
-    border: 1px solid rgba(255,255,255,0.04);
+    background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%);
+    border: 1px solid hsl(0 0% 88%);
   }
 
   .stat-card:hover {
@@ -390,9 +394,12 @@
     background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
   }
 
-  .dark .stat-card::before,
-  .mono .stat-card::before {
+  .dark .stat-card::before {
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  }
+
+  .mono .stat-card::before {
+    background: linear-gradient(90deg, transparent, hsl(0 0% 88%), transparent);
   }
 
   /* Neon button glow */
