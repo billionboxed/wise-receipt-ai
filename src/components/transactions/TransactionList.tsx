@@ -51,8 +51,9 @@ interface SwipeableTransactionCardProps {
   index: number;
   onEdit: () => void;
   onDelete: () => void;
-  onLongPress: () => void;
+  onToggleSelect: () => void;
   isSelected: boolean;
+  isSelectionMode: boolean;
   category?: { combined: string } | null;
   account?: { name: string } | null;
   transactionTags: Array<{ id: string; name: string; color: string }>;
@@ -64,8 +65,9 @@ function SwipeableTransactionCard({
   index,
   onEdit,
   onDelete,
-  onLongPress,
+  onToggleSelect,
   isSelected,
+  isSelectionMode,
   category,
   account,
   transactionTags,
@@ -96,15 +98,25 @@ function SwipeableTransactionCard({
   };
 
   const handleTouchStart = () => {
+    // If already in selection mode, don't need long press
+    if (isSelectionMode) return;
+    
     longPressTimer.current = setTimeout(() => {
       if (!isDragging.current) {
-        onLongPress();
+        onToggleSelect();
         // Haptic feedback if available
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
       }
     }, 500);
+  };
+
+  const handleTap = () => {
+    // In selection mode, tap to toggle selection
+    if (isSelectionMode && !isDragging.current) {
+      onToggleSelect();
+    }
   };
 
   const handleTouchEnd = () => {
@@ -133,7 +145,7 @@ function SwipeableTransactionCard({
       {/* Swipeable card */}
       <motion.div
         style={{ x }}
-        drag="x"
+        drag={isSelectionMode ? false : "x"}
         dragConstraints={{ left: -80, right: 80 }}
         dragElastic={0.2}
         onDragStart={handleDragStart}
@@ -141,12 +153,14 @@ function SwipeableTransactionCard({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
+        onClick={handleTap}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: index * 0.02 }}
         className={cn(
-          "p-4 space-y-3 relative z-10 cursor-grab active:cursor-grabbing transition-colors rounded-2xl border border-border/50",
-          "bg-card dark:bg-[hsl(222,47%,8%)] mono:bg-white",
+          "p-4 space-y-3 relative z-10 transition-colors rounded-2xl border border-border",
+          "bg-background",
+          isSelectionMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
           isSelected && "bg-primary/10 ring-2 ring-primary"
         )}
       >
@@ -463,8 +477,9 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
               index={index}
               onEdit={() => onEditTransaction?.(transaction)}
               onDelete={() => deleteTransaction(transaction.id)}
-              onLongPress={() => toggleSelect(transaction.id)}
+              onToggleSelect={() => toggleSelect(transaction.id)}
               isSelected={isSelected}
+              isSelectionMode={selectedIds.size > 0}
               category={category}
               account={account}
               transactionTags={transactionTags}
