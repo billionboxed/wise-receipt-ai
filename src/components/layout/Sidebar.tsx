@@ -13,6 +13,8 @@ import {
   Sparkles,
   LogOut,
   RefreshCcw,
+  Palette,
+  Coins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,8 @@ const settingsNavItems: NavItem[] = [
   { label: 'Tags', path: '/settings/tags', icon: Tags },
   { label: 'Accounts', path: '/settings/accounts', icon: Wallet },
   { label: 'Recurring', path: '/settings/recurring', icon: RefreshCcw },
+  { label: 'Currency', path: '/settings/currency', icon: Coins },
+  { label: 'Appearance', path: '/settings/theme', icon: Palette },
 ];
 
 export function Sidebar() {
