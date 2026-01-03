@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef } from 'react';
-import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import {
   ArrowUpRight,
@@ -8,6 +8,17 @@ import {
   Edit2,
   Trash2,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Transaction } from '@/types/expense';
@@ -205,6 +216,36 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredTransactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    for (const id of selectedIds) {
+      await deleteTransaction(id);
+    }
+    setSelectedIds(new Set());
+    setShowDeleteDialog(false);
+  };
 
   const filteredTransactions = useMemo(() => {
     return transactions
@@ -260,9 +301,9 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           />
         </div>
         
-        <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
+            <SelectTrigger className="w-[110px] md:w-40 text-xs md:text-sm">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +317,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           </Select>
 
           <Select value={accountFilter} onValueChange={setAccountFilter}>
-            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
+            <SelectTrigger className="w-[110px] md:w-40 text-xs md:text-sm">
               <SelectValue placeholder="Account" />
             </SelectTrigger>
             <SelectContent>
@@ -290,7 +331,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           </Select>
 
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full md:w-32 text-xs md:text-sm">
+            <SelectTrigger className="w-[100px] md:w-32 text-xs md:text-sm">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -299,12 +340,52 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
               <SelectItem value="credit">Income</SelectItem>
             </SelectContent>
           </Select>
+
+          {selectedIds.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="ml-auto"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete ({selectedIds.size})
+            </Button>
+          )}
         </div>
       </div>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} transaction{selectedIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected transactions will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Mobile Card View with Swipe */}
       <div className="md:hidden space-y-3">
-        <p className="text-xs text-muted-foreground text-center">← Swipe left to edit • Swipe right to delete →</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">← Swipe left to edit • Swipe right to delete →</p>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length}
+              onCheckedChange={toggleSelectAll}
+              aria-label="Select all"
+            />
+            <span className="text-xs text-muted-foreground">All</span>
+          </div>
+        </div>
         {filteredTransactions.map((transaction, index) => {
           const category = getCategoryById(transaction.categoryId);
           const account = getAccountById(transaction.accountId);
@@ -313,17 +394,26 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
             .filter((tag): tag is { id: string; name: string; color: string } => tag !== undefined);
 
           return (
-            <SwipeableTransactionCard
-              key={transaction.id}
-              transaction={transaction}
-              index={index}
-              onEdit={() => onEditTransaction?.(transaction)}
-              onDelete={() => deleteTransaction(transaction.id)}
-              category={category}
-              account={account}
-              transactionTags={transactionTags}
-              formatAmount={formatAmount}
-            />
+            <div key={transaction.id} className="flex items-start gap-3">
+              <Checkbox
+                checked={selectedIds.has(transaction.id)}
+                onCheckedChange={() => toggleSelect(transaction.id)}
+                className="mt-4"
+                aria-label={`Select ${transaction.description}`}
+              />
+              <div className="flex-1">
+                <SwipeableTransactionCard
+                  transaction={transaction}
+                  index={index}
+                  onEdit={() => onEditTransaction?.(transaction)}
+                  onDelete={() => deleteTransaction(transaction.id)}
+                  category={category}
+                  account={account}
+                  transactionTags={transactionTags}
+                  formatAmount={formatAmount}
+                />
+              </div>
+            </div>
           );
         })}
       </div>
@@ -334,6 +424,13 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-white/5">
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead className="w-24">Date</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Category</TableHead>
@@ -351,17 +448,24 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
                   .map(id => getTagById(id))
                   .filter(Boolean);
 
-                return (
-                  <motion.tr
-                    key={transaction.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.02 }}
-                    className="group hover:bg-white/[0.02] border-white/5"
-                  >
-                    <TableCell className="font-medium text-muted-foreground">
-                      {format(parseISO(transaction.date), 'dd MMM')}
-                    </TableCell>
+                  return (
+                    <motion.tr
+                      key={transaction.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.02 }}
+                      className="group hover:bg-white/[0.02] border-white/5"
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(transaction.id)}
+                          onCheckedChange={() => toggleSelect(transaction.id)}
+                          aria-label={`Select ${transaction.description}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium text-muted-foreground">
+                        {format(parseISO(transaction.date), 'dd MMM')}
+                      </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div
