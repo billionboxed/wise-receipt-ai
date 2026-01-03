@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { format, addDays } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Sparkles, Loader2, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -115,17 +116,51 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     isAdded: boolean;
   }>>({});
 
+  const normalizeYmd = (y: string, m: string, d: string) => {
+    const yy = y.padStart(4, '0');
+    const mm = m.padStart(2, '0');
+    const dd = d.padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  };
+
+  const extractDateFromText = (text: string) => {
+    const t = text.toLowerCase();
+
+    if (/\byesterday\b/.test(t)) return format(addDays(new Date(), -1), 'yyyy-MM-dd');
+    if (/\btoday\b/.test(t)) return format(new Date(), 'yyyy-MM-dd');
+
+    const iso = t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+    if (iso) return normalizeYmd(iso[1], iso[2], iso[3]);
+
+    const dmy = t.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/);
+    if (dmy) {
+      const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+      return normalizeYmd(year, dmy[2], dmy[1]);
+    }
+
+    return null;
+  };
+
   const initializeInlineForm = (messageIndex: number, expenseAction: ExpenseAction) => {
     if (inlineForms[messageIndex]) return;
-    
+
     const matchingCategory = categories.find(
       c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
     );
 
-    // Use AI-parsed date if provided, otherwise default to today
-    const today = new Date().toISOString().split('T')[0];
-    const formDate = expenseAction.date || today;
-    
+    // If user didn't mention a date, default to *today in local time*
+    const today = format(new Date(), 'yyyy-MM-dd');
+    let previousUserText = '';
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (messages[i]?.role === 'user') {
+        previousUserText = messages[i].content;
+        break;
+      }
+    }
+
+    const extractedDate = previousUserText ? extractDateFromText(previousUserText) : null;
+    const formDate = extractedDate ?? today;
+
     setInlineForms(prev => ({
       ...prev,
       [messageIndex]: {
