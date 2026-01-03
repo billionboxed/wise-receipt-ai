@@ -3,15 +3,29 @@ import { motion } from 'framer-motion';
 import { Tag as TagIcon, FolderKanban } from 'lucide-react';
 import { useExpense, Tag } from '@/context/ExpenseContext';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
+import { useTheme } from 'next-themes';
 
 interface ExtendedTag extends Tag {
   isProject?: boolean;
   isArchived?: boolean;
 }
 
+// Convert hex color to grayscale value (0-100)
+function hexToGrayscale(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Use relative luminance formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  // Map to a range between 40-70% for visible differentiation
+  return 40 + luminance * 30;
+}
+
 export function TagsSpending() {
   const { tags } = useExpense();
   const { filteredTransactions } = useFilteredTransactions();
+  const { theme } = useTheme();
+  const isMonochrome = theme === 'mono';
 
   const tagSpending = useMemo(() => {
     const spending: Record<string, number> = {};
@@ -85,7 +99,11 @@ export function TagsSpending() {
               <div className="flex items-center gap-2">
                 <div
                   className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
-                  style={{ backgroundColor: tag.color }}
+                  style={{ 
+                    backgroundColor: isMonochrome 
+                      ? `hsl(0 0% ${hexToGrayscale(tag.color)}%)`
+                      : tag.color 
+                  }}
                 />
                 <span className="text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
                   {tag.isProject && <FolderKanban className="w-3 h-3 text-accent" />}
@@ -102,7 +120,10 @@ export function TagsSpending() {
                 animate={{ width: `${tag.percentage}%` }}
                 transition={{ duration: 0.8, delay: index * 0.05 }}
                 className="h-full rounded-full transition-all group-hover:opacity-80"
-                style={{
+                style={isMonochrome ? {
+                  background: `linear-gradient(90deg, hsl(0 0% ${hexToGrayscale(tag.color)}%), hsl(0 0% ${hexToGrayscale(tag.color) + 15}%))`,
+                  boxShadow: `0 0 10px hsl(0 0% ${hexToGrayscale(tag.color)}% / 0.3)`,
+                } : {
                   background: `linear-gradient(90deg, ${tag.color}, ${tag.color}80)`,
                   boxShadow: `0 0 10px ${tag.color}50`,
                 }}

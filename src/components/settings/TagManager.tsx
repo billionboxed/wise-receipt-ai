@@ -28,6 +28,26 @@ const colorOptions = [
   '#facc15', '#f87171', '#60a5fa', '#c084fc', '#34d399',
 ];
 
+// Convert hex color to grayscale value (0-100)
+function hexToGrayscale(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Use relative luminance formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  // Map to a range between 75-95% to get visible shades
+  return 75 + luminance * 20;
+}
+
+function getMonochromeStyle(color: string) {
+  const lightness = hexToGrayscale(color);
+  return {
+    backgroundColor: `hsl(0 0% ${lightness}%)`,
+    color: 'hsl(0 0% 20%)',
+    borderColor: `hsl(0 0% ${lightness - 10}%)`,
+  };
+}
+
 export function TagManager() {
   const { tags, addTag, updateTag, deleteTag } = useExpense();
   const { theme } = useTheme();
@@ -153,7 +173,7 @@ export function TagManager() {
             variant="secondary"
             className="text-sm py-2 px-4 cursor-default flex items-center gap-1.5"
             style={isMonochrome 
-              ? { backgroundColor: 'hsl(0 0% 92%)', color: 'hsl(0 0% 25%)', borderColor: 'hsl(0 0% 85%)' }
+              ? getMonochromeStyle(tag.color)
               : { backgroundColor: `${tag.color}20`, color: tag.color }
             }
           >

@@ -24,6 +24,7 @@ import CurrencySettings from "./pages/settings/CurrencySettings";
 import ThemeSettings from "./pages/settings/ThemeSettings";
 import SettingsHub from "./pages/settings/SettingsHub";
 import RecurringExpensesSettings from "./pages/settings/RecurringExpensesSettings";
+import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -73,6 +74,7 @@ function AppRoutes() {
       <Route path="/settings/currency" element={<ProtectedRoute><CurrencySettings /></ProtectedRoute>} />
       <Route path="/settings/theme" element={<ProtectedRoute><ThemeSettings /></ProtectedRoute>} />
       <Route path="/settings/recurring" element={<ProtectedRoute><RecurringExpensesSettings /></ProtectedRoute>} />
+      <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

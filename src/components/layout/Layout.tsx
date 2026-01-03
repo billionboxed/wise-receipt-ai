@@ -8,9 +8,10 @@ import { motion } from 'framer-motion';
 
 interface LayoutProps {
   children: ReactNode;
+  hideAIButton?: boolean;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, hideAIButton = false }: LayoutProps) {
   const location = useLocation();
   const showAnalyticsFilter = ['/', '/analytics'].includes(location.pathname);
 
@@ -20,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
       <Sidebar />
       
       {/* Mobile Bottom Navigation (includes AI chat) */}
-      <BottomNav />
+      {!hideAIButton && <BottomNav />}
       
       <motion.main
         initial={{ opacity: 0 }}
@@ -28,7 +29,7 @@ export function Layout({ children }: LayoutProps) {
         className="lg:ml-64 min-h-screen"
       >
         {/* Added bottom padding for mobile bottom nav, safe area support */}
-        <div className="p-3 sm:p-4 lg:p-8 pt-4 sm:pt-6 lg:pt-8 pb-24 lg:pb-8">
+        <div className={`p-3 sm:p-4 lg:p-8 pt-4 sm:pt-6 lg:pt-8 ${hideAIButton ? 'pb-8' : 'pb-24'} lg:pb-8`}>
           {/* Analytics Filter - shown only on Dashboard and Analytics */}
           {showAnalyticsFilter && (
             <div className="flex justify-end mb-4">
@@ -40,9 +41,11 @@ export function Layout({ children }: LayoutProps) {
       </motion.main>
 
       {/* AI Chat Button - Desktop only */}
-      <div className="hidden lg:block">
-        <AIFloatingButton />
-      </div>
+      {!hideAIButton && (
+        <div className="hidden lg:block">
+          <AIFloatingButton />
+        </div>
+      )}
     </div>
   );
 }
