@@ -1,14 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2, Plus } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useExpense } from '@/context/ExpenseContext';
-import { useTransactionDialog } from '@/context/TransactionDialogContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCurrency } from '@/context/CurrencyContext';
+import { Transaction } from '@/types/expense';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -36,8 +44,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { transactions, categories, accounts, getCategoryById } = useExpense();
-  const { openAddDialog } = useTransactionDialog();
+  const { transactions, categories, accounts, getCategoryById, addTransaction } = useExpense();
   const { toast } = useToast();
   const { formatAmount } = useCurrency();
 
@@ -97,17 +104,98 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     return null;
   };
 
-  const handleAddExpense = (expenseAction: ExpenseAction) => {
+  // Create inline form state for each message with expense action
+  const [inlineForms, setInlineForms] = useState<Record<number, {
+    date: string;
+    description: string;
+    amount: string;
+    categoryId: string;
+    accountId: string;
+    isSubmitting: boolean;
+    isAdded: boolean;
+  }>>({});
+
+  const initializeInlineForm = (messageIndex: number, expenseAction: ExpenseAction) => {
+    if (inlineForms[messageIndex]) return;
+    
     const matchingCategory = categories.find(
       c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
     );
     
-    openAddDialog({
-      date: expenseAction.date,
-      description: expenseAction.description,
-      amount: expenseAction.amount,
-      type: expenseAction.type,
-      categoryId: matchingCategory?.id || null,
+    setInlineForms(prev => ({
+      ...prev,
+      [messageIndex]: {
+        date: expenseAction.date,
+        description: expenseAction.description,
+        amount: expenseAction.amount.toString(),
+        categoryId: matchingCategory?.id || categories[0]?.id || '',
+        accountId: accounts[0]?.id || '',
+        isSubmitting: false,
+        isAdded: false,
+      }
+    }));
+  };
+
+  const updateInlineForm = (messageIndex: number, field: string, value: string) => {
+    setInlineForms(prev => ({
+      ...prev,
+      [messageIndex]: {
+        ...prev[messageIndex],
+        [field]: value,
+      }
+    }));
+  };
+
+  const handleInlineSubmit = async (messageIndex: number) => {
+    const form = inlineForms[messageIndex];
+    if (!form || form.isSubmitting || form.isAdded) return;
+
+    if (!form.description || !form.amount || !form.categoryId || !form.accountId) {
+      toast({
+        title: 'Missing Fields',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const amount = parseFloat(form.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Invalid Amount',
+        description: 'Please enter a valid amount.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setInlineForms(prev => ({
+      ...prev,
+      [messageIndex]: { ...prev[messageIndex], isSubmitting: true }
+    }));
+
+    const newTransaction: Transaction = {
+      id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      date: form.date,
+      description: form.description,
+      amount,
+      type: 'debit',
+      categoryId: form.categoryId,
+      accountId: form.accountId,
+      tagIds: [],
+      status: 'confirmed',
+    };
+
+    addTransaction(newTransaction);
+    
+    setInlineForms(prev => ({
+      ...prev,
+      [messageIndex]: { ...prev[messageIndex], isSubmitting: false, isAdded: true }
+    }));
+
+    toast({
+      title: 'Transaction Added',
+      description: `${form.description} - ${formatAmount(amount)} has been added.`,
     });
   };
 
@@ -370,23 +458,126 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                       }
                     </div>
                     
-                    {/* Inline Add Transaction Button */}
-                    {message.role === 'assistant' && message.expenseAction && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="max-w-[90%]"
-                      >
-                        <Button
-                          size="sm"
-                          className="gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
-                          onClick={() => handleAddExpense(message.expenseAction!)}
+                    {/* Inline Add Transaction Form */}
+                    {message.role === 'assistant' && message.expenseAction && (() => {
+                      // Initialize form if not yet done
+                      if (!inlineForms[index]) {
+                        initializeInlineForm(index, message.expenseAction);
+                      }
+                      const form = inlineForms[index];
+                      if (!form) return null;
+                      
+                      if (form.isAdded) {
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex items-center gap-2 text-sm text-green-400"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>Transaction added successfully!</span>
+                          </motion.div>
+                        );
+                      }
+
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="w-full max-w-[95%] mt-2 p-3 rounded-xl bg-background/60 border border-border/50 space-y-3"
                         >
-                          <Plus className="w-4 h-4" />
-                          Add {message.expenseAction.description} - {formatAmount(message.expenseAction.amount)}
-                        </Button>
-                      </motion.div>
-                    )}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Plus className="w-3 h-3" />
+                            <span>Add Transaction</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Date</Label>
+                              <Input
+                                type="date"
+                                value={form.date}
+                                onChange={(e) => updateInlineForm(index, 'date', e.target.value)}
+                                className="h-8 text-xs bg-background/50"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Amount</Label>
+                              <Input
+                                type="number"
+                                value={form.amount}
+                                onChange={(e) => updateInlineForm(index, 'amount', e.target.value)}
+                                placeholder="0.00"
+                                className="h-8 text-xs bg-background/50"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Description</Label>
+                            <Input
+                              value={form.description}
+                              onChange={(e) => updateInlineForm(index, 'description', e.target.value)}
+                              placeholder="Description"
+                              className="h-8 text-xs bg-background/50"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Category</Label>
+                              <Select
+                                value={form.categoryId}
+                                onValueChange={(value) => updateInlineForm(index, 'categoryId', value)}
+                              >
+                                <SelectTrigger className="h-8 text-xs bg-background/50">
+                                  <SelectValue placeholder="Category" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-48">
+                                  {categories.map(cat => (
+                                    <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                                      {cat.combined}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Account</Label>
+                              <Select
+                                value={form.accountId}
+                                onValueChange={(value) => updateInlineForm(index, 'accountId', value)}
+                              >
+                                <SelectTrigger className="h-8 text-xs bg-background/50">
+                                  <SelectValue placeholder="Account" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {accounts.map(acc => (
+                                    <SelectItem key={acc.id} value={acc.id} className="text-xs">
+                                      {acc.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            className="w-full h-8 text-xs gap-2"
+                            onClick={() => handleInlineSubmit(index)}
+                            disabled={form.isSubmitting}
+                          >
+                            {form.isSubmitting ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Plus className="w-3 h-3" />
+                            )}
+                            Add {form.description} - {formatAmount(parseFloat(form.amount) || 0)}
+                          </Button>
+                        </motion.div>
+                      );
+                    })()}
                   </motion.div>
                 ))}
 
