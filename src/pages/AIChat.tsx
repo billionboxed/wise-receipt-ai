@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Loader2, Sparkles, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Send, Loader2, Sparkles } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays, parse, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -44,7 +43,6 @@ interface InlineFormState {
 }
 
 export default function AIChat() {
-  const navigate = useNavigate();
   const { transactions, categories, accounts, addTransaction } = useExpense();
   const { formatAmount } = useCurrency();
   const [messages, setMessages] = useState<Message[]>([
@@ -243,18 +241,10 @@ export default function AIChat() {
   ], []);
 
   return (
-    <Layout hideAIButton>
-      <div className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)]">
+    <Layout>
+      <div className="flex flex-col h-[calc(100vh-10rem)] lg:h-[calc(100vh-6rem)]">
         {/* Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-border/50">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => navigate(-1)}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
