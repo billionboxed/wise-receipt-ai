@@ -51,6 +51,8 @@ interface SwipeableTransactionCardProps {
   index: number;
   onEdit: () => void;
   onDelete: () => void;
+  onLongPress: () => void;
+  isSelected: boolean;
   category?: { combined: string } | null;
   account?: { name: string } | null;
   transactionTags: Array<{ id: string; name: string; color: string }>;
@@ -62,6 +64,8 @@ function SwipeableTransactionCard({
   index,
   onEdit,
   onDelete,
+  onLongPress,
+  isSelected,
   category,
   account,
   transactionTags,
@@ -69,17 +73,45 @@ function SwipeableTransactionCard({
 }: SwipeableTransactionCardProps) {
   const x = useMotionValue(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isDragging = useRef(false);
+
+  const handleDragStart = () => {
+    isDragging.current = true;
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    isDragging.current = false;
     const threshold = 60;
     if (info.offset.x < -threshold) {
-      // Swipe left -> Edit
       onEdit();
     } else if (info.offset.x > threshold) {
-      // Swipe right -> Delete
       onDelete();
     }
     animate(x, 0);
+  };
+
+  const handleTouchStart = () => {
+    longPressTimer.current = setTimeout(() => {
+      if (!isDragging.current) {
+        onLongPress();
+        // Haptic feedback if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
   };
 
   return (
@@ -104,12 +136,28 @@ function SwipeableTransactionCard({
         drag="x"
         dragConstraints={{ left: -80, right: 80 }}
         dragElastic={0.2}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: index * 0.02 }}
-        className="glass-card p-4 space-y-3 relative bg-card cursor-grab active:cursor-grabbing"
+        className={cn(
+          "glass-card p-4 space-y-3 relative bg-card cursor-grab active:cursor-grabbing transition-colors",
+          isSelected && "bg-primary/10 ring-2 ring-primary"
+        )}
       >
+        {/* Selected checkmark indicator */}
+        {isSelected && (
+          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div
@@ -138,6 +186,7 @@ function SwipeableTransactionCard({
           <span
             className={cn(
               'font-semibold text-sm whitespace-nowrap',
+              isSelected ? 'mr-8' : '',
               transaction.type === 'credit'
                 ? 'text-success'
                 : 'text-foreground'
@@ -380,20 +429,22 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
       {/* Mobile Card View with Swipe */}
       <div className="md:hidden space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">← Swipe to edit/delete →</p>
-          <button
-            onClick={toggleSelectAll}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-              filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            {selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 
-              ? "Deselect All" 
-              : "Select All"}
-          </button>
+          <p className="text-xs text-muted-foreground">Long press to select • Swipe to edit/delete</p>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={toggleSelectAll}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 
+                ? "Deselect All" 
+                : "Select All"}
+            </button>
+          )}
         </div>
         {filteredTransactions.map((transaction, index) => {
           const category = getCategoryById(transaction.categoryId);
@@ -405,39 +456,19 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           const isSelected = selectedIds.has(transaction.id);
 
           return (
-            <div key={transaction.id} className="relative">
-              {/* Selection indicator on card */}
-              <button
-                onClick={() => toggleSelect(transaction.id)}
-                className={cn(
-                  "absolute -left-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all",
-                  isSelected 
-                    ? "bg-primary text-primary-foreground scale-100" 
-                    : "bg-muted/50 text-muted-foreground scale-90 hover:scale-100"
-                )}
-              >
-                {isSelected && (
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-              <div className={cn(
-                "ml-4 transition-all",
-                isSelected && "ring-2 ring-primary/50 rounded-2xl"
-              )}>
-                <SwipeableTransactionCard
-                  transaction={transaction}
-                  index={index}
-                  onEdit={() => onEditTransaction?.(transaction)}
-                  onDelete={() => deleteTransaction(transaction.id)}
-                  category={category}
-                  account={account}
-                  transactionTags={transactionTags}
-                  formatAmount={formatAmount}
-                />
-              </div>
-            </div>
+            <SwipeableTransactionCard
+              key={transaction.id}
+              transaction={transaction}
+              index={index}
+              onEdit={() => onEditTransaction?.(transaction)}
+              onDelete={() => deleteTransaction(transaction.id)}
+              onLongPress={() => toggleSelect(transaction.id)}
+              isSelected={isSelected}
+              category={category}
+              account={account}
+              transactionTags={transactionTags}
+              formatAmount={formatAmount}
+            />
           );
         })}
       </div>
