@@ -14,7 +14,8 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
 
   const { heatmapData, maxAmount, monthLabels, weeks } = useMemo(() => {
     const endDate = new Date();
-    const startDate = startOfWeek(startOfMonth(subMonths(endDate, 5)));
+    // Start from January 1st of current year
+    const startDate = startOfWeek(new Date(endDate.getFullYear(), 0, 1));
     const adjustedEndDate = endOfWeek(endOfMonth(endDate));
     
     const days = eachDayOfInterval({ start: startDate, end: adjustedEndDate });
@@ -43,11 +44,10 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
       weeks.push(heatmapData.slice(i, i + 7));
     }
 
-    // Get month labels with proper positioning
+    // Get month labels - only show every other month on mobile to prevent overlap
     const months: { label: string; weekIndex: number }[] = [];
     let currentMonth = '';
     weeks.forEach((week, weekIndex) => {
-      // Check if the first day of this week starts a new month
       const firstDayOfWeek = week[0];
       if (firstDayOfWeek) {
         const monthLabel = format(parseISO(firstDayOfWeek.date), 'MMM');
@@ -81,19 +81,21 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
     >
       <h3 className="text-base sm:text-lg font-semibold mb-4">Spending Heatmap</h3>
       <div className="w-full">
-        {/* Month labels */}
+        {/* Month labels - show abbreviated on mobile */}
         <div className="flex mb-2 ml-6">
           {monthLabels.map((month, i) => {
-            // Calculate width percentage for each month section
             const nextMonthIndex = monthLabels[i + 1]?.weekIndex ?? totalWeeks;
             const widthPercent = ((nextMonthIndex - month.weekIndex) / totalWeeks) * 100;
+            // Only show every other month on small screens
+            const showOnMobile = i % 2 === 0;
             return (
               <div
                 key={i}
-                className="text-[10px] sm:text-xs text-muted-foreground truncate"
+                className="text-[10px] sm:text-xs text-muted-foreground"
                 style={{ width: `${widthPercent}%` }}
               >
-                {month.label}
+                <span className={showOnMobile ? '' : 'hidden sm:inline'}>{month.label}</span>
+                <span className={showOnMobile ? 'hidden' : 'sm:hidden'}></span>
               </div>
             );
           })}
@@ -117,7 +119,7 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
                   <div
                     key={dayIndex}
                     className={cn(
-                      'aspect-square w-full rounded-[1px] sm:rounded-sm cursor-pointer transition-all hover:ring-1 hover:ring-primary/50',
+                      'aspect-square w-full rounded-full cursor-pointer transition-all hover:ring-1 hover:ring-primary/50',
                       getIntensityClass(day.amount)
                     )}
                     title={`${day.displayDate}: ${formatAmount(day.amount)}`}
@@ -132,11 +134,11 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
         <div className="flex items-center justify-center gap-2 mt-4 text-[10px] sm:text-xs text-muted-foreground">
           <span>Less</span>
           <div className="flex gap-0.5">
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-[1px] sm:rounded-sm bg-muted/40" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-[1px] sm:rounded-sm bg-chart-5" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-[1px] sm:rounded-sm bg-chart-4" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-[1px] sm:rounded-sm bg-chart-2" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-[1px] sm:rounded-sm bg-chart-1" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-muted/40" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-5" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-4" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-2" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-1" />
           </div>
           <span>More</span>
         </div>
