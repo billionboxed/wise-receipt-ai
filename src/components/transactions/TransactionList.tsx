@@ -117,14 +117,14 @@ function SwipeableTransactionCard({
   return (
     <div className="relative overflow-hidden rounded-2xl" ref={containerRef}>
       {/* Left side - Delete (revealed on swipe right) */}
-      <div className="absolute left-0 top-0 bottom-0 flex items-center">
+      <div className="absolute left-0 top-0 bottom-0 flex items-center z-0">
         <div className="h-full px-6 bg-destructive text-destructive-foreground flex items-center justify-center">
           <Trash2 className="w-5 h-5" />
         </div>
       </div>
       
       {/* Right side - Edit (revealed on swipe left) */}
-      <div className="absolute right-0 top-0 bottom-0 flex items-center">
+      <div className="absolute right-0 top-0 bottom-0 flex items-center z-0">
         <div className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center">
           <Edit2 className="w-5 h-5" />
         </div>
@@ -145,7 +145,8 @@ function SwipeableTransactionCard({
         animate={{ opacity: 1 }}
         transition={{ delay: index * 0.02 }}
         className={cn(
-          "glass-card p-4 space-y-3 relative bg-card cursor-grab active:cursor-grabbing transition-colors",
+          "p-4 space-y-3 relative z-10 cursor-grab active:cursor-grabbing transition-colors rounded-2xl border border-border/50",
+          "bg-card dark:bg-[hsl(222,47%,8%)] mono:bg-white",
           isSelected && "bg-primary/10 ring-2 ring-primary"
         )}
       >
