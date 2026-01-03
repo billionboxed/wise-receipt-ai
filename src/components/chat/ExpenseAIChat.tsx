@@ -121,11 +121,15 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     const matchingCategory = categories.find(
       c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
     );
+
+    // Use AI-parsed date if provided, otherwise default to today
+    const today = new Date().toISOString().split('T')[0];
+    const formDate = expenseAction.date || today;
     
     setInlineForms(prev => ({
       ...prev,
       [messageIndex]: {
-        date: expenseAction.date,
+        date: formDate,
         description: expenseAction.description,
         amount: expenseAction.amount.toString(),
         categoryId: matchingCategory?.id || categories[0]?.id || '',
