@@ -80,67 +80,68 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
       className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
     >
       <h3 className="text-base sm:text-lg font-semibold mb-4">Spending Heatmap</h3>
-      <div className="w-full">
-        {/* Month labels - show abbreviated on mobile */}
-        <div className="flex mb-2 ml-6">
-          {monthLabels.map((month, i) => {
-            const nextMonthIndex = monthLabels[i + 1]?.weekIndex ?? totalWeeks;
-            const widthPercent = ((nextMonthIndex - month.weekIndex) / totalWeeks) * 100;
-            // Only show every other month on small screens
-            const showOnMobile = i % 2 === 0;
-            return (
-              <div
-                key={i}
-                className="text-[10px] sm:text-xs text-muted-foreground"
-                style={{ width: `${widthPercent}%` }}
-              >
-                <span className={showOnMobile ? '' : 'hidden sm:inline'}>{month.label}</span>
-                <span className={showOnMobile ? 'hidden' : 'sm:hidden'}></span>
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="flex gap-px sm:gap-0.5">
-          {/* Day labels */}
-          <div className="flex flex-col gap-px sm:gap-0.5 mr-1 shrink-0">
-            {dayLabels.map((day, i) => (
-              <div key={i} className="h-2 sm:h-3 text-[8px] sm:text-[10px] text-muted-foreground flex items-center justify-end w-4">
-                {i % 2 === 1 ? day : ''}
-              </div>
-            ))}
+      <div className="w-full overflow-x-auto">
+        <div className="min-w-fit">
+          {/* Month labels */}
+          <div className="flex mb-1 ml-5">
+            {monthLabels.map((month, i) => {
+              const nextMonthIndex = monthLabels[i + 1]?.weekIndex ?? totalWeeks;
+              const weeksInMonth = nextMonthIndex - month.weekIndex;
+              // Each cell is 8px + 2px gap = 10px per week
+              const width = weeksInMonth * 10;
+              return (
+                <div
+                  key={i}
+                  className="text-[9px] sm:text-[10px] text-muted-foreground"
+                  style={{ width: `${width}px` }}
+                >
+                  {month.label}
+                </div>
+              );
+            })}
           </div>
           
-          {/* Heatmap grid - responsive sizing */}
-          <div className="flex-1 grid gap-px sm:gap-0.5" style={{ gridTemplateColumns: `repeat(${totalWeeks}, minmax(0, 1fr))` }}>
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-px sm:gap-0.5">
-                {week.map((day, dayIndex) => (
-                  <div
-                    key={dayIndex}
-                    className={cn(
-                      'aspect-square w-full rounded-full cursor-pointer transition-all hover:ring-1 hover:ring-primary/50',
-                      getIntensityClass(day.amount)
-                    )}
-                    title={`${day.displayDate}: ${formatAmount(day.amount)}`}
-                  />
-                ))}
-              </div>
-            ))}
+          <div className="flex gap-[2px]">
+            {/* Day labels */}
+            <div className="flex flex-col gap-[2px] mr-0.5 shrink-0">
+              {dayLabels.map((day, i) => (
+                <div key={i} className="w-4 h-2 text-[8px] text-muted-foreground flex items-center justify-end">
+                  {i % 2 === 1 ? day : ''}
+                </div>
+              ))}
+            </div>
+            
+            {/* Heatmap grid - fixed small circles */}
+            <div className="flex gap-[2px]">
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-[2px]">
+                  {week.map((day, dayIndex) => (
+                    <div
+                      key={dayIndex}
+                      className={cn(
+                        'w-2 h-2 rounded-full cursor-pointer transition-all hover:ring-1 hover:ring-primary/50',
+                        getIntensityClass(day.amount)
+                      )}
+                      title={`${day.displayDate}: ${formatAmount(day.amount)}`}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-        
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-2 mt-4 text-[10px] sm:text-xs text-muted-foreground">
-          <span>Less</span>
-          <div className="flex gap-0.5">
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-muted/40" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-5" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-4" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-2" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-chart-1" />
+          
+          {/* Legend */}
+          <div className="flex items-center gap-2 mt-3 text-[9px] sm:text-[10px] text-muted-foreground">
+            <span>Less</span>
+            <div className="flex gap-0.5">
+              <div className="w-2 h-2 rounded-full bg-muted/40" />
+              <div className="w-2 h-2 rounded-full bg-chart-5" />
+              <div className="w-2 h-2 rounded-full bg-chart-4" />
+              <div className="w-2 h-2 rounded-full bg-chart-2" />
+              <div className="w-2 h-2 rounded-full bg-chart-1" />
+            </div>
+            <span>More</span>
           </div>
-          <span>More</span>
         </div>
       </div>
     </motion.div>
