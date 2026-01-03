@@ -40,6 +40,24 @@
 
     --radius: 1rem;
 
+    /* Chart colors - vibrant for light mode */
+    --chart-1: 20 90% 55%;
+    --chart-2: 280 70% 55%;
+    --chart-3: 340 80% 55%;
+    --chart-4: 200 80% 45%;
+    --chart-5: 160 70% 40%;
+    --chart-6: 45 85% 50%;
+    --chart-7: 320 70% 50%;
+    --chart-8: 350 75% 60%;
+    --chart-9: 140 70% 40%;
+    --chart-10: 220 75% 50%;
+    --chart-11: 180 60% 40%;
+    --chart-12: 260 70% 55%;
+    --chart-13: 30 85% 50%;
+    --chart-14: 0 0% 45%;
+    --chart-15: 240 60% 50%;
+    --chart-expense: 0 72% 51%;
+
     /* Expense tracker colors */
     --income: 160 84% 39%;
     --expense: 0 72% 51%;
@@ -135,6 +153,24 @@
     --glow-success: 160 100% 45%;
     --glow-danger: 0 85% 60%;
 
+    /* Chart colors - neon for dark mode */
+    --chart-1: 20 95% 60%;
+    --chart-2: 280 85% 65%;
+    --chart-3: 340 90% 60%;
+    --chart-4: 200 90% 55%;
+    --chart-5: 160 80% 50%;
+    --chart-6: 45 95% 55%;
+    --chart-7: 320 80% 55%;
+    --chart-8: 350 85% 65%;
+    --chart-9: 140 80% 50%;
+    --chart-10: 220 85% 60%;
+    --chart-11: 180 70% 50%;
+    --chart-12: 260 80% 65%;
+    --chart-13: 30 95% 55%;
+    --chart-14: 0 0% 55%;
+    --chart-15: 240 70% 60%;
+    --chart-expense: 0 85% 60%;
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(195, 100%, 50%) 0%, hsl(210, 100%, 60%) 50%, hsl(280, 100%, 65%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(220, 20%, 10%) 0%, hsl(220, 20%, 6%) 100%);
@@ -211,6 +247,24 @@
     --glow-accent: 0 0% 20%;
     --glow-success: 0 0% 30%;
     --glow-danger: 0 0% 50%;
+
+    /* Chart colors - elegant grayscale spectrum */
+    --chart-1: 0 0% 15%;
+    --chart-2: 0 0% 25%;
+    --chart-3: 0 0% 35%;
+    --chart-4: 0 0% 45%;
+    --chart-5: 0 0% 55%;
+    --chart-6: 0 0% 20%;
+    --chart-7: 0 0% 30%;
+    --chart-8: 0 0% 40%;
+    --chart-9: 0 0% 50%;
+    --chart-10: 0 0% 60%;
+    --chart-11: 0 0% 22%;
+    --chart-12: 0 0% 32%;
+    --chart-13: 0 0% 42%;
+    --chart-14: 0 0% 52%;
+    --chart-15: 0 0% 28%;
+    --chart-expense: 0 0% 35%;
 
     /* Gradients - elegant grayscale */
     --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 25%) 100%);

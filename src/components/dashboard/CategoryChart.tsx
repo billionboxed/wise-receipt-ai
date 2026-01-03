@@ -3,7 +3,24 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useExpense } from '@/context/ExpenseContext';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
-import { categoryColors } from '@/data/initialData';
+
+const chartColors = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  'hsl(var(--chart-6))',
+  'hsl(var(--chart-7))',
+  'hsl(var(--chart-8))',
+  'hsl(var(--chart-9))',
+  'hsl(var(--chart-10))',
+  'hsl(var(--chart-11))',
+  'hsl(var(--chart-12))',
+  'hsl(var(--chart-13))',
+  'hsl(var(--chart-14))',
+  'hsl(var(--chart-15))',
+];
 
 export function CategoryChart() {
   const { getCategoryById } = useExpense();
@@ -24,11 +41,11 @@ export function CategoryChart() {
     const total = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
 
     return Object.entries(categoryTotals)
-      .map(([name, value]) => ({
+      .map(([name, value], index) => ({
         name,
         value,
         percentage: ((value / total) * 100).toFixed(1),
-        color: categoryColors[name] || 'hsl(195, 100%, 50%)',
+        color: chartColors[index % chartColors.length],
       }))
       .sort((a, b) => b.value - a.value);
   }, [filteredTransactions, getCategoryById]);

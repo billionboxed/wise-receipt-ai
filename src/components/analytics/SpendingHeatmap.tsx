@@ -54,10 +54,10 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
   const getIntensityClass = (amount: number): string => {
     if (amount === 0) return 'bg-muted/30';
     const ratio = amount / maxAmount;
-    if (ratio < 0.25) return 'bg-emerald-500/30';
-    if (ratio < 0.5) return 'bg-yellow-500/50';
-    if (ratio < 0.75) return 'bg-orange-500/60';
-    return 'bg-destructive/80';
+    if (ratio < 0.25) return 'bg-[hsl(var(--chart-9))]/30';
+    if (ratio < 0.5) return 'bg-[hsl(var(--chart-6))]/50';
+    if (ratio < 0.75) return 'bg-[hsl(var(--chart-1))]/60';
+    return 'bg-primary/80';
   };
 
   // Group by weeks
@@ -124,10 +124,10 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
             <span>Less</span>
             <div className="flex gap-0.5">
               <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-muted/30" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-emerald-500/30" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-yellow-500/50" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-orange-500/60" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-destructive/80" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[hsl(var(--chart-9))]/30" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[hsl(var(--chart-6))]/50" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[hsl(var(--chart-1))]/60" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-primary/80" />
             </div>
             <span>More</span>
           </div>

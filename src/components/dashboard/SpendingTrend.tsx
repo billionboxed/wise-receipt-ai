@@ -69,7 +69,7 @@ export function SpendingTrend() {
           Spending Trend
         </h3>
         <div className="flex items-center gap-2 text-xs sm:text-sm">
-          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-destructive shadow-[0_0_10px_hsl(var(--destructive))]" />
+          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[hsl(var(--chart-expense))]" />
           <span className="text-muted-foreground hidden sm:inline">Monthly Expenses</span>
         </div>
       </div>
@@ -79,8 +79,8 @@ export function SpendingTrend() {
           <AreaChart data={data}>
             <defs>
               <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(0, 85%, 60%)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="hsl(0, 85%, 60%)" stopOpacity={0} />
+                <stop offset="0%" stopColor="hsl(var(--chart-expense))" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="hsl(var(--chart-expense))" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" strokeOpacity={0.5} />
@@ -88,12 +88,14 @@ export function SpendingTrend() {
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 10 }}
+              className="fill-muted-foreground"
+              tick={{ fontSize: 10 }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 10 }}
+              className="fill-muted-foreground"
+              tick={{ fontSize: 10 }}
               tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               width={35}
             />
@@ -101,10 +103,9 @@ export function SpendingTrend() {
             <Area
               type="monotone"
               dataKey="expense"
-              stroke="hsl(0, 85%, 60%)"
+              stroke="hsl(var(--chart-expense))"
               strokeWidth={2}
               fill="url(#expenseGradient)"
-              className="drop-shadow-[0_0_10px_hsl(0_85%_60%/0.5)]"
             />
           </AreaChart>
         </ResponsiveContainer>
