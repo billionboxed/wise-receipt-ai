@@ -301,58 +301,62 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           />
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[110px] md:w-40 text-xs md:text-sm">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {mainCategories.map(cat => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filter row - scrollable on mobile */}
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="flex items-center gap-2 md:gap-3 min-w-max md:min-w-0 md:flex-wrap">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm shrink-0">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {mainCategories.map(cat => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={accountFilter} onValueChange={setAccountFilter}>
-            <SelectTrigger className="w-[110px] md:w-40 text-xs md:text-sm">
-              <SelectValue placeholder="Account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Accounts</SelectItem>
-              {accounts.map(acc => (
-                <SelectItem key={acc.id} value={acc.id}>
-                  {acc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={accountFilter} onValueChange={setAccountFilter}>
+              <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm shrink-0">
+                <SelectValue placeholder="Account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Accounts</SelectItem>
+                {accounts.map(acc => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[100px] md:w-32 text-xs md:text-sm">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="debit">Expense</SelectItem>
-              <SelectItem value="credit">Income</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {selectedIds.size > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              className="ml-auto"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete ({selectedIds.size})
-            </Button>
-          )}
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-24 md:w-32 text-xs md:text-sm shrink-0">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="debit">Expense</SelectItem>
+                <SelectItem value="credit">Income</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        {/* Delete button - separate row on mobile when visible */}
+        {selectedIds.size > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="w-full md:w-auto md:self-end"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete {selectedIds.size} selected
+          </Button>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -376,15 +380,20 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
       {/* Mobile Card View with Swipe */}
       <div className="md:hidden space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">← Swipe left to edit • Swipe right to delete →</p>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length}
-              onCheckedChange={toggleSelectAll}
-              aria-label="Select all"
-            />
-            <span className="text-xs text-muted-foreground">All</span>
-          </div>
+          <p className="text-xs text-muted-foreground">← Swipe to edit/delete →</p>
+          <button
+            onClick={toggleSelectAll}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+              filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            )}
+          >
+            {selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 
+              ? "Deselect All" 
+              : "Select All"}
+          </button>
         </div>
         {filteredTransactions.map((transaction, index) => {
           const category = getCategoryById(transaction.categoryId);
@@ -393,15 +402,30 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
             .map(id => getTagById(id))
             .filter((tag): tag is { id: string; name: string; color: string } => tag !== undefined);
 
+          const isSelected = selectedIds.has(transaction.id);
+
           return (
-            <div key={transaction.id} className="flex items-start gap-3">
-              <Checkbox
-                checked={selectedIds.has(transaction.id)}
-                onCheckedChange={() => toggleSelect(transaction.id)}
-                className="mt-4"
-                aria-label={`Select ${transaction.description}`}
-              />
-              <div className="flex-1">
+            <div key={transaction.id} className="relative">
+              {/* Selection indicator on card */}
+              <button
+                onClick={() => toggleSelect(transaction.id)}
+                className={cn(
+                  "absolute -left-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all",
+                  isSelected 
+                    ? "bg-primary text-primary-foreground scale-100" 
+                    : "bg-muted/50 text-muted-foreground scale-90 hover:scale-100"
+                )}
+              >
+                {isSelected && (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+              <div className={cn(
+                "ml-4 transition-all",
+                isSelected && "ring-2 ring-primary/50 rounded-2xl"
+              )}>
                 <SwipeableTransactionCard
                   transaction={transaction}
                   index={index}
