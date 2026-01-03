@@ -42,9 +42,8 @@ export function StatCard({
       transition={{ delay, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={cn(
         'relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 lg:p-6 transition-all duration-500 group',
-        'bg-gradient-to-br from-white/[0.04] to-white/[0.01]',
-        'border border-white/[0.06] hover:border-white/[0.12]',
-        'backdrop-blur-xl',
+        'bg-card border border-border hover:border-primary/30',
+        'backdrop-blur-xl shadow-card',
         glowClasses[iconColor]
       )}
     >
@@ -58,14 +57,14 @@ export function StatCard({
       )} />
       
       {/* Top line glow */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       
       <div className="relative flex items-start justify-between gap-2">
         <div className="space-y-1.5 sm:space-y-3 min-w-0 flex-1">
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground/80 uppercase tracking-wide truncate">
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wide truncate">
             {title}
           </p>
-          <p className="text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent truncate">
+          <p className="text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground truncate">
             {value}
           </p>
           {change && (

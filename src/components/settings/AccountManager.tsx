@@ -73,7 +73,7 @@ export function AccountManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
             Accounts
           </h1>
           <p className="text-muted-foreground mt-1">Manage your bank and credit accounts</p>

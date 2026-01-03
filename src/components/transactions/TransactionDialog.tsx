@@ -180,7 +180,7 @@ export function TransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] bg-card border-border/50">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <DialogTitle className="text-xl font-bold text-foreground">
             {mode === 'add' ? 'Add Transaction' : 'Edit Transaction'}
           </DialogTitle>
         </DialogHeader>

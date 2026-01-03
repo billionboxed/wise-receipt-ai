@@ -49,7 +49,7 @@ export default function Dashboard() {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">Track your expenses and manage your finances</p>
         </div>
 

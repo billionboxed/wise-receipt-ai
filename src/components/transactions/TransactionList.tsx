@@ -478,7 +478,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent border-white/5">
+              <TableRow className="hover:bg-transparent border-border">
                 <TableHead className="w-12">
                   <Checkbox
                     checked={filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length}

@@ -37,9 +37,9 @@ export function AccountSummary() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
-      className="glass-card p-4 sm:p-6 border-white/5"
+      className="glass-card p-4 sm:p-6"
     >
-      <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+      <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 text-foreground">
         Account Summary
       </h3>
 
@@ -51,10 +51,10 @@ export function AccountSummary() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 + index * 0.05 }}
             className={cn(
-              'p-3 sm:p-4 rounded-lg sm:rounded-xl border border-white/[0.04] transition-all duration-300 hover:border-white/[0.1] group',
+              'p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border transition-all duration-300 hover:border-primary/30 group',
               account.type === 'credit'
-                ? 'bg-gradient-to-r from-primary/[0.05] to-transparent hover:shadow-[0_0_30px_hsl(195_100%_50%/0.1)]'
-                : 'bg-gradient-to-r from-success/[0.05] to-transparent hover:shadow-[0_0_30px_hsl(160_100%_45%/0.1)]'
+                ? 'bg-primary/5 hover:shadow-glow'
+                : 'bg-success/5 hover:shadow-[0_0_30px_hsl(var(--success)/0.1)]'
             )}
           >
             <div className="flex items-center justify-between">

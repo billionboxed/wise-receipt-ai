@@ -20,10 +20,10 @@ export function RecentTransactions() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4, duration: 0.5 }}
-      className="glass-card p-4 sm:p-6 border-white/5"
+      className="glass-card p-4 sm:p-6"
     >
       <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+        <h3 className="text-base sm:text-lg font-semibold text-foreground">
           Recent Transactions
         </h3>
         <Link
@@ -47,7 +47,7 @@ export function RecentTransactions() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 + index * 0.05 }}
-              className="flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08] transition-all duration-300 group"
+              className="flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-muted/50 border border-border hover:bg-muted transition-all duration-300 group"
             >
               <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
                 <div
