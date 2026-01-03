@@ -14,6 +14,8 @@ export interface Tag {
   id: string;
   name: string;
   color: string;
+  isProject?: boolean;
+  isArchived?: boolean;
 }
 
 export interface Account {
@@ -107,6 +109,8 @@ export function useExpenseData() {
         id: t.id,
         name: t.name,
         color: t.color,
+        isProject: (t as any).is_project || false,
+        isArchived: (t as any).is_archived || false,
       })));
 
       // Fetch transactions
@@ -325,7 +329,9 @@ export function useExpenseData() {
         user_id: user.id,
         name: tag.name,
         color: tag.color,
-      })
+        is_project: tag.isProject || false,
+        is_archived: tag.isArchived || false,
+      } as any)
       .select()
       .single();
 
@@ -334,11 +340,24 @@ export function useExpenseData() {
       return;
     }
 
-    setTags(prev => [...prev, { id: data.id, name: data.name, color: data.color }]);
+    setTags(prev => [...prev, { 
+      id: data.id, 
+      name: data.name, 
+      color: data.color,
+      isProject: (data as any).is_project || false,
+      isArchived: (data as any).is_archived || false,
+    }]);
   };
 
   const updateTag = async (id: string, updates: Partial<Tag>) => {
-    const { error } = await supabase.from('tags').update(updates).eq('id', id);
+    // Transform to snake_case for database
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.isProject !== undefined) dbUpdates.is_project = updates.isProject;
+    if (updates.isArchived !== undefined) dbUpdates.is_archived = updates.isArchived;
+
+    const { error } = await supabase.from('tags').update(dbUpdates).eq('id', id);
     
     if (error) {
       toast({ title: 'Error', description: 'Failed to update tag', variant: 'destructive' });

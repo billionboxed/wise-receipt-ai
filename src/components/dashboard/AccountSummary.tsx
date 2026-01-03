@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useExpense } from '@/context/ExpenseContext';
+import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
 import { cn } from '@/lib/utils';
 import { CreditCard, Building2 } from 'lucide-react';
 
 export function AccountSummary() {
-  const { accounts, transactions } = useExpense();
+  const { accounts } = useExpense();
+  const { filteredTransactions } = useFilteredTransactions();
 
   const accountBalances = useMemo(() => {
     return accounts.map(account => {
-      const accountTransactions = transactions.filter(
+      const accountTransactions = filteredTransactions.filter(
         t => t.accountId === account.id && t.status === 'confirmed'
       );
       
@@ -28,20 +30,20 @@ export function AccountSummary() {
         transactionCount: accountTransactions.length,
       };
     });
-  }, [accounts, transactions]);
+  }, [accounts, filteredTransactions]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
-      className="glass-card p-6 border-white/5"
+      className="glass-card p-4 sm:p-6 border-white/5"
     >
-      <h3 className="text-lg font-semibold mb-6 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+      <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
         Account Summary
       </h3>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {accountBalances.map((account, index) => (
           <motion.div
             key={account.id}
@@ -49,41 +51,41 @@ export function AccountSummary() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 + index * 0.05 }}
             className={cn(
-              'p-4 rounded-xl border border-white/[0.04] transition-all duration-300 hover:border-white/[0.1] group',
+              'p-3 sm:p-4 rounded-lg sm:rounded-xl border border-white/[0.04] transition-all duration-300 hover:border-white/[0.1] group',
               account.type === 'credit'
                 ? 'bg-gradient-to-r from-primary/[0.05] to-transparent hover:shadow-[0_0_30px_hsl(195_100%_50%/0.1)]'
                 : 'bg-gradient-to-r from-success/[0.05] to-transparent hover:shadow-[0_0_30px_hsl(160_100%_45%/0.1)]'
             )}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
                 <div
                   className={cn(
-                    'w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300',
+                    'w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-300',
                     account.type === 'credit'
                       ? 'bg-primary/10 text-primary group-hover:shadow-[0_0_20px_hsl(195_100%_50%/0.3)]'
                       : 'bg-success/10 text-success group-hover:shadow-[0_0_20px_hsl(160_100%_45%/0.3)]'
                   )}
                 >
                   {account.type === 'credit' ? (
-                    <CreditCard className="w-6 h-6" />
+                    <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
                   ) : (
-                    <Building2 className="w-6 h-6" />
+                    <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">{account.name}</p>
+                  <p className="font-semibold text-foreground text-sm sm:text-base">{account.name}</p>
                   <p className="text-xs text-muted-foreground capitalize mt-0.5">
                     {account.type === 'credit' ? 'Credit Card' : 'Bank Account'}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-destructive">
+                <p className="text-xs sm:text-sm font-bold text-destructive">
                   ₹{account.spent.toLocaleString('en-IN')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {account.transactionCount} transactions
+                  {account.transactionCount} txns
                 </p>
               </div>
             </div>

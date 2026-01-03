@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ExpenseProvider } from "@/context/ExpenseContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { TransactionDialogProvider } from "@/context/TransactionDialogContext";
+import { AnalyticsFilterProvider } from "@/context/AnalyticsFilterContext";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
@@ -43,9 +44,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   return (
     <ExpenseProvider>
-      <TransactionDialogProvider>
-        {children}
-      </TransactionDialogProvider>
+      <AnalyticsFilterProvider>
+        <TransactionDialogProvider>
+          {children}
+        </TransactionDialogProvider>
+      </AnalyticsFilterProvider>
     </ExpenseProvider>
   );
 }

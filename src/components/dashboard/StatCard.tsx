@@ -41,7 +41,7 @@ export function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={cn(
-        'relative overflow-hidden rounded-2xl p-6 transition-all duration-500 group',
+        'relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 lg:p-6 transition-all duration-500 group',
         'bg-gradient-to-br from-white/[0.04] to-white/[0.01]',
         'border border-white/[0.06] hover:border-white/[0.12]',
         'backdrop-blur-xl',
@@ -50,7 +50,7 @@ export function StatCard({
     >
       {/* Ambient glow effect */}
       <div className={cn(
-        'absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-20 transition-opacity duration-500 group-hover:opacity-40',
+        'absolute -top-16 -right-16 sm:-top-20 sm:-right-20 w-32 h-32 sm:w-40 sm:h-40 rounded-full blur-3xl opacity-20 transition-opacity duration-500 group-hover:opacity-40',
         iconColor === 'primary' && 'bg-primary',
         iconColor === 'success' && 'bg-success',
         iconColor === 'destructive' && 'bg-destructive',
@@ -60,41 +60,41 @@ export function StatCard({
       {/* Top line glow */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       
-      <div className="relative flex items-start justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wide">
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="space-y-1.5 sm:space-y-3 min-w-0 flex-1">
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground/80 uppercase tracking-wide truncate">
             {title}
           </p>
-          <p className="text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
+          <p className="text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent truncate">
             {value}
           </p>
           {change && (
             <p
               className={cn(
-                'text-sm font-medium flex items-center gap-1.5',
+                'text-xs sm:text-sm font-medium flex items-center gap-1 line-clamp-1',
                 changeType === 'positive' && 'text-success',
                 changeType === 'negative' && 'text-destructive',
                 changeType === 'neutral' && 'text-muted-foreground'
               )}
             >
               {changeType === 'positive' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
               )}
               {changeType === 'negative' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
               )}
-              {change}
+              <span className="truncate">{change}</span>
             </p>
           )}
         </div>
         <div
           className={cn(
-            'p-4 rounded-2xl bg-gradient-to-br transition-all duration-500',
+            'p-2 sm:p-3 lg:p-4 rounded-lg sm:rounded-xl lg:rounded-2xl bg-gradient-to-br transition-all duration-500 flex-shrink-0',
             iconColorClasses[iconColor]
           )}
         >
           <Icon className={cn(
-            'w-6 h-6 transition-all duration-500',
+            'w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 transition-all duration-500',
             'drop-shadow-[0_0_10px_currentColor]'
           )} />
         </div>

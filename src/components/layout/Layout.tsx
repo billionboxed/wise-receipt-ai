@@ -1,7 +1,9 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { AIFloatingButton } from '@/components/chat/AIFloatingButton';
+import { AnalyticsFilter } from './AnalyticsFilter';
 import { motion } from 'framer-motion';
 
 interface LayoutProps {
@@ -9,6 +11,9 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  const location = useLocation();
+  const showAnalyticsFilter = ['/', '/analytics'].includes(location.pathname);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
@@ -23,7 +28,13 @@ export function Layout({ children }: LayoutProps) {
         className="lg:ml-64 min-h-screen"
       >
         {/* Added bottom padding for mobile bottom nav, safe area support */}
-        <div className="p-4 lg:p-8 pt-6 lg:pt-8 pb-24 lg:pb-8">
+        <div className="p-3 sm:p-4 lg:p-8 pt-4 sm:pt-6 lg:pt-8 pb-24 lg:pb-8">
+          {/* Analytics Filter - shown only on Dashboard and Analytics */}
+          {showAnalyticsFilter && (
+            <div className="flex justify-end mb-4">
+              <AnalyticsFilter />
+            </div>
+          )}
           {children}
         </div>
       </motion.main>

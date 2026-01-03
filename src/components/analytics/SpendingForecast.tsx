@@ -193,27 +193,27 @@ export function SpendingForecast({ transactions }: SpendingForecastProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-xl p-6 shadow-card border border-border/50 lg:col-span-2"
+      className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50 lg:col-span-2"
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold">Monthly Forecast</h3>
+          <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+          <h3 className="text-base sm:text-lg font-semibold">Monthly Forecast</h3>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Projected</p>
-            <p className="font-bold text-lg">{formatAmount(Math.round(projectedTotal))}</p>
+            <p className="font-bold text-base sm:text-lg">{formatAmount(Math.round(projectedTotal))}</p>
           </div>
           {historicalAvg > 0 && (
-            <div className={`text-sm px-2 py-1 rounded ${percentChange > 0 ? 'bg-destructive/20 text-destructive' : 'bg-emerald-500/20 text-emerald-400'}`}>
-              {percentChange > 0 ? '+' : ''}{percentChange.toFixed(0)}% vs avg
+            <div className={`text-xs sm:text-sm px-2 py-1 rounded ${percentChange > 0 ? 'bg-destructive/20 text-destructive' : 'bg-emerald-500/20 text-emerald-400'}`}>
+              {percentChange > 0 ? '+' : ''}{percentChange.toFixed(0)}%
             </div>
           )}
         </div>
       </div>
       
-      <div className="h-64">
+      <div className="h-48 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={forecastData}>
             <defs>
@@ -227,15 +227,15 @@ export function SpendingForecast({ transactions }: SpendingForecastProps) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-            <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+            <XAxis dataKey="day" tick={{ fontSize: 9 }} />
+            <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} width={35} />
             <Tooltip content={<CustomTooltip />} />
             {historicalAvg > 0 && (
               <ReferenceLine 
                 y={historicalAvg} 
                 stroke="hsl(var(--muted-foreground))" 
                 strokeDasharray="5 5"
-                label={{ value: 'Avg', position: 'right', fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                label={{ value: 'Avg', position: 'right', fill: 'hsl(var(--muted-foreground))', fontSize: 9 }}
               />
             )}
             <Area
@@ -263,35 +263,35 @@ export function SpendingForecast({ transactions }: SpendingForecastProps) {
       
       {/* AI Insight */}
       {(loadingInsight || aiInsight) && (
-        <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/30">
+        <div className="mt-4 p-2.5 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
           <div className="flex items-center gap-2 mb-1">
-            <Brain className="w-4 h-4 text-primary" />
+            <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
             <span className="text-xs font-medium text-muted-foreground">AI Insight</span>
           </div>
           {loadingInsight ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Analyzing spending patterns...
+              Analyzing...
             </div>
           ) : (
-            <p className="text-sm">{aiInsight}</p>
+            <p className="text-xs sm:text-sm">{aiInsight}</p>
           )}
         </div>
       )}
       
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border/30">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t border-border/30">
         <div>
           <p className="text-xs text-muted-foreground">Current</p>
-          <p className="font-semibold">{formatAmount(Math.round(currentTotal))}</p>
+          <p className="font-semibold text-sm sm:text-base">{formatAmount(Math.round(currentTotal))}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Run Rate</p>
-          <p className="font-semibold">{formatAmount(Math.round(runRateProjection))}</p>
+          <p className="font-semibold text-sm sm:text-base">{formatAmount(Math.round(runRateProjection))}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Confidence</p>
-          <p className="font-semibold">{confidence}%</p>
+          <p className="font-semibold text-sm sm:text-base">{confidence}%</p>
         </div>
       </div>
     </motion.div>

@@ -1,16 +1,22 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Tag as TagIcon } from 'lucide-react';
-import { useExpense } from '@/context/ExpenseContext';
-import { cn } from '@/lib/utils';
+import { Tag as TagIcon, FolderKanban } from 'lucide-react';
+import { useExpense, Tag } from '@/context/ExpenseContext';
+import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
+
+interface ExtendedTag extends Tag {
+  isProject?: boolean;
+  isArchived?: boolean;
+}
 
 export function TagsSpending() {
-  const { transactions, tags, getTagById } = useExpense();
+  const { tags } = useExpense();
+  const { filteredTransactions } = useFilteredTransactions();
 
   const tagSpending = useMemo(() => {
     const spending: Record<string, number> = {};
 
-    transactions
+    filteredTransactions
       .filter(t => t.status === 'confirmed' && t.type === 'debit')
       .forEach(t => {
         t.tagIds.forEach(tagId => {
@@ -20,7 +26,8 @@ export function TagsSpending() {
 
     const total = Object.values(spending).reduce((a, b) => a + b, 0);
 
-    return tags
+    return (tags as ExtendedTag[])
+      .filter(t => !t.isArchived)
       .map(tag => ({
         ...tag,
         amount: spending[tag.id] || 0,
@@ -28,7 +35,7 @@ export function TagsSpending() {
       }))
       .filter(t => t.amount > 0)
       .sort((a, b) => b.amount - a.amount);
-  }, [transactions, tags]);
+  }, [filteredTransactions, tags]);
 
   if (tagSpending.length === 0) {
     return (
@@ -36,15 +43,15 @@ export function TagsSpending() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="glass-card p-6"
+        className="glass-card p-4 sm:p-6"
       >
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
             Spending by Tags
           </h3>
-          <TagIcon className="w-5 h-5 text-muted-foreground" />
+          <TagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
         </div>
-        <p className="text-sm text-muted-foreground text-center py-8">
+        <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">
           No tagged transactions yet
         </p>
       </motion.div>
@@ -56,16 +63,16 @@ export function TagsSpending() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="glass-card p-6"
+      className="glass-card p-4 sm:p-6"
     >
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
           Spending by Tags
         </h3>
-        <TagIcon className="w-5 h-5 text-accent" />
+        <TagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {tagSpending.map((tag, index) => (
           <motion.div
             key={tag.id}
@@ -74,19 +81,22 @@ export function TagsSpending() {
             transition={{ delay: index * 0.05 }}
             className="group"
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
                   style={{ backgroundColor: tag.color }}
                 />
-                <span className="text-sm font-medium text-foreground">{tag.name}</span>
+                <span className="text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
+                  {tag.isProject && <FolderKanban className="w-3 h-3 text-accent" />}
+                  {tag.name}
+                </span>
               </div>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-xs sm:text-sm font-semibold text-foreground">
                 ₹{tag.amount.toLocaleString('en-IN')}
               </span>
             </div>
-            <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-1.5 sm:h-2 rounded-full bg-white/5 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${tag.percentage}%` }}
