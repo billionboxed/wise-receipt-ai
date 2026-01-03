@@ -5,7 +5,87 @@
 @tailwind utilities;
 
 @layer base {
+  /* ===== LIGHT THEME ===== */
   :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 195 85% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 20%;
+
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 20% 45%;
+
+    --accent: 280 70% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 195 85% 45%;
+
+    --radius: 1rem;
+
+    /* Expense tracker colors */
+    --income: 160 84% 39%;
+    --expense: 0 72% 51%;
+    
+    /* Tag colors - vibrant for light mode */
+    --tag-purple: 280 70% 55%;
+    --tag-blue: 195 85% 50%;
+    --tag-green: 160 84% 45%;
+    --tag-orange: 25 95% 53%;
+    --tag-pink: 330 80% 60%;
+    --tag-teal: 175 75% 40%;
+
+    /* Glow effects - softer for light mode */
+    --glow-primary: 195 85% 45%;
+    --glow-accent: 280 70% 55%;
+    --glow-success: 160 84% 39%;
+    --glow-danger: 0 72% 51%;
+
+    /* Gradients - refined for light mode */
+    --gradient-primary: linear-gradient(135deg, hsl(195, 85%, 45%) 0%, hsl(210, 85%, 55%) 50%, hsl(280, 70%, 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(210, 40%, 98%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(210, 40%, 99%) 0%, hsl(210, 40%, 97%) 100%);
+    --gradient-glow: linear-gradient(135deg, hsl(195, 85%, 45%) 0%, hsl(280, 70%, 55%) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+
+    /* Elegant shadows for light mode */
+    --shadow-sm: 0 1px 3px hsl(215 20% 65% / 0.12), 0 1px 2px hsl(215 20% 65% / 0.08);
+    --shadow-md: 0 4px 6px hsl(215 20% 65% / 0.08), 0 2px 4px hsl(215 20% 65% / 0.06);
+    --shadow-lg: 0 10px 15px hsl(215 20% 65% / 0.1), 0 4px 6px hsl(215 20% 65% / 0.05);
+    --shadow-xl: 0 20px 25px hsl(215 20% 65% / 0.1), 0 8px 10px hsl(215 20% 65% / 0.04);
+    --shadow-glow: 0 4px 20px hsl(195 85% 45% / 0.15);
+    --shadow-glow-accent: 0 4px 20px hsl(280 70% 55% / 0.15);
+    --shadow-card: 0 1px 3px hsl(215 20% 65% / 0.1), 0 1px 2px hsl(215 20% 65% / 0.06);
+
+    --sidebar-background: 210 40% 99%;
+    --sidebar-foreground: 215 20% 35%;
+    --sidebar-primary: 195 85% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 195 85% 45%;
+  }
+
+  /* ===== DARK THEME ===== */
+  .dark {
     --background: 220 15% 5%;
     --foreground: 210 20% 98%;
 
@@ -36,8 +116,6 @@
     --border: 220 20% 15%;
     --input: 220 20% 12%;
     --ring: 195 100% 50%;
-
-    --radius: 1rem;
 
     /* Expense tracker colors */
     --income: 160 100% 45%;
@@ -82,10 +160,6 @@
     --sidebar-border: 220 20% 12%;
     --sidebar-ring: 195 100% 50%;
   }
-
-  .dark {
-    /* Dark mode is the default - same values */
-  }
 }
 
 @layer base {
@@ -104,45 +178,58 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(180deg, hsl(220, 15%, 5%) 0%, hsl(220, 20%, 3%) 100%);
     /* Prevent overscroll bounce on iOS */
     overscroll-behavior: none;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Theme-specific body backgrounds */
+  :root body {
+    background: linear-gradient(180deg, hsl(210, 40%, 98%) 0%, hsl(210, 40%, 96%) 100%);
+  }
+
+  .dark body {
+    background: linear-gradient(180deg, hsl(220, 15%, 5%) 0%, hsl(220, 20%, 3%) 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
   }
 
-  /* Custom scrollbar - futuristic */
+  /* Custom scrollbar - theme aware */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(220, 20%, 8%);
+    background: hsl(var(--muted));
   }
 
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, hsl(195, 100%, 50%), hsl(280, 100%, 65%));
+    background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--accent)));
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, hsl(195, 100%, 60%), hsl(280, 100%, 75%));
+    background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--accent)));
+    opacity: 0.8;
   }
 }
 
 @layer components {
-  /* Glass card effect - Tesla inspired */
+  /* Glass card effect - theme aware */
   .glass-card {
-    @apply relative overflow-hidden rounded-2xl;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    @apply relative overflow-hidden rounded-2xl bg-card;
     backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-card);
+    transition: all 0.3s ease;
+  }
+
+  .dark .glass-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
     border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 
-      0 4px 24px hsl(0 0% 0% / 0.5),
-      inset 0 1px 0 rgba(255,255,255,0.05);
   }
 
   .glass-card::before {
@@ -152,6 +239,10 @@
     left: 0;
     right: 0;
     height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+  }
+
+  .dark .glass-card::before {
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   }
 
@@ -167,7 +258,7 @@
     content: '';
     position: absolute;
     inset: -2px;
-    background: linear-gradient(135deg, hsl(195, 100%, 50%), hsl(280, 100%, 65%));
+    background: var(--gradient-glow);
     border-radius: inherit;
     z-index: -1;
     opacity: 0.2;
@@ -180,17 +271,21 @@
     background-image: var(--gradient-primary);
   }
 
-  /* Stat card with glow */
+  /* Stat card with glow - theme aware */
   .stat-card {
-    @apply relative overflow-hidden rounded-2xl p-6 transition-all duration-500;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    @apply relative overflow-hidden rounded-2xl p-6 transition-all duration-500 bg-card;
     backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border));
+  }
+
+  .dark .stat-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
     border: 1px solid rgba(255,255,255,0.06);
   }
 
   .stat-card:hover {
-    border-color: rgba(255,255,255,0.12);
-    box-shadow: 0 0 40px hsl(195 100% 50% / 0.1);
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: var(--shadow-glow);
   }
 
   .stat-card::before {
@@ -200,23 +295,21 @@
     left: 0;
     right: 0;
     height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+  }
+
+  .dark .stat-card::before {
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   }
 
   /* Neon button glow */
   .btn-glow {
     @apply relative;
-    box-shadow: 
-      0 0 20px hsl(195 100% 50% / 0.4),
-      0 0 40px hsl(195 100% 50% / 0.2),
-      inset 0 1px 0 rgba(255,255,255,0.2);
+    box-shadow: var(--shadow-glow);
   }
 
   .btn-glow:hover {
-    box-shadow: 
-      0 0 30px hsl(195 100% 50% / 0.6),
-      0 0 60px hsl(195 100% 50% / 0.3),
-      inset 0 1px 0 rgba(255,255,255,0.3);
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.4), 0 0 60px hsl(var(--primary) / 0.2);
   }
 
   /* Pulse glow animation */
@@ -226,10 +319,10 @@
 
   @keyframes pulseGlow {
     0%, 100% {
-      box-shadow: 0 0 20px hsl(195 100% 50% / 0.3);
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
     }
     50% {
-      box-shadow: 0 0 40px hsl(195 100% 50% / 0.5), 0 0 60px hsl(280 100% 65% / 0.2);
+      box-shadow: 0 0 40px hsl(var(--primary) / 0.5), 0 0 60px hsl(var(--accent) / 0.2);
     }
   }
 
