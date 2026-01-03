@@ -205,14 +205,14 @@ export function RecurringExpenseManager() {
             <div className="space-y-2">
               <Label>Category (optional)</Label>
               <Select
-                value={formData.categoryId}
-                onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                value={formData.categoryId || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, categoryId: value === 'none' ? '' : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {categories.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.combined}</SelectItem>
                   ))}
@@ -222,14 +222,14 @@ export function RecurringExpenseManager() {
             <div className="space-y-2">
               <Label>Account (optional)</Label>
               <Select
-                value={formData.accountId}
-                onValueChange={(value) => setFormData({ ...formData, accountId: value })}
+                value={formData.accountId || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, accountId: value === 'none' ? '' : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select account" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {accounts.map(acc => (
                     <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                   ))}
