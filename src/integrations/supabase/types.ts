@@ -65,6 +65,69 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_expenses: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category_id: string | null
+          created_at: string
+          day_of_month: number | null
+          description: string
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_added_date: string | null
+          tag_ids: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          day_of_month?: number | null
+          description: string
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_added_date?: string | null
+          tag_ids?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          day_of_month?: number | null
+          description?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_added_date?: string | null
+          tag_ids?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expenses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           color: string

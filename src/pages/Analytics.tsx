@@ -199,7 +199,7 @@ export default function Analytics() {
           <DayOfWeekChart transactions={transactions} />
 
           {/* Recurring Expenses */}
-          <RecurringExpenses transactions={transactions} />
+          <RecurringExpenses />
 
           {/* Category Breakdown */}
           <motion.div

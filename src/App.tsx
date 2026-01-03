@@ -20,6 +20,7 @@ import TagsSettings from "./pages/settings/TagsSettings";
 import AccountsSettings from "./pages/settings/AccountsSettings";
 import CurrencySettings from "./pages/settings/CurrencySettings";
 import SettingsHub from "./pages/settings/SettingsHub";
+import RecurringExpensesSettings from "./pages/settings/RecurringExpensesSettings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -65,6 +66,7 @@ function AppRoutes() {
       <Route path="/settings/tags" element={<ProtectedRoute><TagsSettings /></ProtectedRoute>} />
       <Route path="/settings/accounts" element={<ProtectedRoute><AccountsSettings /></ProtectedRoute>} />
       <Route path="/settings/currency" element={<ProtectedRoute><CurrencySettings /></ProtectedRoute>} />
+      <Route path="/settings/recurring" element={<ProtectedRoute><RecurringExpensesSettings /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
