@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,10 +8,12 @@ import { useExpense } from '@/context/ExpenseContext';
 import { useTransactionDialog } from '@/context/TransactionDialogContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  expenseAction?: ExpenseAction | null;
 }
 
 interface ExpenseAction {
@@ -37,6 +39,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
   const { transactions, categories, accounts, getCategoryById } = useExpense();
   const { openAddDialog } = useTransactionDialog();
   const { toast } = useToast();
+  const { formatAmount } = useCurrency();
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -94,6 +97,20 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
     return null;
   };
 
+  const handleAddExpense = (expenseAction: ExpenseAction) => {
+    const matchingCategory = categories.find(
+      c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
+    );
+    
+    openAddDialog({
+      date: expenseAction.date,
+      description: expenseAction.description,
+      amount: expenseAction.amount,
+      type: expenseAction.type,
+      categoryId: matchingCategory?.id || null,
+    });
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -114,7 +131,7 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: [...messages, userMessage],
+            messages: [...messages.map(m => ({ role: m.role, content: m.content })), { role: userMessage.role, content: userMessage.content }],
             expenseContext: getExpenseContext(),
           }),
         }
@@ -171,23 +188,17 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
         }
       }
 
-      // Check for expense action in response - open the transaction dialog with prefilled data
+      // Parse expense action and add to the final message
       const expenseAction = parseExpenseAction(assistantContent);
-      if (expenseAction) {
-        // Find matching category
-        const matchingCategory = categories.find(
-          c => c.combined.toLowerCase().includes(expenseAction.suggestedCategory?.toLowerCase() || '')
-        );
-        
-        // Open the transaction dialog with prefilled data
-        openAddDialog({
-          date: expenseAction.date,
-          description: expenseAction.description,
-          amount: expenseAction.amount,
-          type: expenseAction.type,
-          categoryId: matchingCategory?.id || null,
-        });
-      }
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant') {
+          return prev.map((m, i) =>
+            i === prev.length - 1 ? { ...m, expenseAction } : m
+          );
+        }
+        return prev;
+      });
     } catch (error) {
       toast({
         title: 'Error',
@@ -341,8 +352,8 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      'flex',
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                      'flex flex-col gap-2',
+                      message.role === 'user' ? 'items-end' : 'items-start'
                     )}
                   >
                     <div
@@ -358,6 +369,24 @@ export function ExpenseAIChat({ isOpen, onClose }: ExpenseAIChatProps) {
                         : <p>{message.content}</p>
                       }
                     </div>
+                    
+                    {/* Inline Add Transaction Button */}
+                    {message.role === 'assistant' && message.expenseAction && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="max-w-[90%]"
+                      >
+                        <Button
+                          size="sm"
+                          className="gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
+                          onClick={() => handleAddExpense(message.expenseAction!)}
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add {message.expenseAction.description} - {formatAmount(message.expenseAction.amount)}
+                        </Button>
+                      </motion.div>
+                    )}
                   </motion.div>
                 ))}
 
