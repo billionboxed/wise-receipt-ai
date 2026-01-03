@@ -19,6 +19,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Transactions', path: '/transactions', icon: Receipt },
+  { label: 'Upload', path: '/upload', icon: Upload },
   { label: 'AI Chat', path: '/ai-chat', icon: Sparkles },
   { label: 'Analytics', path: '/analytics', icon: TrendingUp },
   { label: 'Settings', path: '/settings', icon: Settings },
@@ -32,7 +33,7 @@ export function BottomNav() {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border pb-safe">
-      <div className="flex items-center justify-around h-14">
+      <div className="flex items-center justify-around h-14 px-1">
         {navItems.map((item) => {
           const isActive = item.path === '/settings' 
             ? isSettingsActive 
@@ -43,7 +44,7 @@ export function BottomNav() {
               key={item.path}
               to={item.path}
               className={cn(
-                'relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200',
+                'relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200',
                 isActive
                   ? 'text-primary'
                   : 'text-muted-foreground active:scale-90'
