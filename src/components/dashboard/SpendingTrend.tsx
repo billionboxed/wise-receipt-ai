@@ -45,7 +45,7 @@ export function SpendingTrend() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="glass-card px-3 py-2 border-white/10">
+        <div className="glass-card px-3 py-2">
           <p className="font-semibold text-foreground text-sm mb-1">{payload[0]?.payload?.fullMonth}</p>
           <p className="text-xs text-destructive flex justify-between gap-4">
             <span className="text-muted-foreground">Expense</span>
@@ -62,14 +62,14 @@ export function SpendingTrend() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.5 }}
-      className="glass-card p-4 sm:p-6 border-white/5"
+      className="glass-card p-4 sm:p-6"
     >
       <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+        <h3 className="text-base sm:text-lg font-semibold text-foreground">
           Spending Trend
         </h3>
         <div className="flex items-center gap-2 text-xs sm:text-sm">
-          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-destructive shadow-[0_0_10px_hsl(0_85%_60%)]" />
+          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-destructive shadow-[0_0_10px_hsl(var(--destructive))]" />
           <span className="text-muted-foreground hidden sm:inline">Monthly Expenses</span>
         </div>
       </div>
@@ -83,7 +83,7 @@ export function SpendingTrend() {
                 <stop offset="100%" stopColor="hsl(0, 85%, 60%)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" strokeOpacity={0.5} />
             <XAxis
               dataKey="month"
               axisLine={false}

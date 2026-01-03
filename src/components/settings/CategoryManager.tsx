@@ -97,7 +97,7 @@ export function CategoryManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
             Categories
           </h1>
           <p className="text-muted-foreground mt-1">Manage your expense categories</p>
@@ -137,7 +137,7 @@ export function CategoryManager() {
             
             {/* Add subcategory inline form */}
             {addSubToMain === main && (
-              <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-white/5">
+              <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-muted">
                 <Input
                   value={newSubForExisting}
                   onChange={e => setNewSubForExisting(e.target.value)}
@@ -163,7 +163,7 @@ export function CategoryManager() {
                 .map(cat => (
                   <div
                     key={cat.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 group transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted group transition-colors"
                   >
                     {editingId === cat.id ? (
                       <div className="flex-1 flex items-center gap-2">

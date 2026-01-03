@@ -37,11 +37,7 @@ export function BottomNav() {
     <>
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pb-safe">
         <div 
-          className="mx-2 mb-2 rounded-2xl border border-white/10 backdrop-blur-xl"
-          style={{ 
-            background: 'linear-gradient(180deg, hsl(220, 20%, 10%) 0%, hsl(220, 25%, 6%) 100%)',
-            boxShadow: '0 -4px 24px hsl(0 0% 0% / 0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
-          }}
+          className="mx-2 mb-2 rounded-2xl border border-border backdrop-blur-xl bg-card shadow-lg"
         >
           <div className="flex items-center justify-around px-1 py-2">
             {navItems.slice(0, 2).map((item) => {

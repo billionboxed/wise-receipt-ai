@@ -46,7 +46,7 @@ export function TagsSpending() {
         className="glass-card p-4 sm:p-6"
       >
         <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <h3 className="text-base sm:text-lg font-semibold text-foreground">
             Spending by Tags
           </h3>
           <TagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
@@ -66,7 +66,7 @@ export function TagsSpending() {
       className="glass-card p-4 sm:p-6"
     >
       <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+        <h3 className="text-base sm:text-lg font-semibold text-foreground">
           Spending by Tags
         </h3>
         <TagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
@@ -96,7 +96,7 @@ export function TagsSpending() {
                 ₹{tag.amount.toLocaleString('en-IN')}
               </span>
             </div>
-            <div className="h-1.5 sm:h-2 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-1.5 sm:h-2 rounded-full bg-muted overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${tag.percentage}%` }}

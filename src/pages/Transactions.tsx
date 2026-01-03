@@ -30,7 +30,7 @@ export default function Transactions() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
               Transactions
             </h1>
             <p className="text-muted-foreground mt-1">

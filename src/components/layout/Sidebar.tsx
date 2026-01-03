@@ -46,7 +46,7 @@ export function Sidebar() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-6 border-b border-white/5">
+      <div className="flex items-center gap-3 px-5 py-6 border-b border-border">
         <div className="relative">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-neon">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
@@ -59,10 +59,10 @@ export function Sidebar() {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col"
           >
-            <span className="font-bold text-lg bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+            <span className="font-bold text-lg text-foreground">
               ExpenseAI
             </span>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-primary/80">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-primary">
               Smart Finance
             </span>
           </motion.div>
@@ -87,7 +87,7 @@ export function Sidebar() {
                 'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
                 isActive
                   ? 'text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               )
             }
           >
@@ -129,7 +129,7 @@ export function Sidebar() {
                 'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group',
                 isActive
                   ? 'text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               )
             }
           >
@@ -156,7 +156,7 @@ export function Sidebar() {
       </nav>
 
       {/* User & Logout Section */}
-      <div className="mt-auto p-4 border-t border-white/5">
+      <div className="mt-auto p-4 border-t border-border">
         {user && (
           <div className={cn(
             "flex items-center gap-3 mb-3",
@@ -189,7 +189,7 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-xl"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl"
           >
             <Menu className="w-5 h-5" />
           </Button>
@@ -204,8 +204,7 @@ export function Sidebar() {
       <motion.aside
         animate={{ width: isCollapsed ? 80 : 280 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="hidden lg:block fixed left-0 top-0 bottom-0 z-30 border-r border-white/5"
-        style={{ background: 'linear-gradient(180deg, hsl(220, 20%, 6%) 0%, hsl(220, 25%, 4%) 100%)' }}
+        className="hidden lg:block fixed left-0 top-0 bottom-0 z-30 border-r border-border bg-sidebar"
       >
         <SidebarContent />
       </motion.aside>

@@ -491,8 +491,8 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         className={cn(
           'relative overflow-hidden border-2 border-dashed rounded-2xl p-10 lg:p-16 text-center cursor-pointer transition-all duration-500',
           isDragActive
-            ? 'border-primary bg-primary/5 scale-[1.01] shadow-[0_0_60px_hsl(195_100%_50%/0.2)]'
-            : 'border-white/10 hover:border-primary/50 hover:bg-white/[0.02]',
+            ? 'border-primary bg-primary/5 scale-[1.01] shadow-glow'
+            : 'border-border hover:border-primary/50 hover:bg-muted/50',
           isProcessing && 'pointer-events-none'
         )}
       >
@@ -530,7 +530,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-xl font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+            <h3 className="text-xl font-semibold text-foreground">
               {isProcessing
                 ? processingMessage || 'AI is analyzing your transactions...'
                 : isDragActive
@@ -546,7 +546,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
 
           {!isProcessing && (
             <div className="flex items-center gap-3 flex-wrap justify-center">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground">
                 <FileSpreadsheet className="w-4 h-4 text-primary" />
                 <span>Excel, CSV</span>
               </div>
@@ -582,7 +582,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 p-5 glass-card border-white/5"
+          className="flex items-center gap-4 p-5 glass-card"
         >
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
             {uploadedFile.name.endsWith('.pdf') ? (
@@ -597,7 +597,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
               {(uploadedFile.size / 1024).toFixed(1)} KB
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={clearFile} className="hover:bg-white/5">
+          <Button variant="ghost" size="icon" onClick={clearFile} className="hover:bg-muted">
             <X className="w-4 h-4" />
           </Button>
         </motion.div>
@@ -630,7 +630,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 + index * 0.1 }}
-            className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all duration-300 group"
+            className="p-5 rounded-2xl bg-muted/50 border border-border hover:border-primary/30 transition-all duration-300 group"
           >
             <div className={cn(
               'w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-300',

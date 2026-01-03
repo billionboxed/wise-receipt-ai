@@ -37,7 +37,7 @@ export function CategoryChart() {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="glass-card px-3 py-2 border-white/10">
+        <div className="glass-card px-3 py-2">
           <p className="font-semibold text-foreground text-sm">{data.name}</p>
           <p className="text-xs text-primary">
             ₹{data.value.toLocaleString('en-IN')} ({data.percentage}%)
@@ -53,9 +53,9 @@ export function CategoryChart() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, duration: 0.5 }}
-      className="glass-card p-4 sm:p-6 border-white/5"
+      className="glass-card p-4 sm:p-6"
     >
-      <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+      <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 text-foreground">
         Spending by Category
       </h3>
       
@@ -104,7 +104,7 @@ export function CategoryChart() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + index * 0.05 }}
-              className="flex items-center justify-between py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08] transition-all duration-300"
+              className="flex items-center justify-between py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl bg-muted/50 border border-border hover:bg-muted transition-all duration-300"
             >
               <div className="flex items-center gap-2 sm:gap-3">
                 <div

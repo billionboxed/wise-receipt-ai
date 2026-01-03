@@ -116,7 +116,7 @@ export function TagManager() {
               {colorOptions.map(color => (
                 <button
                   key={color}
-                  className={`w-5 h-5 rounded-full border-2 ${editColor === color ? 'border-white' : 'border-transparent'}`}
+                  className={`w-5 h-5 rounded-full border-2 ${editColor === color ? 'border-primary' : 'border-transparent'}`}
                   style={{ backgroundColor: color }}
                   onClick={() => setEditColor(color)}
                 />
@@ -195,7 +195,7 @@ export function TagManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
             Tags
           </h1>
           <p className="text-muted-foreground mt-1">Manage transaction tags</p>
@@ -267,7 +267,7 @@ export function TagManager() {
                   <button
                     key={color}
                     className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${
-                      newColor === color ? 'border-white scale-110' : 'border-transparent'
+                      newColor === color ? 'border-primary scale-110' : 'border-transparent'
                     }`}
                     style={{ backgroundColor: color }}
                     onClick={() => setNewColor(color)}
