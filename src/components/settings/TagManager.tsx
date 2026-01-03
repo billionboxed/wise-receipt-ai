@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Tag as TagIcon, Plus, Trash2, Edit2, Check, X, FolderKanban, Archive, ArchiveRestore, ChevronDown, ChevronUp } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { Tag } from '@/types/expense';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,8 @@ const colorOptions = [
 
 export function TagManager() {
   const { tags, addTag, updateTag, deleteTag } = useExpense();
+  const { theme } = useTheme();
+  const isMonochrome = theme === 'mono';
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -149,7 +152,10 @@ export function TagManager() {
           <Badge
             variant="secondary"
             className="text-sm py-2 px-4 cursor-default flex items-center gap-1.5"
-            style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+            style={isMonochrome 
+              ? { backgroundColor: 'hsl(0 0% 92%)', color: 'hsl(0 0% 25%)', borderColor: 'hsl(0 0% 85%)' }
+              : { backgroundColor: `${tag.color}20`, color: tag.color }
+            }
           >
             {tag.isProject && <FolderKanban className="w-3 h-3" />}
             {tag.name}

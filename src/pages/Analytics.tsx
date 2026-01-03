@@ -22,7 +22,6 @@ import { categoryColors } from '@/data/initialData';
 import { format, parseISO, startOfWeek, subWeeks, eachDayOfInterval, subDays } from 'date-fns';
 import { TrendingUp, TrendingDown, Calendar, Target } from 'lucide-react';
 import { YearOverYearChart } from '@/components/analytics/YearOverYearChart';
-import { SpendingHeatmap } from '@/components/analytics/SpendingHeatmap';
 import { DayOfWeekChart } from '@/components/analytics/DayOfWeekChart';
 import { RecurringExpenses } from '@/components/analytics/RecurringExpenses';
 import { SpendingForecast } from '@/components/analytics/SpendingForecast';
@@ -228,9 +227,6 @@ export default function Analytics() {
           </motion.div>
         </div>
 
-        {/* Spending Heatmap - Full Width */}
-        <SpendingHeatmap transactions={filteredTransactions} />
-
         {/* More Charts */}
         <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Weekly Trend */}
@@ -305,7 +301,7 @@ export default function Analytics() {
                     {accountData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={`hsl(${200 + index * 30}, 70%, 50%)`}
+                        fill={`hsl(var(--chart-${(index % 15) + 1}))`}
                       />
                     ))}
                   </Pie>
