@@ -9,11 +9,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { useExpense } from '@/context/ExpenseContext';
+import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
 import { format, parseISO, startOfMonth, subMonths } from 'date-fns';
 
 export function SpendingTrend() {
-  const { transactions } = useExpense();
+  const { filteredTransactions } = useFilteredTransactions();
 
   const data = useMemo(() => {
     const now = new Date();
@@ -27,7 +27,7 @@ export function SpendingTrend() {
       };
     });
 
-    transactions
+    filteredTransactions
       .filter(t => t.status === 'confirmed' && t.type === 'debit')
       .forEach(t => {
         const txDate = parseISO(t.date);
@@ -40,14 +40,14 @@ export function SpendingTrend() {
       });
 
     return months;
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="glass-card px-4 py-3 border-white/10">
-          <p className="font-semibold text-foreground mb-2">{payload[0]?.payload?.fullMonth}</p>
-          <p className="text-sm text-destructive flex justify-between gap-6">
+        <div className="glass-card px-3 py-2 border-white/10">
+          <p className="font-semibold text-foreground text-sm mb-1">{payload[0]?.payload?.fullMonth}</p>
+          <p className="text-xs text-destructive flex justify-between gap-4">
             <span className="text-muted-foreground">Expense</span>
             <span className="font-semibold">₹{payload[0]?.value?.toLocaleString('en-IN')}</span>
           </p>
@@ -62,19 +62,19 @@ export function SpendingTrend() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.5 }}
-      className="glass-card p-6 border-white/5"
+      className="glass-card p-4 sm:p-6 border-white/5"
     >
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
           Spending Trend
         </h3>
-        <div className="flex items-center gap-2 text-sm">
-          <div className="w-3 h-3 rounded-full bg-destructive shadow-[0_0_10px_hsl(0_85%_60%)]" />
-          <span className="text-muted-foreground">Monthly Expenses</span>
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-destructive shadow-[0_0_10px_hsl(0_85%_60%)]" />
+          <span className="text-muted-foreground hidden sm:inline">Monthly Expenses</span>
         </div>
       </div>
 
-      <div className="h-64">
+      <div className="h-48 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
@@ -88,13 +88,14 @@ export function SpendingTrend() {
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 12 }}
+              tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 10 }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 12 }}
-              tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+              tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 10 }}
+              tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+              width={35}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area

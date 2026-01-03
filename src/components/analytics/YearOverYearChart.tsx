@@ -76,17 +76,17 @@ export function YearOverYearChart({ transactions }: YearOverYearChartProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+      className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
     >
-      <h3 className="text-lg font-semibold mb-4">Year-over-Year Comparison</h3>
-      <div className="h-72">
+      <h3 className="text-base sm:text-lg font-semibold mb-4">Year-over-Year Comparison</h3>
+      <div className="h-56 sm:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={yoyData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} width={35} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend wrapperStyle={{ fontSize: '12px' }} />
             <Bar 
               dataKey={previousYear.toString()} 
               name={previousYear.toString()} 

@@ -17,6 +17,7 @@ import {
 import { Layout } from '@/components/layout/Layout';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
 import { categoryColors } from '@/data/initialData';
 import { format, parseISO, startOfWeek, subWeeks, eachDayOfInterval, subDays } from 'date-fns';
 import { TrendingUp, TrendingDown, Calendar, Target } from 'lucide-react';
@@ -27,12 +28,13 @@ import { RecurringExpenses } from '@/components/analytics/RecurringExpenses';
 import { SpendingForecast } from '@/components/analytics/SpendingForecast';
 
 export default function Analytics() {
-  const { transactions, getCategoryById, getAccountById } = useExpense();
+  const { getCategoryById, getAccountById, tags } = useExpense();
   const { formatAmount } = useCurrency();
+  const { filteredTransactions } = useFilteredTransactions();
 
   const confirmedTransactions = useMemo(
-    () => transactions.filter(t => t.status === 'confirmed'),
-    [transactions]
+    () => filteredTransactions.filter(t => t.status === 'confirmed'),
+    [filteredTransactions]
   );
 
   // Category spending breakdown
@@ -135,10 +137,10 @@ export default function Analytics() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-card px-4 py-3 rounded-lg shadow-lg border border-border">
-          <p className="font-semibold text-foreground mb-1">{label}</p>
+        <div className="bg-card px-3 py-2 rounded-lg shadow-lg border border-border">
+          <p className="font-semibold text-foreground text-sm mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
+            <p key={index} className="text-xs" style={{ color: entry.color }}>
               {entry.name}: {formatAmount(entry.value)}
             </p>
           ))}
@@ -150,37 +152,37 @@ export default function Analytics() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Deep insights into your spending patterns
           </p>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: 'Total Spent', value: formatAmount(stats.total), icon: TrendingDown, color: 'text-destructive' },
             { label: 'Avg. Transaction', value: formatAmount(Math.round(stats.average)), icon: Target, color: 'text-primary' },
             { label: 'Highest Expense', value: formatAmount(stats.highest), icon: TrendingUp, color: 'text-accent' },
-            { label: 'Total Transactions', value: stats.count.toString(), icon: Calendar, color: 'text-success' },
+            { label: 'Transactions', value: stats.count.toString(), icon: Calendar, color: 'text-success' },
           ].map((stat, index) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-card rounded-xl p-4 shadow-card border border-border/50"
+              className="bg-card rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-card border border-border/50"
             >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
-                  <stat.icon className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`p-1.5 sm:p-2 rounded-lg bg-muted ${stat.color}`}>
+                  <stat.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  <p className="text-lg font-bold">{stat.value}</p>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
+                  <p className="text-sm sm:text-lg font-bold truncate">{stat.value}</p>
                 </div>
               </div>
             </motion.div>
@@ -188,15 +190,15 @@ export default function Analytics() {
         </div>
 
         {/* Spending Forecast - Full Width */}
-        <SpendingForecast transactions={transactions} />
+        <SpendingForecast transactions={filteredTransactions} />
 
         {/* Charts Grid */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Year over Year */}
-          <YearOverYearChart transactions={transactions} />
+          <YearOverYearChart transactions={filteredTransactions} />
 
           {/* Day of Week */}
-          <DayOfWeekChart transactions={transactions} />
+          <DayOfWeekChart transactions={filteredTransactions} />
 
           {/* Recurring Expenses */}
           <RecurringExpenses />
@@ -205,15 +207,15 @@ export default function Analytics() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+            className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
           >
-            <h3 className="text-lg font-semibold mb-4">Spending by Category</h3>
-            <div className="h-72">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Spending by Category</h3>
+            <div className="h-56 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryData.slice(0, 8)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                  <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     {categoryData.slice(0, 8).map((entry, index) => (
@@ -227,23 +229,23 @@ export default function Analytics() {
         </div>
 
         {/* Spending Heatmap - Full Width */}
-        <SpendingHeatmap transactions={transactions} />
+        <SpendingHeatmap transactions={filteredTransactions} />
 
         {/* More Charts */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Weekly Trend */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+            className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
           >
-            <h3 className="text-lg font-semibold mb-4">Weekly Spending</h3>
-            <div className="h-72">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Weekly Spending</h3>
+            <div className="h-56 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <XAxis dataKey="week" tick={{ fontSize: 10 }} />
+                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} width={35} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -255,15 +257,15 @@ export default function Analytics() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+            className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
           >
-            <h3 className="text-lg font-semibold mb-4">Last 30 Days</h3>
-            <div className="h-72">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Last 30 Days</h3>
+            <div className="h-56 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={2} />
-                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={3} />
+                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} width={35} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line
                     type="monotone"
@@ -283,18 +285,18 @@ export default function Analytics() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+            className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
           >
-            <h3 className="text-lg font-semibold mb-4">Spending by Account</h3>
-            <div className="h-72 flex items-center">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Spending by Account</h3>
+            <div className="h-56 sm:h-72 flex items-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={accountData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
-                    innerRadius={50}
+                    outerRadius="80%"
+                    innerRadius="45%"
                     paddingAngle={2}
                     dataKey="value"
                     label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}

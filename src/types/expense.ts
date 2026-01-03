@@ -9,6 +9,8 @@ export interface Tag {
   id: string;
   name: string;
   color: string;
+  isProject?: boolean;
+  isArchived?: boolean;
 }
 
 export interface Account {

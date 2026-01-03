@@ -72,20 +72,19 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-xl p-6 shadow-card border border-border/50"
+      className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
     >
-      <h3 className="text-lg font-semibold mb-4">Spending Heatmap</h3>
-      <div className="overflow-x-auto">
-        <div className="min-w-[600px]">
+      <h3 className="text-base sm:text-lg font-semibold mb-4">Spending Heatmap</h3>
+      <div className="overflow-x-auto -mx-1 px-1">
+        <div className="min-w-[500px]">
           {/* Month labels */}
-          <div className="flex mb-2 ml-10">
+          <div className="flex mb-2 ml-10 relative h-4">
             {monthLabels.map((month, i) => (
               <div
                 key={i}
-                className="text-xs text-muted-foreground"
+                className="text-xs text-muted-foreground absolute"
                 style={{ 
-                  position: 'absolute',
-                  left: `${40 + month.startIndex * 14}px`
+                  left: `${month.startIndex * 12}px`
                 }}
               >
                 {month.label}
@@ -93,12 +92,12 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
             ))}
           </div>
           
-          <div className="flex gap-[2px] mt-6">
+          <div className="flex gap-[2px] mt-2">
             {/* Day labels */}
-            <div className="flex flex-col gap-[2px] mr-2">
+            <div className="flex flex-col gap-[2px] mr-1.5">
               {dayLabels.map((day, i) => (
-                <div key={i} className="h-3 text-[10px] text-muted-foreground flex items-center">
-                  {i % 2 === 1 ? day : ''}
+                <div key={i} className="h-2.5 sm:h-3 text-[9px] sm:text-[10px] text-muted-foreground flex items-center">
+                  {i % 2 === 1 ? day.slice(0, 2) : ''}
                 </div>
               ))}
             </div>
@@ -110,7 +109,7 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
                   <div
                     key={dayIndex}
                     className={cn(
-                      'w-3 h-3 rounded-sm cursor-pointer transition-all hover:ring-2 hover:ring-primary/50',
+                      'w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm cursor-pointer transition-all hover:ring-1 hover:ring-primary/50',
                       getIntensityClass(day.amount)
                     )}
                     title={`${day.displayDate}: ${formatAmount(day.amount)}`}
@@ -123,12 +122,12 @@ export function SpendingHeatmap({ transactions }: SpendingHeatmapProps) {
           {/* Legend */}
           <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
             <span>Less</span>
-            <div className="flex gap-1">
-              <div className="w-3 h-3 rounded-sm bg-muted/30" />
-              <div className="w-3 h-3 rounded-sm bg-emerald-500/30" />
-              <div className="w-3 h-3 rounded-sm bg-yellow-500/50" />
-              <div className="w-3 h-3 rounded-sm bg-orange-500/60" />
-              <div className="w-3 h-3 rounded-sm bg-destructive/80" />
+            <div className="flex gap-0.5">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-muted/30" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-emerald-500/30" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-yellow-500/50" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-orange-500/60" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-destructive/80" />
             </div>
             <span>More</span>
           </div>

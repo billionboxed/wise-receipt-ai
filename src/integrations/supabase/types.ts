@@ -133,6 +133,8 @@ export type Database = {
           color: string
           created_at: string
           id: string
+          is_archived: boolean
+          is_project: boolean
           name: string
           user_id: string
         }
@@ -140,6 +142,8 @@ export type Database = {
           color: string
           created_at?: string
           id?: string
+          is_archived?: boolean
+          is_project?: boolean
           name: string
           user_id: string
         }
@@ -147,6 +151,8 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
+          is_archived?: boolean
+          is_project?: boolean
           name?: string
           user_id?: string
         }
