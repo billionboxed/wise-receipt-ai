@@ -1,7 +1,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Check } from 'lucide-react';
+import { Sun, Moon, Circle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ThemeSettings() {
@@ -28,6 +28,17 @@ export default function ThemeSettings() {
         bg: 'bg-gradient-to-br from-slate-900 to-slate-950',
         card: 'bg-slate-800/50',
         accent: 'bg-cyan-400',
+      },
+    },
+    {
+      id: 'mono',
+      name: 'Monochrome',
+      description: 'Elegant black & white',
+      icon: Circle,
+      preview: {
+        bg: 'bg-gradient-to-br from-neutral-950 to-black',
+        card: 'bg-neutral-900/60',
+        accent: 'bg-white',
       },
     },
   ];
