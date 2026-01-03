@@ -160,6 +160,83 @@
     --sidebar-border: 220 20% 12%;
     --sidebar-ring: 195 100% 50%;
   }
+
+  /* ===== MONOCHROME THEME ===== */
+  .mono {
+    --background: 0 0% 2%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 0 0% 85%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 0% 70%;
+    --destructive-foreground: 0 0% 0%;
+
+    --success: 0 0% 80%;
+    --success-foreground: 0 0% 0%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 0 0% 100%;
+
+    /* Expense tracker colors - grayscale */
+    --income: 0 0% 80%;
+    --expense: 0 0% 55%;
+    
+    /* Tag colors - grayscale spectrum */
+    --tag-purple: 0 0% 70%;
+    --tag-blue: 0 0% 65%;
+    --tag-green: 0 0% 75%;
+    --tag-orange: 0 0% 60%;
+    --tag-pink: 0 0% 68%;
+    --tag-teal: 0 0% 72%;
+
+    /* Glow effects - subtle white */
+    --glow-primary: 0 0% 100%;
+    --glow-accent: 0 0% 85%;
+    --glow-success: 0 0% 80%;
+    --glow-danger: 0 0% 55%;
+
+    /* Gradients - elegant grayscale */
+    --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 70%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 7%) 0%, hsl(0, 0%, 3%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(0, 0%, 4%) 0%, hsl(0, 0%, 2%) 100%);
+    --gradient-glow: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 75%) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+
+    /* Refined shadows */
+    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.5);
+    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.6);
+    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.7);
+    --shadow-xl: 0 16px 48px hsl(0 0% 0% / 0.8);
+    --shadow-glow: 0 0 30px hsl(0 0% 100% / 0.08), 0 0 60px hsl(0 0% 100% / 0.04);
+    --shadow-glow-accent: 0 0 30px hsl(0 0% 85% / 0.1), 0 0 60px hsl(0 0% 85% / 0.05);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.6), inset 0 1px 0 hsl(0 0% 15% / 0.4);
+
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 0 0% 65%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 0 0% 100%;
+  }
 }
 
 @layer base {
@@ -190,6 +267,10 @@
 
   .dark body {
     background: linear-gradient(180deg, hsl(220, 15%, 5%) 0%, hsl(220, 20%, 3%) 100%);
+  }
+
+  .mono body {
+    background: linear-gradient(180deg, hsl(0, 0%, 2%) 0%, hsl(0, 0%, 0%) 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -232,6 +313,11 @@
     border: 1px solid rgba(255,255,255,0.08);
   }
 
+  .mono .glass-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
   .glass-card::before {
     content: '';
     position: absolute;
@@ -242,7 +328,8 @@
     background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
   }
 
-  .dark .glass-card::before {
+  .dark .glass-card::before,
+  .mono .glass-card::before {
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   }
 
@@ -283,6 +370,11 @@
     border: 1px solid rgba(255,255,255,0.06);
   }
 
+  .mono .stat-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+
   .stat-card:hover {
     border-color: hsl(var(--primary) / 0.3);
     box-shadow: var(--shadow-glow);
@@ -298,7 +390,8 @@
     background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
   }
 
-  .dark .stat-card::before {
+  .dark .stat-card::before,
+  .mono .stat-card::before {
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   }
 
