@@ -8,6 +8,7 @@ import { ExpenseProvider } from "@/context/ExpenseContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { TransactionDialogProvider } from "@/context/TransactionDialogContext";
 import { AnalyticsFilterProvider } from "@/context/AnalyticsFilterContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
@@ -20,6 +21,7 @@ import CategoriesSettings from "./pages/settings/CategoriesSettings";
 import TagsSettings from "./pages/settings/TagsSettings";
 import AccountsSettings from "./pages/settings/AccountsSettings";
 import CurrencySettings from "./pages/settings/CurrencySettings";
+import ThemeSettings from "./pages/settings/ThemeSettings";
 import SettingsHub from "./pages/settings/SettingsHub";
 import RecurringExpensesSettings from "./pages/settings/RecurringExpensesSettings";
 import NotFound from "./pages/NotFound";
@@ -69,6 +71,7 @@ function AppRoutes() {
       <Route path="/settings/tags" element={<ProtectedRoute><TagsSettings /></ProtectedRoute>} />
       <Route path="/settings/accounts" element={<ProtectedRoute><AccountsSettings /></ProtectedRoute>} />
       <Route path="/settings/currency" element={<ProtectedRoute><CurrencySettings /></ProtectedRoute>} />
+      <Route path="/settings/theme" element={<ProtectedRoute><ThemeSettings /></ProtectedRoute>} />
       <Route path="/settings/recurring" element={<ProtectedRoute><RecurringExpensesSettings /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -77,17 +80,19 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <CurrencyProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
-      </CurrencyProvider>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </AuthProvider>
+        </CurrencyProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

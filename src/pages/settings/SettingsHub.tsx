@@ -1,12 +1,18 @@
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw } from 'lucide-react';
+import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const settingsItems = [
+  {
+    label: 'Appearance',
+    description: 'Theme and display settings',
+    path: '/settings/theme',
+    icon: Palette,
+  },
   {
     label: 'Categories',
     description: 'Manage expense categories',
@@ -46,7 +52,7 @@ export default function SettingsHub() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
             Settings
           </h1>
           <p className="text-muted-foreground mt-1">
