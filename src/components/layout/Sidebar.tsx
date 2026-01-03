@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Sparkles,
   LogOut,
+  RefreshCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const settingsNavItems: NavItem[] = [
   { label: 'Categories', path: '/settings/categories', icon: FolderTree },
   { label: 'Tags', path: '/settings/tags', icon: Tags },
   { label: 'Accounts', path: '/settings/accounts', icon: Wallet },
+  { label: 'Recurring', path: '/settings/recurring', icon: RefreshCcw },
 ];
 
 export function Sidebar() {
