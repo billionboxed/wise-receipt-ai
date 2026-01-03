@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef } from 'react';
-import { motion, useMotionValue, animate, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import {
   ArrowUpRight,
@@ -74,6 +74,8 @@ function SwipeableTransactionCard({
   formatAmount,
 }: SwipeableTransactionCardProps) {
   const x = useMotionValue(0);
+  const deleteOpacity = useTransform(x, [0, 8, 80], [0, 0.25, 1]);
+  const editOpacity = useTransform(x, [-80, -8, 0], [1, 0.25, 0]);
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const isDragging = useRef(false);
@@ -129,18 +131,28 @@ function SwipeableTransactionCard({
   return (
     <div className="relative overflow-hidden rounded-2xl" ref={containerRef}>
       {/* Left side - Delete (revealed on swipe right) */}
-      <div className="absolute left-0 top-0 bottom-0 flex items-center z-0">
-        <div className="h-full px-6 bg-destructive text-destructive-foreground flex items-center justify-center">
-          <Trash2 className="w-5 h-5" />
-        </div>
-      </div>
-      
+      {!isSelectionMode && (
+        <motion.div
+          style={{ opacity: deleteOpacity }}
+          className="absolute left-0 top-0 bottom-0 flex items-center z-0 pointer-events-none"
+        >
+          <div className="h-full px-6 bg-destructive text-destructive-foreground flex items-center justify-center">
+            <Trash2 className="w-5 h-5" />
+          </div>
+        </motion.div>
+      )}
+
       {/* Right side - Edit (revealed on swipe left) */}
-      <div className="absolute right-0 top-0 bottom-0 flex items-center z-0">
-        <div className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center">
-          <Edit2 className="w-5 h-5" />
-        </div>
-      </div>
+      {!isSelectionMode && (
+        <motion.div
+          style={{ opacity: editOpacity }}
+          className="absolute right-0 top-0 bottom-0 flex items-center z-0 pointer-events-none"
+        >
+          <div className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center">
+            <Edit2 className="w-5 h-5" />
+          </div>
+        </motion.div>
+      )}
 
       {/* Swipeable card */}
       <motion.div
@@ -161,7 +173,7 @@ function SwipeableTransactionCard({
           "p-4 space-y-3 relative z-10 transition-colors rounded-2xl border border-border",
           "bg-background",
           isSelectionMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
-          isSelected && "bg-primary/10 ring-2 ring-primary"
+          isSelected && "bg-muted ring-2 ring-primary"
         )}
       >
         {/* Selected checkmark indicator */}
