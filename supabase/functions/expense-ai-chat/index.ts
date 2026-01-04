@@ -11,12 +11,35 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, expenseContext } = await req.json();
+    const body = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    // Support both request formats:
+    // Format 1 (ExpenseAIChat.tsx): { messages, expenseContext }
+    // Format 2 (AIChat.tsx): { message, context, conversationHistory }
+    let chatMessages: Array<{ role: string; content: string }> = [];
+    let expenseContext = body.expenseContext || body.context || {};
+
+    if (body.messages && Array.isArray(body.messages)) {
+      // Format 1: messages array from ExpenseAIChat
+      chatMessages = body.messages;
+    } else if (body.message) {
+      // Format 2: single message with conversationHistory from AIChat
+      const history = body.conversationHistory || [];
+      chatMessages = [
+        ...history.map((m: { role: string; content: string }) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        { role: "user", content: body.message },
+      ];
+    }
+
+    console.log("Processing chat request with", chatMessages.length, "messages");
 
     const systemPrompt = `You are an intelligent expense tracker assistant. You help users:
 1. Analyze their spending patterns and provide insights
@@ -63,7 +86,7 @@ Be concise, helpful, and conversational. Use the ₹ symbol for amounts.`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages,
+          ...chatMessages,
         ],
         stream: true,
       }),
