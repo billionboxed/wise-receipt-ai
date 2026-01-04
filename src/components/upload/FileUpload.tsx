@@ -52,6 +52,42 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       // Check in both text content and filename
       const searchText = lowerText + ' ' + lowerFileName;
       
+      // International bank keywords mapping
+      const bankKeywords: Record<string, string[]> = {
+        // Canada
+        'rbc': ['rbc', 'royal bank'],
+        'td': ['td bank', 'td canada', 'toronto-dominion'],
+        'bmo': ['bmo', 'bank of montreal'],
+        'scotiabank': ['scotiabank', 'scotia'],
+        'cibc': ['cibc'],
+        'tangerine': ['tangerine'],
+        'simplii': ['simplii'],
+        // USA
+        'chase': ['chase', 'jpmorgan'],
+        'bank of america': ['bank of america', 'bofa'],
+        'wells fargo': ['wells fargo'],
+        'citibank': ['citibank', 'citi'],
+        'capital one': ['capital one'],
+        'amex': ['american express', 'amex'],
+        // India
+        'kotak': ['kotak', 'kmbl'],
+        'icici': ['icici'],
+        'hdfc': ['hdfc'],
+        'axis': ['axis'],
+        'sbi': ['sbi', 'state bank'],
+        // UK
+        'barclays': ['barclays'],
+        'hsbc': ['hsbc'],
+        'lloyds': ['lloyds'],
+        'monzo': ['monzo'],
+        'revolut': ['revolut'],
+        // Australia
+        'commonwealth': ['commonwealth', 'cba'],
+        'anz': ['anz'],
+        'westpac': ['westpac'],
+        'nab': ['nab'],
+      };
+      
       for (const account of accounts) {
         const accountNameLower = account.name.toLowerCase();
         
@@ -60,12 +96,14 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           return account.id;
         }
         
-        // Common bank keywords
-        if (accountNameLower.includes('kotak') && (searchText.includes('kotak') || searchText.includes('kmbl'))) return account.id;
-        if (accountNameLower.includes('icici') && searchText.includes('icici')) return account.id;
-        if (accountNameLower.includes('hdfc') && searchText.includes('hdfc')) return account.id;
-        if (accountNameLower.includes('axis') && searchText.includes('axis')) return account.id;
-        if (accountNameLower.includes('sbi') && searchText.includes('sbi')) return account.id;
+        // Check bank keywords
+        for (const [bankName, keywords] of Object.entries(bankKeywords)) {
+          if (accountNameLower.includes(bankName)) {
+            if (keywords.some(kw => searchText.includes(kw))) {
+              return account.id;
+            }
+          }
+        }
       }
       return undefined;
     },
@@ -77,18 +115,32 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       const lowerDesc = description.toLowerCase();
 
       const rules: { keywords: string[]; categoryMain: string }[] = [
-        { keywords: ['grocery', 'supermarket', 'big bazaar', 'dmart', 'reliance fresh'], categoryMain: 'Household' },
-        { keywords: ['fuel', 'petrol', 'diesel', 'hp', 'indian oil', 'bharat petroleum'], categoryMain: 'Fuel' },
-        { keywords: ['restaurant', 'food', 'zomato', 'swiggy', 'uber eats', 'dominos', 'pizza'], categoryMain: 'Food' },
-        { keywords: ['netflix', 'spotify', 'amazon prime', 'disney', 'subscription', 'hotstar'], categoryMain: 'Subscriptions' },
-        { keywords: ['electricity', 'bill', 'water', 'gas', 'internet', 'mobile', 'phone'], categoryMain: 'Household' },
-        { keywords: ['movie', 'pvr', 'inox', 'cinema', 'entertainment'], categoryMain: 'Entertainment' },
-        { keywords: ['zara', 'h&m', 'clothes', 'apparel', 'fashion', 'shopping'], categoryMain: 'Apparel' },
-        { keywords: ['doctor', 'hospital', 'medical', 'pharmacy', 'medicine', 'health'], categoryMain: 'Health' },
-        { keywords: ['vacation', 'travel', 'hotel', 'flight', 'trip', 'holiday'], categoryMain: 'Vacation' },
-        { keywords: ['school', 'college', 'course', 'education', 'tuition'], categoryMain: 'Education' },
-        { keywords: ['maintenance', 'service', 'repair', 'car', 'bike'], categoryMain: 'Transportation' },
-        { keywords: ['insurance', 'premium', 'policy'], categoryMain: 'Transportation' },
+        // Food & Dining (International)
+        { keywords: ['restaurant', 'food', 'zomato', 'swiggy', 'uber eats', 'doordash', 'skip the dishes', 'grubhub', 'dominos', 'pizza', 'mcdonald', 'starbucks', 'tim hortons', 'subway', 'wendy', 'burger king', 'kfc', 'taco bell', 'chipotle', 'panera', 'dunkin'], categoryMain: 'Food' },
+        // Groceries (International)
+        { keywords: ['grocery', 'supermarket', 'big bazaar', 'dmart', 'reliance fresh', 'walmart', 'costco', 'loblaws', 'sobeys', 'metro', 'no frills', 'safeway', 'whole foods', 'trader joe', 'kroger', 'publix', 'target', 'aldi', 'lidl', 'tesco', 'sainsbury', 'coles', 'woolworths'], categoryMain: 'Household' },
+        // Fuel (International)
+        { keywords: ['fuel', 'petrol', 'diesel', 'gas station', 'shell', 'esso', 'petro-canada', 'chevron', 'bp', 'exxon', 'mobil', 'sunoco', 'hp', 'indian oil', 'bharat petroleum'], categoryMain: 'Fuel' },
+        // Entertainment & Subscriptions
+        { keywords: ['netflix', 'spotify', 'amazon prime', 'disney', 'subscription', 'hotstar', 'hulu', 'apple music', 'youtube premium', 'hbo max', 'paramount', 'crave'], categoryMain: 'Subscriptions' },
+        { keywords: ['movie', 'pvr', 'inox', 'cinema', 'entertainment', 'cineplex', 'amc', 'regal'], categoryMain: 'Entertainment' },
+        // Utilities
+        { keywords: ['electricity', 'bill', 'water', 'gas', 'internet', 'mobile', 'phone', 'hydro', 'enbridge', 'rogers', 'bell', 'telus', 'at&t', 'verizon', 'comcast', 'xfinity'], categoryMain: 'Household' },
+        // Shopping & Apparel
+        { keywords: ['zara', 'h&m', 'clothes', 'apparel', 'fashion', 'shopping', 'gap', 'old navy', 'uniqlo', 'nike', 'adidas', 'lululemon', 'sephora', 'ulta'], categoryMain: 'Apparel' },
+        // Health
+        { keywords: ['doctor', 'hospital', 'medical', 'pharmacy', 'medicine', 'health', 'shoppers drug mart', 'cvs', 'walgreens', 'rexall', 'dental', 'clinic'], categoryMain: 'Health' },
+        // Travel
+        { keywords: ['vacation', 'travel', 'hotel', 'flight', 'trip', 'holiday', 'airbnb', 'expedia', 'booking.com', 'marriott', 'hilton', 'delta', 'united', 'air canada', 'westjet', 'american airlines'], categoryMain: 'Vacation' },
+        // Transportation
+        { keywords: ['uber', 'lyft', 'taxi', 'transit', 'parking', 'presto', 'compass', 'mta', 'ttc'], categoryMain: 'Fuel' },
+        // Education
+        { keywords: ['school', 'college', 'course', 'education', 'tuition', 'university'], categoryMain: 'Education' },
+        // Transportation & Insurance
+        { keywords: ['maintenance', 'service', 'repair', 'car', 'bike', 'auto'], categoryMain: 'Transportation' },
+        { keywords: ['insurance', 'premium', 'policy'], categoryMain: 'Insurance' },
+        // E-commerce
+        { keywords: ['amazon', 'ebay', 'etsy', 'best buy', 'apple store'], categoryMain: 'Misc' },
       ];
 
       for (const rule of rules) {
@@ -111,15 +163,51 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       // First try to match by detected account name from AI
       if (accountName) {
         const lowerName = accountName.toLowerCase();
+        
+        // International bank mapping for AI-detected names
+        const bankAliases: Record<string, string[]> = {
+          // Canada
+          'rbc': ['rbc', 'royal bank'],
+          'td': ['td bank', 'td'],
+          'bmo': ['bmo', 'bank of montreal'],
+          'scotiabank': ['scotiabank', 'scotia'],
+          'cibc': ['cibc'],
+          'tangerine': ['tangerine'],
+          // USA
+          'chase': ['chase', 'jpmorgan'],
+          'bank of america': ['bank of america', 'bofa'],
+          'wells fargo': ['wells fargo'],
+          'capital one': ['capital one'],
+          'amex': ['american express', 'amex'],
+          // India
+          'kotak': ['kotak', 'kotak bank'],
+          'icici': ['icici'],
+          'hdfc': ['hdfc'],
+          'axis': ['axis'],
+          'sbi': ['sbi', 'state bank'],
+          // UK
+          'hsbc': ['hsbc'],
+          'monzo': ['monzo'],
+          'revolut': ['revolut'],
+        };
+        
         for (const account of accounts) {
-          if (account.name.toLowerCase().includes(lowerName) || lowerName.includes(account.name.toLowerCase())) {
+          const accountNameLower = account.name.toLowerCase();
+          
+          // Direct match
+          if (accountNameLower.includes(lowerName) || lowerName.includes(accountNameLower)) {
             return account.id;
           }
-          // Check for partial matches
-          if (lowerName.includes('kotak') && account.name.toLowerCase().includes('kotak')) return account.id;
-          if (lowerName.includes('icici') && account.name.toLowerCase().includes('icici')) return account.id;
-          if (lowerName.includes('hdfc') && account.name.toLowerCase().includes('hdfc')) return account.id;
-          if (lowerName.includes('axis') && account.name.toLowerCase().includes('axis')) return account.id;
+          
+          // Check via aliases
+          for (const [bankKey, aliases] of Object.entries(bankAliases)) {
+            const matchesAccount = accountNameLower.includes(bankKey) || aliases.some(a => accountNameLower.includes(a));
+            const matchesDetected = lowerName.includes(bankKey) || aliases.some(a => lowerName.includes(a));
+            
+            if (matchesAccount && matchesDetected) {
+              return account.id;
+            }
+          }
         }
       }
       
@@ -168,7 +256,9 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to parse PDF');
+        const errorMessage = data.error || 'Failed to parse PDF';
+        const hint = data.hint || 'Try uploading a clearer PDF or use Excel/CSV format.';
+        throw new Error(`${errorMessage}\n\n${hint}`);
       }
 
       const parsedData = data.data;
