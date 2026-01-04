@@ -24,7 +24,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [isTourActive, setIsTourActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   
-  const totalSteps = 8; // Number of tour steps
+  const totalSteps = 9; // Number of tour steps
 
   // Auto-start tour for new users after a brief delay
   useEffect(() => {

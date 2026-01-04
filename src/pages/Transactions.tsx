@@ -44,7 +44,11 @@ export default function Transactions() {
                 Upload
               </Link>
             </Button>
-            <Button onClick={handleAddClick} className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
+            <Button 
+              onClick={handleAddClick} 
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+              data-tour="add-transaction"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Transaction
             </Button>
