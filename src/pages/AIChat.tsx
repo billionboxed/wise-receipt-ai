@@ -71,72 +71,173 @@ export default function AIChat() {
   const getExpenseContext = useCallback(() => {
     const now = new Date();
     const confirmedTransactions = transactions.filter(t => t.status === 'confirmed');
+    const debitTransactions = confirmedTransactions.filter(t => t.type === 'debit');
     
-    // Current month transactions
-    const thisMonth = confirmedTransactions.filter(t => {
+    // Current month
+    const thisMonthTxns = debitTransactions.filter(t => {
       const date = new Date(t.date);
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     });
+    const thisMonthSpent = thisMonthTxns.reduce((sum, t) => sum + t.amount, 0);
 
-    const thisMonthSpent = thisMonth.filter(t => t.type === 'debit')
-      .reduce((sum, t) => sum + t.amount, 0);
+    // Last month
+    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const lastMonthTxns = debitTransactions.filter(t => {
+      const date = new Date(t.date);
+      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+    });
+    const lastMonthSpent = lastMonthTxns.reduce((sum, t) => sum + t.amount, 0);
 
-    // All-time spending by category
-    const categorySpending = confirmedTransactions
-      .filter(t => t.type === 'debit')
-      .reduce((acc, t) => {
-        const cat = categories.find(c => c.id === t.categoryId);
-        const catName = cat?.combined || 'Uncategorized';
-        acc[catName] = (acc[catName] || 0) + t.amount;
-        return acc;
-      }, {} as Record<string, number>);
+    // Category spending (all-time with details)
+    const categorySpending: Record<string, { total: number; count: number; avgTransaction: number }> = {};
+    debitTransactions.forEach(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      const catName = cat?.combined || 'Uncategorized';
+      if (!categorySpending[catName]) {
+        categorySpending[catName] = { total: 0, count: 0, avgTransaction: 0 };
+      }
+      categorySpending[catName].total += t.amount;
+      categorySpending[catName].count += 1;
+    });
+    Object.values(categorySpending).forEach(cat => {
+      cat.avgTransaction = cat.count > 0 ? Math.round(cat.total / cat.count) : 0;
+    });
 
-    // Spending by year
-    const yearlySpending = confirmedTransactions
-      .filter(t => t.type === 'debit')
-      .reduce((acc, t) => {
-        const year = new Date(t.date).getFullYear().toString();
-        acc[year] = (acc[year] || 0) + t.amount;
-        return acc;
-      }, {} as Record<string, number>);
-
-    // Total all-time spending
-    const totalAllTimeSpent = confirmedTransactions
-      .filter(t => t.type === 'debit')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    // Spending by tag
-    const tagSpending = confirmedTransactions
-      .filter(t => t.type === 'debit' && t.tagIds && t.tagIds.length > 0)
-      .reduce((acc, t) => {
-        t.tagIds?.forEach(tagId => {
-          const tag = tags.find(tg => tg.id === tagId);
-          if (tag) {
-            acc[tag.name] = (acc[tag.name] || 0) + t.amount;
-          }
+    // Monthly spending by category (last 6 months)
+    const monthlyByCategory: Record<string, Record<string, number>> = {};
+    for (let i = 0; i < 6; i++) {
+      const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = format(m, 'MMM yyyy');
+      monthlyByCategory[monthKey] = {};
+      
+      debitTransactions
+        .filter(t => {
+          const d = new Date(t.date);
+          return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear();
+        })
+        .forEach(t => {
+          const cat = categories.find(c => c.id === t.categoryId)?.combined || 'Uncategorized';
+          monthlyByCategory[monthKey][cat] = (monthlyByCategory[monthKey][cat] || 0) + t.amount;
         });
-        return acc;
-      }, {} as Record<string, number>);
+    }
+
+    // Yearly spending
+    const yearlySpending: Record<string, number> = {};
+    debitTransactions.forEach(t => {
+      const year = new Date(t.date).getFullYear().toString();
+      yearlySpending[year] = (yearlySpending[year] || 0) + t.amount;
+    });
+
+    // Monthly spending trend
+    const monthlySpending: Record<string, number> = {};
+    debitTransactions.forEach(t => {
+      const monthKey = format(new Date(t.date), 'MMM yyyy');
+      monthlySpending[monthKey] = (monthlySpending[monthKey] || 0) + t.amount;
+    });
+
+    // Tag spending with details
+    const tagSpending: Record<string, { total: number; count: number; isArchived: boolean; isProject: boolean }> = {};
+    debitTransactions.forEach(t => {
+      t.tagIds?.forEach(tagId => {
+        const tag = tags.find(tg => tg.id === tagId);
+        if (tag) {
+          if (!tagSpending[tag.name]) {
+            tagSpending[tag.name] = { total: 0, count: 0, isArchived: tag.isArchived || false, isProject: tag.isProject || false };
+          }
+          tagSpending[tag.name].total += t.amount;
+          tagSpending[tag.name].count += 1;
+        }
+      });
+    });
+
+    // Account spending
+    const accountSpending: Record<string, { total: number; count: number; type: string }> = {};
+    debitTransactions.forEach(t => {
+      const acc = accounts.find(a => a.id === t.accountId);
+      if (acc) {
+        if (!accountSpending[acc.name]) {
+          accountSpending[acc.name] = { total: 0, count: 0, type: acc.type };
+        }
+        accountSpending[acc.name].total += t.amount;
+        accountSpending[acc.name].count += 1;
+      }
+    });
+
+    // Top expenses
+    const topExpenses = [...debitTransactions]
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10)
+      .map(t => ({
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        category: categories.find(c => c.id === t.categoryId)?.combined,
+        account: accounts.find(a => a.id === t.accountId)?.name,
+        tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean)
+      }));
+
+    // Recent transactions
+    const recentTransactions = [...debitTransactions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 20)
+      .map(t => ({
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        category: categories.find(c => c.id === t.categoryId)?.combined,
+        account: accounts.find(a => a.id === t.accountId)?.name,
+        tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean)
+      }));
+
+    // All transactions summary for complex queries
+    const allTransactionsSummary = debitTransactions.map(t => ({
+      date: t.date,
+      description: t.description,
+      amount: t.amount,
+      category: categories.find(c => c.id === t.categoryId)?.combined || 'Uncategorized',
+      account: accounts.find(a => a.id === t.accountId)?.name,
+      tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean) || []
+    }));
+
+    // Statistics
+    const totalAllTimeSpent = debitTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const avgTransactionAmount = debitTransactions.length > 0 ? Math.round(totalAllTimeSpent / debitTransactions.length) : 0;
+    const highestExpense = debitTransactions.length > 0 ? Math.max(...debitTransactions.map(t => t.amount)) : 0;
+    const lowestExpense = debitTransactions.length > 0 ? Math.min(...debitTransactions.map(t => t.amount)) : 0;
 
     return {
       currentDate: format(now, 'MMMM d, yyyy'),
       currentMonth: format(now, 'MMMM yyyy'),
+      
+      // Spending totals
       thisMonthSpent,
+      lastMonthSpent,
       totalAllTimeSpent,
-      yearlySpending,
+      monthOverMonthChange: lastMonthSpent > 0 ? ((thisMonthSpent - lastMonthSpent) / lastMonthSpent * 100).toFixed(1) + '%' : 'N/A',
+      
+      // Statistics
+      transactionCount: debitTransactions.length,
+      avgTransactionAmount,
+      highestExpense,
+      lowestExpense,
+      
+      // Breakdowns
       categorySpending,
+      monthlyByCategory,
+      yearlySpending,
+      monthlySpending,
       tagSpending,
-      transactionCount: confirmedTransactions.length,
-      recentTransactions: thisMonth.slice(0, 10).map(t => ({
-        date: t.date,
-        description: t.description,
-        amount: t.amount,
-        type: t.type,
-        category: categories.find(c => c.id === t.categoryId)?.combined,
-        tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean)
-      })),
-      availableCategories: categories.map(c => c.combined),
-      availableAccounts: accounts.map(a => a.name),
+      accountSpending,
+      
+      // Transaction lists
+      topExpenses,
+      recentTransactions,
+      allTransactions: allTransactionsSummary,
+      
+      // Available options
+      availableCategories: categories.map(c => ({ name: c.combined, main: c.main, sub: c.sub })),
+      availableAccounts: accounts.map(a => ({ name: a.name, type: a.type })),
       availableTags: tags.map(t => ({ name: t.name, isArchived: t.isArchived, isProject: t.isProject }))
     };
   }, [transactions, categories, accounts, tags]);
