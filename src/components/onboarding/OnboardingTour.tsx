@@ -43,14 +43,11 @@ const tourSteps: TourStep[] = [
   {
     id: 'add-transaction',
     title: 'Add Your First Transaction',
-    description: 'Click the "Add Transaction" button to create your first expense entry.',
-    action: 'Tap "Add Transaction" button',
+    description: 'Use the "Add Transaction" button at the top to create your first expense entry. You can minimize this tour to try it out!',
+    action: 'Minimize tour → Add a transaction → Resume tour',
     icon: Plus,
     route: '/transactions',
-    elementSelector: '[data-tour="add-transaction"]',
-    position: 'bottom',
-    waitForAction: true,
-    hideOnDialog: true,
+    position: 'center',
   },
   {
     id: 'fill-transaction',
