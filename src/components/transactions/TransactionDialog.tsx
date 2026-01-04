@@ -270,7 +270,7 @@ export function TransactionDialog({
           <div className="space-y-2">
             <Label>Tags</Label>
             <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-background/50 border border-border/50 min-h-[48px]">
-              {tags.map(tag => {
+              {tags.filter(tag => !tag.isArchived).map(tag => {
                 const isSelected = formData.tagIds.includes(tag.id);
                 return (
                   <Badge
