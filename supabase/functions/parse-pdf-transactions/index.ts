@@ -33,49 +33,101 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert financial document parser specializing in Indian bank statements. Your task is to extract transactions from bank statement PDFs.
+    const systemPrompt = `You are an expert financial document parser specializing in bank and credit card statements from ANY country worldwide. Your task is to extract transactions from bank statement PDFs accurately.
 
-IMPORTANT GUIDELINES:
-1. Extract ALL transactions from the document
-2. For each transaction, identify:
-   - date: In YYYY-MM-DD format
-   - description: The transaction narration/description
-   - amount: The transaction amount (positive number)
-   - type: Either "debit" (withdrawal/expense) or "credit" (deposit/income)
+CRITICAL GUIDELINES:
+1. Extract ALL transactions from the document - do not skip any
+2. Handle various date formats and convert to YYYY-MM-DD:
+   - MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, DD-Mon-YYYY, etc.
+   - Use context clues (country, bank) to determine date format
+3. For each transaction, identify:
+   - date: In YYYY-MM-DD format (required)
+   - description: The transaction narration/description (required)
+   - amount: The transaction amount as positive number (required)
+   - type: Either "debit" (withdrawal/expense/purchase) or "credit" (deposit/income/refund)
 
-3. Detect the bank/account from the document if possible. Common Indian banks:
+4. Detect the bank/account from the document. Common banks by region:
+
+   CANADA:
+   - Royal Bank of Canada, RBC -> "RBC"
+   - Toronto-Dominion Bank, TD -> "TD Bank"
+   - Bank of Montreal, BMO -> "BMO"
+   - Scotiabank -> "Scotiabank"
+   - CIBC -> "CIBC"
+   - National Bank -> "National Bank"
+   - Tangerine -> "Tangerine"
+   - Simplii -> "Simplii"
+   
+   USA:
+   - Chase, JPMorgan -> "Chase"
+   - Bank of America, BofA -> "Bank of America"
+   - Wells Fargo -> "Wells Fargo"
+   - Citibank, Citi -> "Citibank"
+   - Capital One -> "Capital One"
+   - American Express, Amex -> "Amex"
+   - Discover -> "Discover"
+   
+   INDIA:
    - Kotak Mahindra Bank -> "Kotak Bank"
-   - ICICI Bank Credit Card -> "ICICI Credit Card"
-   - HDFC Bank Credit Card -> "HDFC Credit Card"
-   - Axis Bank Credit Card -> "Axis Credit Card"
+   - ICICI Bank -> "ICICI Bank"
+   - HDFC Bank -> "HDFC Bank"
+   - Axis Bank -> "Axis Bank"
+   - State Bank of India, SBI -> "SBI"
+   
+   UK:
+   - Barclays -> "Barclays"
+   - HSBC -> "HSBC"
+   - Lloyds -> "Lloyds"
+   - NatWest -> "NatWest"
+   - Monzo -> "Monzo"
+   - Revolut -> "Revolut"
+   
+   AUSTRALIA:
+   - Commonwealth Bank, CBA -> "Commonwealth Bank"
+   - ANZ -> "ANZ"
+   - Westpac -> "Westpac"
+   - NAB -> "NAB"
 
-4. Suggest categories based on transaction descriptions:
-   - Food-related (Zomato, Swiggy, restaurants) -> "Food"
-   - Fuel (petrol pumps, HP, Indian Oil) -> "Fuel"
-   - Groceries (BigBazaar, DMart) -> "Household"
-   - Entertainment (Netflix, Spotify, PVR) -> "Entertainment" or "Subscriptions"
-   - Travel (flights, hotels, MakeMyTrip) -> "Vacation"
-   - Medical/pharmacy -> "Health"
-   - Shopping/apparel -> "Apparel"
-   - Utilities/bills -> "Household"
-   - Default -> "Misc"
+   For credit cards, append "Credit Card" (e.g., "RBC Credit Card", "Chase Credit Card")
+
+5. Suggest categories based on transaction descriptions (universal):
+   - Food/Dining (restaurants, DoorDash, UberEats, Zomato, Swiggy, McDonald's, Starbucks) -> "Food"
+   - Groceries (Walmart, Costco, Loblaws, Safeway, Whole Foods, Metro, No Frills, BigBazaar, DMart) -> "Household"
+   - Fuel/Gas (Shell, Esso, Petro-Canada, Chevron, BP, gas station, petrol) -> "Fuel"
+   - Entertainment (Netflix, Spotify, Disney+, Apple Music, cinema, movies, gaming) -> "Entertainment" or "Subscriptions"
+   - Travel (airlines, Expedia, Booking.com, Airbnb, hotels, flights) -> "Vacation"
+   - Transportation (Uber, Lyft, taxi, transit, parking) -> "Fuel"
+   - Medical/Health (pharmacy, doctor, hospital, dental) -> "Health"
+   - Shopping/Retail (Amazon, eBay, clothing stores) -> "Apparel"
+   - Utilities (electricity, water, internet, phone, hydro) -> "Household"
+   - Insurance -> "Insurance"
+   - Transfers between accounts -> "Transfers"
+   - ATM withdrawals -> "Misc"
+   - Default for unrecognized -> "Misc"
+
+6. Handle edge cases:
+   - If amount has currency symbol, extract just the number
+   - If a transaction spans multiple lines, combine into single description
+   - For pending transactions, still include them
+   - Ignore header rows, summary rows, and balance information
 
 Return a JSON object with this exact structure:
 {
   "transactions": [
     {
       "date": "2024-01-15",
-      "description": "ZOMATO ORDER",
-      "amount": 450.00,
+      "description": "STARBUCKS #12345",
+      "amount": 5.75,
       "type": "debit",
       "suggestedCategory": "Food"
     }
   ],
-  "detectedAccount": "Kotak Bank" or null,
-  "totalTransactions": 10
+  "detectedAccount": "RBC Credit Card" or null,
+  "totalTransactions": 10,
+  "detectedCurrency": "CAD" or "USD" or "INR" or null
 }
 
-ONLY return valid JSON, no markdown or explanations.`;
+ONLY return valid JSON, no markdown or explanations. If you cannot parse the document, return {"transactions": [], "detectedAccount": null, "totalTransactions": 0, "error": "reason"}.`;
 
     console.log('Calling Lovable AI for PDF parsing...');
 
@@ -158,7 +210,33 @@ ONLY return valid JSON, no markdown or explanations.`;
 
     try {
       const parsedData = JSON.parse(cleanContent);
-      console.log(`Successfully parsed ${parsedData.transactions?.length || 0} transactions`);
+      
+      // Validate and sanitize the parsed data
+      if (!parsedData.transactions || !Array.isArray(parsedData.transactions)) {
+        parsedData.transactions = [];
+      }
+      
+      // Clean up transactions - ensure all required fields exist
+      parsedData.transactions = parsedData.transactions.map((t: any, index: number) => ({
+        date: t.date || new Date().toISOString().split('T')[0],
+        description: t.description || `Transaction ${index + 1}`,
+        amount: typeof t.amount === 'number' ? Math.abs(t.amount) : parseFloat(String(t.amount).replace(/[^0-9.-]/g, '')) || 0,
+        type: t.type === 'credit' ? 'credit' : 'debit',
+        suggestedCategory: t.suggestedCategory || 'Misc'
+      })).filter((t: any) => t.amount > 0); // Filter out zero/invalid amounts
+      
+      parsedData.totalTransactions = parsedData.transactions.length;
+      
+      console.log(`Successfully parsed ${parsedData.transactions.length} transactions from ${parsedData.detectedAccount || 'unknown bank'}`);
+      
+      // Check if AI returned an error message
+      if (parsedData.error && parsedData.transactions.length === 0) {
+        console.error('AI parsing error:', parsedData.error);
+        return new Response(
+          JSON.stringify({ success: false, error: `Could not parse statement: ${parsedData.error}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       return new Response(
         JSON.stringify({ success: true, data: parsedData }),
@@ -166,11 +244,16 @@ ONLY return valid JSON, no markdown or explanations.`;
       );
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError);
-      console.error('Content was:', cleanContent.substring(0, 500));
+      console.error('Content was:', cleanContent.substring(0, 1000));
       
+      // Try to extract any transaction-like data from the response
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to parse transaction data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: false, 
+          error: 'Unable to parse the bank statement. Please ensure the PDF is a valid bank or credit card statement with readable text.',
+          hint: 'Try uploading a clearer PDF or use Excel/CSV format for better results.'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
