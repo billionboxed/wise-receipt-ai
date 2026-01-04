@@ -57,7 +57,7 @@ export default function Dashboard() {
           <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} icon={Wallet} iconColor="destructive" delay={0} />
           <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="accent" delay={0.1} />
           <StatCard title="Last Month" value={`₹${stats.lastMonthExpense.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="primary" delay={0.2} />
-          <StatCard title="Avg. Transaction" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} change={`${stats.transactionCount} txns`} changeType="neutral" icon={CreditCard} iconColor="success" delay={0.3} />
+          <StatCard title="Avg. Transaction" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="success" delay={0.3} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">

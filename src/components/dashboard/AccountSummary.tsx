@@ -85,7 +85,7 @@ export function AccountSummary() {
                   ₹{account.spent.toLocaleString('en-IN')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {account.transactionCount} txns
+                  {account.transactionCount} transactions
                 </p>
               </div>
             </div>
