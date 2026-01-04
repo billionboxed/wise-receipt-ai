@@ -13,7 +13,9 @@ import {
   Pencil,
   Trash2,
   Archive,
-  Sparkles
+  Sparkles,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 
 interface TourStep {
@@ -26,6 +28,7 @@ interface TourStep {
   elementSelector?: string;
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
   waitForAction?: boolean;
+  hideOnDialog?: boolean;
 }
 
 const tourSteps: TourStep[] = [
@@ -47,6 +50,7 @@ const tourSteps: TourStep[] = [
     elementSelector: '[data-tour="add-transaction"]',
     position: 'bottom',
     waitForAction: true,
+    hideOnDialog: true,
   },
   {
     id: 'fill-transaction',
@@ -117,12 +121,49 @@ export function OnboardingTour() {
   const navigate = useNavigate();
   const location = useLocation();
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const step = tourSteps[currentStep];
 
+  // Detect if a dialog is open
+  useEffect(() => {
+    if (!isTourActive) return;
+
+    const checkForDialog = () => {
+      const dialogElement = document.querySelector('[role="dialog"]');
+      const isOpen = !!dialogElement;
+      setDialogOpen(isOpen);
+      
+      // Auto-minimize when dialog opens on steps that should hide
+      if (isOpen && step?.hideOnDialog) {
+        setIsMinimized(true);
+      }
+    };
+
+    // Check immediately and set up observer
+    checkForDialog();
+    
+    const observer = new MutationObserver(checkForDialog);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [isTourActive, step?.hideOnDialog]);
+
+  // Auto-advance when dialog closes after add-transaction step
+  useEffect(() => {
+    if (!isTourActive || !isMinimized) return;
+    
+    if (!dialogOpen && step?.id === 'add-transaction') {
+      // Dialog closed after add-transaction, advance to next step
+      setIsMinimized(false);
+      nextStep();
+    }
+  }, [dialogOpen, isTourActive, isMinimized, step?.id, nextStep]);
+
   // Find and highlight the target element
   const updateHighlight = useCallback(() => {
-    if (!step?.elementSelector) {
+    if (!step?.elementSelector || isMinimized) {
       setHighlightRect(null);
       return;
     }
@@ -134,7 +175,7 @@ export function OnboardingTour() {
     } else {
       setHighlightRect(null);
     }
-  }, [step?.elementSelector]);
+  }, [step?.elementSelector, isMinimized]);
 
   // Navigate to step's route
   useEffect(() => {
@@ -164,6 +205,26 @@ export function OnboardingTour() {
   const isLastStep = currentStep === totalSteps - 1;
   const Icon = step.icon;
   const isCentered = step.position === 'center' || !highlightRect;
+
+  // Minimized floating pill
+  if (isMinimized) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="fixed bottom-24 right-4 z-[100]"
+      >
+        <button
+          onClick={() => setIsMinimized(false)}
+          className="flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="text-sm font-medium">Tour: Step {currentStep + 1}/{totalSteps}</span>
+          <Maximize2 className="w-4 h-4" />
+        </button>
+      </motion.div>
+    );
+  }
 
   // Create SVG mask path for spotlight effect
   const createSpotlightMask = () => {
@@ -267,7 +328,7 @@ export function OnboardingTour() {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className={`fixed z-50 ${
+        className={`fixed z-[52] ${
           isCentered
             ? 'inset-x-4 bottom-24 lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:inset-auto lg:w-full lg:max-w-md'
             : 'left-4 right-4 lg:left-auto lg:right-auto lg:w-96'
@@ -293,14 +354,25 @@ export function OnboardingTour() {
                 Step {currentStep + 1} of {totalSteps}
               </span>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={endTour}
-            >
-              <X className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setIsMinimized(true)}
+                title="Minimize tour"
+              >
+                <Minimize2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={endTour}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Content */}
