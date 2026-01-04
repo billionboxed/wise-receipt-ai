@@ -3,10 +3,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Folder, Layers, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const filterOptions: { value: AnalyticsFilterType; label: string; shortLabel: string; icon: typeof Layers }[] = [
-  { value: 'regular', label: 'Regular', shortLabel: 'Reg', icon: Layers },
-  { value: 'all', label: 'All', shortLabel: 'All', icon: FolderKanban },
-  { value: 'projects', label: 'Projects', shortLabel: 'Proj', icon: Folder },
+const filterOptions: { value: AnalyticsFilterType; label: string; icon: typeof Layers }[] = [
+  { value: 'regular', label: 'Regular', icon: Layers },
+  { value: 'all', label: 'All', icon: FolderKanban },
+  { value: 'projects', label: 'Projects', icon: Folder },
 ];
 
 export function AnalyticsFilter() {
@@ -32,8 +32,7 @@ export function AnalyticsFilter() {
             )}
           >
             <option.icon className="w-3 h-3" />
-            <span className="hidden sm:inline">{option.label}</span>
-            <span className="sm:hidden">{option.shortLabel}</span>
+            <span>{option.label}</span>
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
