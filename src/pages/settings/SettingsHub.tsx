@@ -1,8 +1,9 @@
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette } from 'lucide-react';
+import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette, PlayCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useOnboarding } from '@/context/OnboardingContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +48,7 @@ const settingsItems = [
 
 export default function SettingsHub() {
   const { signOut, user } = useAuth();
+  const { startTour } = useOnboarding();
 
   return (
     <Layout>
@@ -111,11 +113,27 @@ export default function SettingsHub() {
           ))}
         </div>
 
-        {/* Logout Button */}
+        {/* App Tour Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+        >
+          <Button
+            variant="outline"
+            onClick={startTour}
+            className="w-full h-14 rounded-xl border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50"
+          >
+            <PlayCircle className="w-5 h-5 mr-3" />
+            Watch App Tour
+          </Button>
+        </motion.div>
+
+        {/* Logout Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
         >
           <Button
             variant="outline"

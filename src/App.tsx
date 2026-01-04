@@ -9,6 +9,8 @@ import { CurrencyProvider } from "@/context/CurrencyContext";
 import { TransactionDialogProvider } from "@/context/TransactionDialogContext";
 import { AnalyticsFilterProvider } from "@/context/AnalyticsFilterContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { OnboardingProvider } from "@/context/OnboardingContext";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
@@ -49,6 +51,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     <ExpenseProvider>
       <AnalyticsFilterProvider>
         <TransactionDialogProvider>
+          <OnboardingTour />
           {children}
         </TransactionDialogProvider>
       </AnalyticsFilterProvider>
@@ -85,13 +88,15 @@ const App = () => (
     <ThemeProvider>
       <TooltipProvider>
         <CurrencyProvider>
-          <AuthProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </AuthProvider>
+          <OnboardingProvider>
+            <AuthProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </AuthProvider>
+          </OnboardingProvider>
         </CurrencyProvider>
       </TooltipProvider>
     </ThemeProvider>
