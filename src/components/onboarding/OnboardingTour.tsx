@@ -165,57 +165,98 @@ export function OnboardingTour() {
   const Icon = step.icon;
   const isCentered = step.position === 'center' || !highlightRect;
 
+  // Create SVG mask path for spotlight effect
+  const createSpotlightMask = () => {
+    if (!highlightRect) return null;
+    const padding = 8;
+    const radius = 12;
+    const x = highlightRect.left - padding;
+    const y = highlightRect.top - padding;
+    const w = highlightRect.width + padding * 2;
+    const h = highlightRect.height + padding * 2;
+    
+    return (
+      <svg className="fixed inset-0 w-full h-full z-50 pointer-events-none">
+        <defs>
+          <mask id="spotlight-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            <rect 
+              x={x} 
+              y={y} 
+              width={w} 
+              height={h} 
+              rx={radius}
+              fill="black" 
+            />
+          </mask>
+        </defs>
+        <rect 
+          x="0" 
+          y="0" 
+          width="100%" 
+          height="100%" 
+          fill="rgba(0,0,0,0.8)" 
+          mask="url(#spotlight-mask)" 
+        />
+      </svg>
+    );
+  };
+
   return (
     <AnimatePresence>
-      {/* Backdrop with spotlight cutout */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 pointer-events-none"
-        style={{
-          background: highlightRect
-            ? `radial-gradient(circle at ${highlightRect.left + highlightRect.width / 2}px ${highlightRect.top + highlightRect.height / 2}px, transparent ${Math.max(highlightRect.width, highlightRect.height) / 2 + 20}px, rgba(0,0,0,0.75) ${Math.max(highlightRect.width, highlightRect.height) / 2 + 40}px)`
-            : 'rgba(0,0,0,0.75)',
-        }}
-      />
+      {/* Dark overlay with spotlight cutout using SVG mask */}
+      {highlightRect ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {createSpotlightMask()}
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-black/80 pointer-events-none"
+        />
+      )}
 
-      {/* Clickable overlay to skip */}
+      {/* Clickable overlay - blocks clicks outside highlighted area */}
       <div 
         className="fixed inset-0 z-50"
-        onClick={(e) => {
-          // Allow clicks on highlighted element
-          if (highlightRect) {
-            const x = e.clientX;
-            const y = e.clientY;
-            if (
-              x >= highlightRect.left &&
-              x <= highlightRect.right &&
-              y >= highlightRect.top &&
-              y <= highlightRect.bottom
-            ) {
-              // Click is on the highlighted element, let it through
-              return;
-            }
-          }
-          e.stopPropagation();
-        }}
+        style={highlightRect ? {
+          clipPath: `polygon(
+            0% 0%, 
+            0% 100%, 
+            ${highlightRect.left - 8}px 100%, 
+            ${highlightRect.left - 8}px ${highlightRect.top - 8}px, 
+            ${highlightRect.right + 8}px ${highlightRect.top - 8}px, 
+            ${highlightRect.right + 8}px ${highlightRect.bottom + 8}px, 
+            ${highlightRect.left - 8}px ${highlightRect.bottom + 8}px, 
+            ${highlightRect.left - 8}px 100%, 
+            100% 100%, 
+            100% 0%
+          )`
+        } : undefined}
+        onClick={(e) => e.stopPropagation()}
       />
 
       {/* Highlight ring around target element */}
       {highlightRect && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="fixed z-50 pointer-events-none"
+          transition={{ duration: 0.3 }}
+          className="fixed z-[51] pointer-events-none"
           style={{
-            left: highlightRect.left - 4,
-            top: highlightRect.top - 4,
-            width: highlightRect.width + 8,
-            height: highlightRect.height + 8,
-            border: '2px solid hsl(var(--primary))',
-            borderRadius: '12px',
-            boxShadow: '0 0 0 4px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.5)',
+            left: highlightRect.left - 8,
+            top: highlightRect.top - 8,
+            width: highlightRect.width + 16,
+            height: highlightRect.height + 16,
+            border: '3px solid hsl(var(--primary))',
+            borderRadius: '16px',
+            boxShadow: '0 0 0 4px hsl(var(--primary) / 0.4), 0 0 30px hsl(var(--primary) / 0.6), inset 0 0 20px hsl(var(--primary) / 0.1)',
           }}
         />
       )}
