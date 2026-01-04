@@ -46,8 +46,24 @@ serve(async (req) => {
 2. Add new expenses when they describe them
 3. Answer questions about their financial data
 
+You have FULL ACCESS to ALL the user's expense data, including:
+- All historical transactions (not just current month)
+- Yearly spending totals
+- Category spending breakdowns
+- Tag information (including which are archived or project tags)
+- All accounts
+
 Current expense data context:
 ${JSON.stringify(expenseContext, null, 2)}
+
+Key data points you can answer about:
+- thisMonthSpent: Current month's total spending
+- totalAllTimeSpent: All-time total spending
+- yearlySpending: Spending broken down by year
+- categorySpending: Spending by category (all-time)
+- tagSpending: Spending by tag (all-time)
+- availableTags: List of all tags with their archived/project status
+- transactionCount: Total number of transactions
 
 When the user wants to add an expense, extract these details and respond with a JSON block:
 - date (YYYY-MM-DD format, default to today if not specified)
@@ -72,7 +88,7 @@ Format expense additions like this:
 
 Always include the expense JSON block when the user wants to add an expense. After the JSON block, briefly confirm what you're about to add.
 
-For insights, analyze the spending patterns, identify trends, suggest savings opportunities, and highlight unusual spending.
+For insights, analyze the spending patterns, identify trends, suggest savings opportunities, and highlight unusual spending. USE THE DATA PROVIDED - you have access to all historical data!
 
 Be concise, helpful, and conversational. Use the ₹ symbol for amounts.`;
 
