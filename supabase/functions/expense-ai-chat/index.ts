@@ -76,6 +76,8 @@ For insights, analyze the spending patterns, identify trends, suggest savings op
 
 Be concise, helpful, and conversational. Use the ₹ symbol for amounts.`;
 
+    const shouldStream = Array.isArray(body.messages);
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -88,7 +90,7 @@ Be concise, helpful, and conversational. Use the ₹ symbol for amounts.`;
           { role: "system", content: systemPrompt },
           ...chatMessages,
         ],
-        stream: true,
+        stream: shouldStream,
       }),
     });
 
@@ -113,8 +115,17 @@ Be concise, helpful, and conversational. Use the ₹ symbol for amounts.`;
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    if (shouldStream) {
+      return new Response(response.body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      });
+    }
+
+    const json = await response.json();
+    const content = json?.choices?.[0]?.message?.content ?? "";
+
+    return new Response(JSON.stringify({ response: content }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Chat error:", error);
