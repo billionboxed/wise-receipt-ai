@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Layout } from '@/components/layout/Layout';
 import { TransactionList } from '@/components/transactions/TransactionList';
-import { TransactionDialog } from '@/components/transactions/TransactionDialog';
+import { TransactionDialog, PrefillData } from '@/components/transactions/TransactionDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -11,16 +12,35 @@ export default function Transactions() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [prefillData, setPrefillData] = useState<PrefillData | null>(null);
 
   const handleAddClick = () => {
     setEditTransaction(null);
+    setPrefillData(null);
     setDialogMode('add');
     setDialogOpen(true);
   };
 
   const handleEditTransaction = (transaction: Transaction) => {
     setEditTransaction(transaction);
+    setPrefillData(null);
     setDialogMode('edit');
+    setDialogOpen(true);
+  };
+
+  const handleCopyTransaction = (transaction: Transaction) => {
+    // Open dialog in add mode with prefilled data from the copied transaction
+    setEditTransaction(null);
+    setPrefillData({
+      date: format(new Date(), 'yyyy-MM-dd'), // Use today's date for the copy
+      description: transaction.description,
+      amount: transaction.amount,
+      type: transaction.type,
+      categoryId: transaction.categoryId,
+      accountId: transaction.accountId,
+      tagIds: transaction.tagIds,
+    });
+    setDialogMode('add');
     setDialogOpen(true);
   };
 
@@ -56,7 +76,10 @@ export default function Transactions() {
         </div>
 
         {/* Transaction List */}
-        <TransactionList onEditTransaction={handleEditTransaction} />
+        <TransactionList 
+          onEditTransaction={handleEditTransaction} 
+          onCopyTransaction={handleCopyTransaction}
+        />
 
         {/* Transaction Dialog */}
         <TransactionDialog
@@ -64,6 +87,7 @@ export default function Transactions() {
           onOpenChange={setDialogOpen}
           transaction={editTransaction}
           mode={dialogMode}
+          prefillData={prefillData}
         />
       </div>
     </Layout>

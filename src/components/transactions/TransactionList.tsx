@@ -7,6 +7,7 @@ import {
   Search,
   Edit2,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -45,6 +46,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface TransactionListProps {
   onEditTransaction?: (transaction: Transaction) => void;
+  onCopyTransaction?: (transaction: Transaction) => void;
 }
 
 interface SwipeableTransactionCardProps {
@@ -276,7 +278,7 @@ function SwipeableTransactionCard({
   );
 }
 
-export function TransactionList({ onEditTransaction }: TransactionListProps) {
+export function TransactionList({ onEditTransaction, onCopyTransaction }: TransactionListProps) {
   const {
     transactions,
     categories,
@@ -286,6 +288,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
     getAccountById,
     getTagById,
     deleteTransaction,
+    addTransaction,
   } = useExpense();
   const { formatAmount } = useCurrency();
 
@@ -316,12 +319,76 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
     }
   };
 
+  const handleDeleteWithUndo = (transaction: Transaction) => {
+    deleteTransaction(transaction.id);
+    
+    toast({
+      title: 'Transaction Deleted',
+      description: 'The transaction has been removed.',
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            // Re-add the transaction (without id so a new one is generated)
+            const { id, ...transactionData } = transaction;
+            addTransaction(transactionData as Omit<Transaction, 'id'>);
+            toast({
+              title: 'Transaction Restored',
+              description: 'The transaction has been restored.',
+            });
+          }}
+        >
+          Undo
+        </Button>
+      ),
+    });
+  };
+
   const handleBulkDelete = async () => {
+    // Store transactions for potential undo
+    const deletedTransactions = [...selectedIds].map(id => 
+      transactions.find(t => t.id === id)
+    ).filter(Boolean) as Transaction[];
+
     for (const id of selectedIds) {
       await deleteTransaction(id);
     }
     setSelectedIds(new Set());
     setShowDeleteDialog(false);
+
+    toast({
+      title: `${deletedTransactions.length} Transaction${deletedTransactions.length > 1 ? 's' : ''} Deleted`,
+      description: 'The transactions have been removed.',
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            for (const t of deletedTransactions) {
+              const { id, ...transactionData } = t;
+              await addTransaction(transactionData as Omit<Transaction, 'id'>);
+            }
+            toast({
+              title: 'Transactions Restored',
+              description: `${deletedTransactions.length} transaction${deletedTransactions.length > 1 ? 's have' : ' has'} been restored.`,
+            });
+          }}
+        >
+          Undo
+        </Button>
+      ),
+    });
+  };
+
+  const handleCopySelected = () => {
+    if (selectedIds.size !== 1) return;
+    const transactionId = [...selectedIds][0];
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (transaction && onCopyTransaction) {
+      onCopyTransaction(transaction);
+      setSelectedIds(new Set());
+    }
   };
 
   const filteredTransactions = useMemo(() => {
@@ -422,17 +489,30 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
           </div>
         </div>
 
-        {/* Delete button - separate row on mobile when visible */}
+        {/* Action buttons - separate row on mobile when visible */}
         {selectedIds.size > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteDialog(true)}
-            className="w-full md:w-auto md:self-end"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete {selectedIds.size} selected
-          </Button>
+          <div className="flex gap-2 w-full md:w-auto md:self-end">
+            {selectedIds.size === 1 && onCopyTransaction && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopySelected}
+                className="flex-1 md:flex-none"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="flex-1 md:flex-none"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete {selectedIds.size}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -489,13 +569,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
               transaction={transaction}
               index={index}
               onEdit={() => onEditTransaction?.(transaction)}
-              onDelete={() => {
-                deleteTransaction(transaction.id);
-                toast({
-                  title: 'Transaction Deleted',
-                  description: 'The transaction has been removed.',
-                });
-              }}
+              onDelete={() => handleDeleteWithUndo(transaction)}
               
               onToggleSelect={() => toggleSelect(transaction.id)}
               isSelected={isSelected}
@@ -626,13 +700,7 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            deleteTransaction(transaction.id);
-                            toast({
-                              title: 'Transaction Deleted',
-                              description: 'The transaction has been removed.',
-                            });
-                          }}
+                          onClick={() => handleDeleteWithUndo(transaction)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
