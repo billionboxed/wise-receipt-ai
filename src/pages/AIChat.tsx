@@ -99,19 +99,26 @@ export default function AIChat() {
   }, [transactions, categories, accounts]);
 
   const parseExpenseAction = useCallback((content: string): ExpenseAction | null => {
-    const expenseMatch = content.match(/\[EXPENSE_ACTION\]([\s\S]*?)\[\/EXPENSE_ACTION\]/);
-    if (!expenseMatch) return null;
+    const codeBlockMatch = content.match(/```expense\s*([\s\S]*?)```/i);
+    const taggedMatch = content.match(/\[EXPENSE_ACTION\]([\s\S]*?)\[\/EXPENSE_ACTION\]/i);
+
+    const jsonText = (codeBlockMatch?.[1] ?? taggedMatch?.[1])?.trim();
+    if (!jsonText) return null;
 
     try {
-      const data = JSON.parse(expenseMatch[1]);
+      const data = JSON.parse(jsonText);
+
+      // Accept either legacy formats or the current ```expense``` format.
+      if ((data?.action ?? data?.type) == null) return null;
+
       return {
         type: 'add_expense',
         date: data.date || format(new Date(), 'yyyy-MM-dd'),
         description: data.description || '',
-        amount: parseFloat(data.amount) || 0,
+        amount: Number(data.amount) || 0,
         expenseType: data.type === 'credit' ? 'credit' : 'debit',
-        category: data.category,
-        account: data.account
+        category: data.suggestedCategory ?? data.category,
+        account: data.account,
       };
     } catch {
       return null;
@@ -231,7 +238,10 @@ export default function AIChat() {
   }, [input, isLoading, messages, getExpenseContext, parseExpenseAction, initializeInlineForm]);
 
   const formatMessage = useCallback((content: string) => {
-    return content.replace(/\[EXPENSE_ACTION\][\s\S]*?\[\/EXPENSE_ACTION\]/g, '').trim();
+    return content
+      .replace(/```expense[\s\S]*?```/gi, '')
+      .replace(/\[EXPENSE_ACTION\][\s\S]*?\[\/EXPENSE_ACTION\]/gi, '')
+      .trim();
   }, []);
 
   const quickActions = useMemo(() => [
