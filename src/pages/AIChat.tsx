@@ -70,16 +70,20 @@ export default function AIChat() {
 
   const getExpenseContext = useCallback(() => {
     const now = new Date();
-    const thisMonth = transactions.filter(t => {
+    const confirmedTransactions = transactions.filter(t => t.status === 'confirmed');
+    
+    // Current month transactions
+    const thisMonth = confirmedTransactions.filter(t => {
       const date = new Date(t.date);
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     });
 
-    const totalSpent = thisMonth.filter(t => t.type === 'debit' && t.status === 'confirmed')
+    const thisMonthSpent = thisMonth.filter(t => t.type === 'debit')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const categorySpending = thisMonth
-      .filter(t => t.type === 'debit' && t.status === 'confirmed')
+    // All-time spending by category
+    const categorySpending = confirmedTransactions
+      .filter(t => t.type === 'debit')
       .reduce((acc, t) => {
         const cat = categories.find(c => c.id === t.categoryId);
         const catName = cat?.combined || 'Uncategorized';
@@ -87,21 +91,55 @@ export default function AIChat() {
         return acc;
       }, {} as Record<string, number>);
 
+    // Spending by year
+    const yearlySpending = confirmedTransactions
+      .filter(t => t.type === 'debit')
+      .reduce((acc, t) => {
+        const year = new Date(t.date).getFullYear().toString();
+        acc[year] = (acc[year] || 0) + t.amount;
+        return acc;
+      }, {} as Record<string, number>);
+
+    // Total all-time spending
+    const totalAllTimeSpent = confirmedTransactions
+      .filter(t => t.type === 'debit')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Spending by tag
+    const tagSpending = confirmedTransactions
+      .filter(t => t.type === 'debit' && t.tagIds && t.tagIds.length > 0)
+      .reduce((acc, t) => {
+        t.tagIds?.forEach(tagId => {
+          const tag = tags.find(tg => tg.id === tagId);
+          if (tag) {
+            acc[tag.name] = (acc[tag.name] || 0) + t.amount;
+          }
+        });
+        return acc;
+      }, {} as Record<string, number>);
+
     return {
+      currentDate: format(now, 'MMMM d, yyyy'),
       currentMonth: format(now, 'MMMM yyyy'),
-      totalSpent,
+      thisMonthSpent,
+      totalAllTimeSpent,
+      yearlySpending,
       categorySpending,
+      tagSpending,
+      transactionCount: confirmedTransactions.length,
       recentTransactions: thisMonth.slice(0, 10).map(t => ({
         date: t.date,
         description: t.description,
         amount: t.amount,
         type: t.type,
-        category: categories.find(c => c.id === t.categoryId)?.combined
+        category: categories.find(c => c.id === t.categoryId)?.combined,
+        tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean)
       })),
       availableCategories: categories.map(c => c.combined),
-      availableAccounts: accounts.map(a => a.name)
+      availableAccounts: accounts.map(a => a.name),
+      availableTags: tags.map(t => ({ name: t.name, isArchived: t.isArchived, isProject: t.isProject }))
     };
-  }, [transactions, categories, accounts]);
+  }, [transactions, categories, accounts, tags]);
 
   const parseExpenseAction = useCallback((content: string): ExpenseAction | null => {
     const codeBlockMatch = content.match(/```expense\s*([\s\S]*?)```/i);
