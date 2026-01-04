@@ -31,6 +31,8 @@ export interface PrefillData {
   amount: number;
   type: 'debit' | 'credit';
   categoryId?: string | null;
+  accountId?: string | null;
+  tagIds?: string[];
 }
 
 interface TransactionDialogProps {
@@ -72,15 +74,15 @@ export function TransactionDialog({
         tagIds: transaction.tagIds,
       });
     } else if (prefillData && mode === 'add') {
-      // Prefill from AI chat
+      // Prefill from AI chat or copy
       setFormData({
         date: prefillData.date,
         description: prefillData.description,
         amount: prefillData.amount.toString(),
         type: prefillData.type,
         categoryId: prefillData.categoryId || categories[0]?.id || '',
-        accountId: accounts[0]?.id || '',
-        tagIds: [],
+        accountId: prefillData.accountId || accounts[0]?.id || '',
+        tagIds: prefillData.tagIds || [],
       });
     } else {
       setFormData({
