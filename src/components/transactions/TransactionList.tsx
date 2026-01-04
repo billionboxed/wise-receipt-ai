@@ -41,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { toast } from '@/hooks/use-toast';
 
 interface TransactionListProps {
   onEditTransaction?: (transaction: Transaction) => void;
@@ -488,7 +489,14 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
               transaction={transaction}
               index={index}
               onEdit={() => onEditTransaction?.(transaction)}
-              onDelete={() => deleteTransaction(transaction.id)}
+              onDelete={() => {
+                deleteTransaction(transaction.id);
+                toast({
+                  title: 'Transaction Deleted',
+                  description: 'The transaction has been removed.',
+                });
+              }}
+              
               onToggleSelect={() => toggleSelect(transaction.id)}
               isSelected={isSelected}
               isSelectionMode={selectedIds.size > 0}
@@ -618,7 +626,13 @@ export function TransactionList({ onEditTransaction }: TransactionListProps) {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteTransaction(transaction.id)}
+                          onClick={() => {
+                            deleteTransaction(transaction.id);
+                            toast({
+                              title: 'Transaction Deleted',
+                              description: 'The transaction has been removed.',
+                            });
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
