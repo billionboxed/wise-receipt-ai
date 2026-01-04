@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Loader2, Sparkles } from 'lucide-react';
+import { Send, Loader2, Sparkles, Plus, Check, X } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -40,10 +42,13 @@ interface InlineFormState {
   amount: string;
   category: string;
   account: string;
+  tagIds: string[];
+  isSubmitting: boolean;
+  isAdded: boolean;
 }
 
 export default function AIChat() {
-  const { transactions, categories, accounts, addTransaction } = useExpense();
+  const { transactions, categories, accounts, tags, addTransaction } = useExpense();
   const { formatAmount } = useCurrency();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -142,22 +147,41 @@ export default function AIChat() {
         date: action.date,
         description: action.description,
         amount: action.amount.toString(),
-        category: matchedCategory?.id || '',
-        account: matchedAccount?.id || ''
+        category: matchedCategory?.id || categories[0]?.id || '',
+        account: matchedAccount?.id || accounts[0]?.id || '',
+        tagIds: [],
+        isSubmitting: false,
+        isAdded: false,
       }
     }));
   }, [categories, accounts]);
 
-  const updateInlineForm = useCallback((index: number, field: keyof InlineFormState, value: string) => {
+  const updateInlineForm = useCallback((index: number, field: keyof InlineFormState, value: string | string[]) => {
     setInlineForms(prev => ({
       ...prev,
       [index]: { ...prev[index], [field]: value }
     }));
   }, []);
 
+  const toggleTag = useCallback((index: number, tagId: string) => {
+    setInlineForms(prev => {
+      const form = prev[index];
+      if (!form) return prev;
+      const newTagIds = form.tagIds.includes(tagId)
+        ? form.tagIds.filter(id => id !== tagId)
+        : [...form.tagIds, tagId];
+      return { ...prev, [index]: { ...form, tagIds: newTagIds } };
+    });
+  }, []);
+
   const handleInlineSubmit = useCallback(async (index: number, action: ExpenseAction) => {
     const form = inlineForms[index];
-    if (!form) return;
+    if (!form || form.isSubmitting || form.isAdded) return;
+
+    if (!form.description || !form.amount || !form.category || !form.account) {
+      toast({ title: 'Please fill all fields', variant: 'destructive' });
+      return;
+    }
 
     const amount = parseFloat(form.amount);
     if (isNaN(amount) || amount <= 0) {
@@ -165,30 +189,37 @@ export default function AIChat() {
       return;
     }
 
+    setInlineForms(prev => ({
+      ...prev,
+      [index]: { ...prev[index], isSubmitting: true }
+    }));
+
     try {
       await addTransaction({
         date: form.date,
-        description: form.description || action.description,
+        description: form.description,
         amount,
         type: action.expenseType,
         categoryId: form.category || null,
         accountId: form.account || null,
         status: 'confirmed',
-        tagIds: []
+        tagIds: form.tagIds,
       });
 
-      toast({ title: 'Transaction added!' });
-
-      setMessages(prev => prev.map((msg, i) => {
-        if (i === index) {
-          return { ...msg, expenseAction: undefined };
-        }
-        return msg;
+      setInlineForms(prev => ({
+        ...prev,
+        [index]: { ...prev[index], isSubmitting: false, isAdded: true }
       }));
+
+      toast({ title: 'Transaction added!', description: `${form.description} - ${formatAmount(amount)}` });
     } catch (error) {
+      setInlineForms(prev => ({
+        ...prev,
+        [index]: { ...prev[index], isSubmitting: false }
+      }));
       toast({ title: 'Failed to add transaction', variant: 'destructive' });
     }
-  }, [inlineForms, addTransaction]);
+  }, [inlineForms, addTransaction, formatAmount]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -286,77 +317,156 @@ export default function AIChat() {
                   <p className="text-sm whitespace-pre-wrap">{formatMessage(message.content)}</p>
 
                   {/* Inline expense form */}
-                  {message.expenseAction && (
-                    <div className="mt-3 p-3 rounded-lg bg-background/80 border border-border/50 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Add this expense:</p>
+                  {message.expenseAction && (() => {
+                    // Initialize form if not yet done
+                    if (!inlineForms[index]) {
+                      initializeInlineForm(index, message.expenseAction);
+                    }
+                    const form = inlineForms[index];
+                    if (!form) return null;
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="date"
-                          value={inlineForms[index]?.date || message.expenseAction.date}
-                          onChange={(e) => updateInlineForm(index, 'date', e.target.value)}
-                          className="h-8 text-xs"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={inlineForms[index]?.amount || message.expenseAction.amount}
-                          onChange={(e) => updateInlineForm(index, 'amount', e.target.value)}
-                          className="h-8 text-xs"
-                          placeholder="Amount"
-                        />
-                      </div>
-
-                      <Input
-                        value={inlineForms[index]?.description || message.expenseAction.description}
-                        onChange={(e) => updateInlineForm(index, 'description', e.target.value)}
-                        className="h-8 text-xs"
-                        placeholder="Description"
-                      />
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <Select
-                          value={inlineForms[index]?.category || ''}
-                          onValueChange={(v) => updateInlineForm(index, 'category', v)}
+                    if (form.isAdded) {
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-3 flex items-center gap-2 text-sm text-green-500"
                         >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map(cat => (
-                              <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                                {cat.combined}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <Check className="w-4 h-4" />
+                          <span>Transaction added successfully!</span>
+                        </motion.div>
+                      );
+                    }
 
-                        <Select
-                          value={inlineForms[index]?.account || ''}
-                          onValueChange={(v) => updateInlineForm(index, 'account', v)}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Account" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {accounts.map(acc => (
-                              <SelectItem key={acc.id} value={acc.id} className="text-xs">
-                                {acc.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        className="w-full h-8 text-xs"
-                        onClick={() => handleInlineSubmit(index, message.expenseAction!)}
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-3 p-3 rounded-xl bg-background/60 border border-border/50 space-y-3"
                       >
-                        Add Transaction
-                      </Button>
-                    </div>
-                  )}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Plus className="w-3 h-3" />
+                          <span>Add Transaction</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Date</Label>
+                            <Input
+                              type="date"
+                              value={form.date}
+                              onChange={(e) => updateInlineForm(index, 'date', e.target.value)}
+                              className="h-8 text-xs bg-background/50"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Amount</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={form.amount}
+                              onChange={(e) => updateInlineForm(index, 'amount', e.target.value)}
+                              className="h-8 text-xs bg-background/50"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Description</Label>
+                          <Input
+                            value={form.description}
+                            onChange={(e) => updateInlineForm(index, 'description', e.target.value)}
+                            className="h-8 text-xs bg-background/50"
+                            placeholder="Description"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Category</Label>
+                            <Select
+                              value={form.category}
+                              onValueChange={(v) => updateInlineForm(index, 'category', v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs bg-background/50">
+                                <SelectValue placeholder="Category" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-48">
+                                {categories.map(cat => (
+                                  <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                                    {cat.combined}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Account</Label>
+                            <Select
+                              value={form.account}
+                              onValueChange={(v) => updateInlineForm(index, 'account', v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs bg-background/50">
+                                <SelectValue placeholder="Account" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {accounts.map(acc => (
+                                  <SelectItem key={acc.id} value={acc.id} className="text-xs">
+                                    {acc.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Tags */}
+                        {tags.length > 0 && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Tags</Label>
+                            <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-background/50 border border-border/50 min-h-[36px]">
+                              {tags.filter(t => !t.isArchived).map(tag => {
+                                const isSelected = form.tagIds.includes(tag.id);
+                                return (
+                                  <Badge
+                                    key={tag.id}
+                                    variant="secondary"
+                                    className="cursor-pointer text-xs transition-all hover:scale-105"
+                                    style={{
+                                      backgroundColor: isSelected ? tag.color : 'transparent',
+                                      color: isSelected ? '#ffffff' : tag.color,
+                                      borderColor: tag.color,
+                                      borderWidth: '1px',
+                                      textShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                                    }}
+                                    onClick={() => toggleTag(index, tag.id)}
+                                  >
+                                    {tag.name}
+                                    {isSelected && <X className="w-2.5 h-2.5 ml-1" />}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs gap-2"
+                          onClick={() => handleInlineSubmit(index, message.expenseAction!)}
+                          disabled={form.isSubmitting}
+                        >
+                          {form.isSubmitting ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Plus className="w-3 h-3" />
+                          )}
+                          Add {form.description} - {formatAmount(parseFloat(form.amount) || 0)}
+                        </Button>
+                      </motion.div>
+                    );
+                  })()}
                 </div>
               </motion.div>
             ))}
