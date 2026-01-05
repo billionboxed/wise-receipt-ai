@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { TransactionReview } from '@/components/upload/TransactionReview';
@@ -6,20 +6,50 @@ import { useExpense } from '@/context/ExpenseContext';
 import { ParsedTransaction } from '@/types/expense';
 
 export default function UploadPage() {
-  const {
-    parsedTransactions,
-    setParsedTransactions,
-    updateParsedTransaction,
-    confirmParsedTransactions,
-    skipParsedTransactions,
-    clearParsedTransactions,
-  } = useExpense();
+  const { addTransactions } = useExpense();
+  
+  // Keep parsed transactions local to this page for performance
+  const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
+  
+  // Use ref to access current transactions without causing callback recreation
+  const parsedTransactionsRef = useRef(parsedTransactions);
+  parsedTransactionsRef.current = parsedTransactions;
 
-  const handleTransactionsParsed = (transactions: ParsedTransaction[]) => {
+  const handleTransactionsParsed = useCallback((newTransactions: ParsedTransaction[]) => {
     // Filter out credit transactions - this app is for expense tracking only
-    const expenseTransactions = transactions.filter(t => t.type === 'debit');
+    const expenseTransactions = newTransactions.filter(t => t.type === 'debit');
     setParsedTransactions(expenseTransactions);
-  };
+  }, []);
+
+  const updateParsedTransaction = useCallback((id: string, updates: Partial<ParsedTransaction>) => {
+    setParsedTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
+
+  const confirmParsedTransactions = useCallback(async (ids: string[]) => {
+    const toConfirm = parsedTransactionsRef.current.filter(t => ids.includes(t.id));
+    const newTxns = toConfirm.map(pt => ({
+      date: pt.date,
+      description: pt.description,
+      amount: pt.amount,
+      type: pt.type,
+      categoryId: pt.suggestedCategoryId || null,
+      accountId: pt.suggestedAccountId || null,
+      tagIds: pt.suggestedTagIds || [],
+      status: 'confirmed' as const,
+      aiSuggested: true,
+    }));
+    
+    await addTransactions(newTxns);
+    setParsedTransactions(prev => prev.filter(t => !ids.includes(t.id)));
+  }, [addTransactions]);
+
+  const skipParsedTransactions = useCallback((ids: string[]) => {
+    setParsedTransactions(prev => prev.filter(t => !ids.includes(t.id)));
+  }, []);
+
+  const clearParsedTransactions = useCallback(() => {
+    setParsedTransactions([]);
+  }, []);
 
   return (
     <Layout>

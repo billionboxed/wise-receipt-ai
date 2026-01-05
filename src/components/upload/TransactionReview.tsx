@@ -49,9 +49,18 @@ export function TransactionReview({
     () => new Set(transactions.filter(t => t.selected).map(t => t.id))
   );
 
-  // Store selectedIds in a ref for stable callback access
+  // Store refs for stable callback access
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
+  
+  // Store onUpdate in ref to avoid triggering child re-renders
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  
+  // Stable onUpdate wrapper
+  const stableOnUpdate = useCallback((id: string, updates: Partial<ParsedTransaction>) => {
+    onUpdateRef.current(id, updates);
+  }, []);
 
   const selectedCount = selectedIds.size;
   const allSelected = selectedCount === transactions.length && transactions.length > 0;
@@ -283,7 +292,7 @@ export function TransactionReview({
             accounts={stableAccounts}
             tags={stableTags}
             onToggleSelect={toggleSelect}
-            onUpdate={onUpdate}
+            onUpdate={stableOnUpdate}
           />
         ))}
       </div>
@@ -318,7 +327,7 @@ export function TransactionReview({
                   accounts={stableAccounts}
                   tags={stableTags}
                   onToggleSelect={toggleSelect}
-                  onUpdate={onUpdate}
+                  onUpdate={stableOnUpdate}
                 />
               ))}
             </TableBody>
