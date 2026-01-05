@@ -15,6 +15,7 @@ import {
   RefreshCcw,
   Palette,
   Coins,
+  FileJson,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ const settingsNavItems: NavItem[] = [
   { label: 'Recurring', path: '/settings/recurring', icon: RefreshCcw },
   { label: 'Currency', path: '/settings/currency', icon: Coins },
   { label: 'Appearance', path: '/settings/theme', icon: Palette },
+  { label: 'Import/Export', path: '/settings/data', icon: FileJson },
 ];
 
 export function Sidebar() {
