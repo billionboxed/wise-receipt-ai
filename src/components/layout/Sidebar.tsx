@@ -66,7 +66,7 @@ export function Sidebar() {
             className="flex flex-col"
           >
             <span className="font-bold text-lg text-foreground">
-              ExpenseAI
+              Clear Spends
             </span>
             <span className="text-[10px] uppercase tracking-[0.2em] text-primary">
               Smart Finance

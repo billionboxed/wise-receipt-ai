@@ -142,7 +142,7 @@ export default function Auth() {
         <div className="glass-card p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Expense Tracker
+              Clear Spends
             </h1>
             <p className="text-muted-foreground mt-2">
               {isLogin ? 'Welcome back! Please sign in.' : 'Create your account to get started.'}
