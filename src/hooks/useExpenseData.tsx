@@ -171,7 +171,12 @@ export function useExpenseData() {
       .single();
 
     if (error) {
-      toast({ title: 'Error', description: 'Failed to add transaction', variant: 'destructive' });
+      console.error('Failed to add transaction:', error);
+      toast({ 
+        title: 'Error', 
+        description: `Failed to add transaction: ${error.message}`, 
+        variant: 'destructive' 
+      });
       return;
     }
 
@@ -211,7 +216,12 @@ export function useExpenseData() {
       .select();
 
     if (error) {
-      toast({ title: 'Error', description: 'Failed to add transactions', variant: 'destructive' });
+      console.error('Failed to add transactions:', error);
+      toast({ 
+        title: 'Error', 
+        description: `Failed to add transactions: ${error.message}`, 
+        variant: 'destructive' 
+      });
       return;
     }
 
