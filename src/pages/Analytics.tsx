@@ -43,9 +43,8 @@ export default function Analytics() {
 
     expenses.forEach(t => {
       const category = getCategoryById(t.categoryId);
-      if (category) {
-        categoryTotals[category.main] = (categoryTotals[category.main] || 0) + t.amount;
-      }
+      const categoryName = category ? category.main : 'Uncategorized';
+      categoryTotals[categoryName] = (categoryTotals[categoryName] || 0) + t.amount;
     });
 
     const total = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
@@ -55,7 +54,7 @@ export default function Analytics() {
         name,
         value,
         percentage: ((value / total) * 100).toFixed(1),
-        color: categoryColors[name] || 'hsl(0, 0%, 50%)',
+        color: categoryColors[name] || 'hsl(var(--muted-foreground))',
       }))
       .sort((a, b) => b.value - a.value);
   }, [confirmedTransactions, getCategoryById]);
