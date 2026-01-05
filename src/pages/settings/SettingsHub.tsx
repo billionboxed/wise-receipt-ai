@@ -1,7 +1,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette, PlayCircle } from 'lucide-react';
+import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette, PlayCircle, FileJson } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,12 @@ const settingsItems = [
     description: 'Choose your currency',
     path: '/settings/currency',
     icon: Coins,
+  },
+  {
+    label: 'Import & Export',
+    description: 'Backup or transfer data',
+    path: '/settings/data',
+    icon: FileJson,
   },
 ];
 
