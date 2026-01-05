@@ -16,9 +16,15 @@ import * as XLSX from 'xlsx';
 type ExportFormat = 'clearspends' | 'csv' | 'excel';
 
 const formatOptions: { id: ExportFormat; label: string; description: string; icon: React.ElementType; recommended?: boolean }[] = [
-  { id: 'clearspends', label: 'ClearSpends JSON', description: 'Complete backup - recommended for transferring all data', icon: FileJson, recommended: true },
-  { id: 'csv', label: 'CSV', description: 'Spreadsheet format with categories, tags & accounts', icon: Table },
-  { id: 'excel', label: 'Excel', description: 'Excel workbook with categories, tags & accounts', icon: FileSpreadsheet },
+  {
+    id: 'clearspends',
+    label: 'ClearSpends JSON',
+    description: 'Full backup (all categories, tags, accounts, archived)',
+    icon: FileJson,
+    recommended: true,
+  },
+  { id: 'csv', label: 'CSV', description: 'Transactions spreadsheet (per-row metadata)', icon: Table },
+  { id: 'excel', label: 'Excel', description: 'Transactions spreadsheet (per-row metadata)', icon: FileSpreadsheet },
 ];
 
 export function ExportTransactions() {
@@ -134,23 +140,24 @@ export function ExportTransactions() {
   };
 
   const handleExportClearSpends = () => {
-    // Get unique referenced items
-    const usedCategoryIds = new Set(filteredTransactions.map(t => t.categoryId).filter(Boolean));
-    const usedAccountIds = new Set(filteredTransactions.map(t => t.accountId).filter(Boolean));
-    const usedTagIds = new Set(filteredTransactions.flatMap(t => t.tagIds));
-    
-    // Build export data
-    const exportCategories = categories
-      .filter(c => usedCategoryIds.has(c.id))
-      .map(c => ({ main: c.main, sub: c.sub, combined: c.combined }));
-    
-    const exportTags = tags
-      .filter(t => usedTagIds.has(t.id))
-      .map(t => ({ name: t.name, color: t.color, isProject: t.isProject || false, isArchived: t.isArchived || false }));
-    
-    const exportAccounts = accounts
-      .filter(a => usedAccountIds.has(a.id))
-      .map(a => ({ name: a.name, type: a.type }));
+    // Build export data (full backup of metadata)
+    const exportCategories = categories.map(c => ({
+      main: c.main,
+      sub: c.sub,
+      combined: c.combined,
+    }));
+
+    const exportTags = tags.map(t => ({
+      name: t.name,
+      color: t.color,
+      isProject: t.isProject || false,
+      isArchived: t.isArchived || false,
+    }));
+
+    const exportAccounts = accounts.map(a => ({
+      name: a.name,
+      type: a.type,
+    }));
     
     const exportTransactions = filteredTransactions.map(t => {
       const category = getCategoryById(t.categoryId);
@@ -360,11 +367,11 @@ export function ExportTransactions() {
 
         {selectedFormat === 'clearspends' ? (
           <p className="text-xs text-primary/70 pt-2 border-t border-border">
-            Best for complete backup or transferring data to another account. Includes all metadata and archived items.
+            Full backup: exports all categories, tags (including archived), and accounts, plus transactions in the selected date range. Use “All time” for a complete restore.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-            All formats can be re-imported with categories, tags & accounts. Use JSON for complete backup including archived items.
+            Exports transactions in the selected date range with category/account/tag names per row. Use JSON to restore all tags (including archived) and other metadata.
           </p>
         )}
       </motion.div>

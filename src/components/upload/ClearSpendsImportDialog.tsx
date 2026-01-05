@@ -27,6 +27,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { ClearSpendsExport, ImportAnalysis, ClearSpendsExportTransaction } from '@/types/clearspends-export';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClearSpendsImportDialogProps {
   open: boolean;
@@ -121,8 +122,6 @@ export function ClearSpendsImportDialog({
 
     try {
       // Step 1: Create new categories
-      const categoryIdMap = new Map<string, string>();
-      
       for (const cat of analysis.newCategories) {
         if (selectedNewCategories.has(cat.combined)) {
           await addCategory({
@@ -132,11 +131,8 @@ export function ClearSpendsImportDialog({
           });
         }
       }
-      
-      // Wait a bit for state to update
-      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Step 2: Create new tags
+      // Step 2: Create new tags (including archived/project flags)
       for (const tag of analysis.newTags) {
         if (selectedNewTags.has(tag.name)) {
           await addTag({
@@ -147,8 +143,6 @@ export function ClearSpendsImportDialog({
           });
         }
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Step 3: Create new accounts
       for (const acc of analysis.newAccounts) {
@@ -160,37 +154,57 @@ export function ClearSpendsImportDialog({
         }
       }
 
-      // Wait for all entities to be created
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Step 4: Fetch fresh IDs so transactions can be linked correctly
+      const [catRes, tagRes, accRes] = await Promise.all([
+        supabase.from('categories').select('id, main, sub, combined'),
+        supabase.from('tags').select('id, name'),
+        supabase.from('accounts').select('id, name'),
+      ]);
 
-      // Step 4: Prepare and add transactions
+      if (catRes.error) throw catRes.error;
+      if (tagRes.error) throw tagRes.error;
+      if (accRes.error) throw accRes.error;
+
+      const norm = (v?: string | null) => (v ?? '').trim().toLowerCase();
+
+      const categoryIdByCombined = new Map<string, string>();
+      (catRes.data || []).forEach((c) => {
+        categoryIdByCombined.set(norm(c.combined), c.id);
+        // Extra fallback key (main/sub) for older exports
+        categoryIdByCombined.set(norm(`${c.main} > ${c.sub}`), c.id);
+      });
+
+      const accountIdByName = new Map<string, string>();
+      (accRes.data || []).forEach((a) => accountIdByName.set(norm(a.name), a.id));
+
+      const tagIdByName = new Map<string, string>();
+      (tagRes.data || []).forEach((t) => tagIdByName.set(norm(t.name), t.id));
+
+      // Step 5: Prepare and add transactions (with correct category/account/tag IDs)
       const transactionsToImport = analysis.transactions
         .filter((_, i) => selectedTransactions.has(i))
-        .map(t => {
-          // Find category ID by combined name
-          const category = [...categories, ...analysis.newCategories.filter(c => selectedNewCategories.has(c.combined))]
-            .find(c => c.combined.toLowerCase() === `${t.categoryMain} > ${t.categorySub}`.toLowerCase() || 
-                       (c.main.toLowerCase() === t.categoryMain.toLowerCase() && c.sub.toLowerCase() === t.categorySub.toLowerCase()));
-          
-          // Find account ID by name
-          const account = [...accounts, ...analysis.newAccounts.filter(a => selectedNewAccounts.has(a.name))]
-            .find(a => a.name.toLowerCase() === t.accountName?.toLowerCase());
-          
-          // Find tag IDs by names
-          const allTags = [...tags, ...analysis.newTags.filter(tg => selectedNewTags.has(tg.name))];
-          const tagIds = t.tagNames
-            .map(name => allTags.find(tg => tg.name.toLowerCase() === name.toLowerCase()))
-            .filter(Boolean)
-            .map(tg => (tg as any).id)
-            .filter(Boolean);
+        .map((t) => {
+          const combined = t.categorySub && t.categorySub !== t.categoryMain
+            ? `${t.categoryMain} > ${t.categorySub}`
+            : t.categoryMain;
+
+          const categoryId = categoryIdByCombined.get(norm(combined)) ||
+            categoryIdByCombined.get(norm(`${t.categoryMain} > ${t.categorySub}`)) ||
+            null;
+
+          const accountId = t.accountName ? (accountIdByName.get(norm(t.accountName)) || null) : null;
+
+          const tagIds = (t.tagNames || [])
+            .map((name) => tagIdByName.get(norm(name)))
+            .filter(Boolean) as string[];
 
           return {
             date: t.date,
             description: t.description,
             amount: t.amount,
             type: t.type,
-            categoryId: (category as any)?.id || null,
-            accountId: (account as any)?.id || null,
+            categoryId,
+            accountId,
             tagIds,
             status: t.status,
             aiSuggested: false,
@@ -314,6 +328,9 @@ export function ClearSpendsImportDialog({
                             <span className="text-sm">{tag.name}</span>
                             {tag.isProject && (
                               <Badge variant="secondary" className="text-xs">Project</Badge>
+                            )}
+                            {tag.isArchived && (
+                              <Badge variant="outline" className="text-xs">Archived</Badge>
                             )}
                           </label>
                         ))}
@@ -441,6 +458,11 @@ export function ClearSpendsImportDialog({
                           <span>•</span>
                           <span>{t.categoryMain}</span>
                         </div>
+                        {t.tagNames?.length > 0 && (
+                          <div className="mt-1 text-xs text-muted-foreground truncate">
+                            Tags: {t.tagNames.join(', ')}
+                          </div>
+                        )}
                         {t.isDuplicate && (
                           <div className="flex items-center gap-1 mt-1 text-xs text-amber-500">
                             <AlertTriangle className="w-3 h-3" />
