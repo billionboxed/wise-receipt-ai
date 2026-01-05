@@ -15,10 +15,10 @@ import * as XLSX from 'xlsx';
 
 type ExportFormat = 'clearspends' | 'csv' | 'excel';
 
-const formatOptions: { id: ExportFormat; label: string; description: string; icon: React.ElementType }[] = [
-  { id: 'clearspends', label: 'ClearSpends JSON', description: 'Full backup with categories, tags & accounts', icon: FileJson },
-  { id: 'csv', label: 'CSV', description: 'Simple spreadsheet format', icon: Table },
-  { id: 'excel', label: 'Excel', description: 'Microsoft Excel workbook', icon: FileSpreadsheet },
+const formatOptions: { id: ExportFormat; label: string; description: string; icon: React.ElementType; recommended?: boolean }[] = [
+  { id: 'clearspends', label: 'ClearSpends JSON', description: 'Complete backup - recommended for transferring all data', icon: FileJson, recommended: true },
+  { id: 'csv', label: 'CSV', description: 'Spreadsheet format with categories, tags & accounts', icon: Table },
+  { id: 'excel', label: 'Excel', description: 'Excel workbook with categories, tags & accounts', icon: FileSpreadsheet },
 ];
 
 export function ExportTransactions() {
@@ -248,11 +248,18 @@ export function ExportTransactions() {
                 )}>{opt.label}</p>
                 <p className="text-xs text-muted-foreground">{opt.description}</p>
               </div>
-              {selectedFormat === opt.id && (
-                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="w-3 h-3 text-primary-foreground" />
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {opt.recommended && (
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    Recommended
+                  </span>
+                )}
+                {selectedFormat === opt.id && (
+                  <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-3 h-3 text-primary-foreground" />
+                  </div>
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -351,9 +358,13 @@ export function ExportTransactions() {
           </div>
         </div>
 
-        {selectedFormat === 'clearspends' && (
+        {selectedFormat === 'clearspends' ? (
           <p className="text-xs text-primary/70 pt-2 border-t border-border">
-            JSON format includes full metadata. CSV/Excel can also be re-imported with categories, tags & accounts.
+            Best for complete backup or transferring data to another account. Includes all metadata and archived items.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+            All formats can be re-imported with categories, tags & accounts. Use JSON for complete backup including archived items.
           </p>
         )}
       </motion.div>
