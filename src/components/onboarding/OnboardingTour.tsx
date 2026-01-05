@@ -37,7 +37,7 @@ const tourSteps: TourStep[] = [
     title: 'Welcome! Let\'s Get Started',
     description: 'This interactive tour will guide you through the key features. Follow along to learn how to manage your expenses like a pro!',
     icon: Sparkles,
-    route: '/',
+    route: '/dashboard',
     position: 'center',
   },
   {
@@ -108,7 +108,7 @@ const tourSteps: TourStep[] = [
     title: 'You\'re All Set! 🎉',
     description: 'You now know the essentials. Explore Analytics for insights, Upload to import bank statements, and Settings for more customization. Happy tracking!',
     icon: Sparkles,
-    route: '/',
+    route: '/dashboard',
     position: 'center',
   },
 ];
