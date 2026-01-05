@@ -351,9 +351,9 @@ export function ExportTransactions() {
           </div>
         </div>
 
-        {selectedFormat !== 'clearspends' && (
-          <p className="text-xs text-amber-500/80 pt-2 border-t border-border">
-            Note: CSV/Excel exports only include transaction data. Use ClearSpends JSON for full backup with categories, tags & accounts.
+        {selectedFormat === 'clearspends' && (
+          <p className="text-xs text-primary/70 pt-2 border-t border-border">
+            JSON format includes full metadata. CSV/Excel can also be re-imported with categories, tags & accounts.
           </p>
         )}
       </motion.div>

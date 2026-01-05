@@ -8,6 +8,10 @@ import { ClearSpendsImportDialog } from '@/components/upload/ClearSpendsImportDi
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+
+// Expected columns for ClearSpends CSV/Excel export
+const CLEARSPENDS_COLUMNS = ['Date', 'Description', 'Amount', 'Type', 'Category', 'Account', 'Tags', 'Status'];
 
 export function ImportTransactions() {
   const { categories, tags, accounts, transactions } = useExpense();
@@ -26,6 +30,79 @@ export function ImportTransactions() {
       content.data &&
       Array.isArray(content.data.transactions)
     );
+  };
+
+  // Check if spreadsheet has ClearSpends column structure
+  const isClearSpendsSpreadsheet = (headers: string[]): boolean => {
+    const normalizedHeaders = headers.map(h => h?.trim().toLowerCase());
+    const requiredHeaders = ['date', 'description', 'amount', 'type', 'category'];
+    return requiredHeaders.every(req => normalizedHeaders.includes(req));
+  };
+
+  // Parse CSV/Excel data into ClearSpends format
+  const parseSpreadsheetData = (rows: any[]): ClearSpendsExport => {
+    const categoriesMap = new Map<string, { main: string; sub: string; combined: string }>();
+    const tagsMap = new Map<string, { name: string; color: string; isProject: boolean; isArchived: boolean }>();
+    const accountsMap = new Map<string, { name: string; type: 'bank' | 'credit' | 'cash' | 'wallet' }>();
+    
+    const transactionsData = rows.map(row => {
+      const category = row.Category?.trim() || '';
+      const account = row.Account?.trim() || '';
+      const tagsStr = row.Tags?.trim() || '';
+      
+      // Parse category (format: "Main > Sub" or just "Main")
+      let categoryMain = '';
+      let categorySub = '';
+      if (category) {
+        const parts = category.split('>').map((p: string) => p.trim());
+        categoryMain = parts[0] || '';
+        categorySub = parts[1] || parts[0] || '';
+        const combined = parts.length > 1 ? `${categoryMain} > ${categorySub}` : categoryMain;
+        if (!categoriesMap.has(combined.toLowerCase())) {
+          categoriesMap.set(combined.toLowerCase(), { main: categoryMain, sub: categorySub, combined });
+        }
+      }
+      
+      // Parse account
+      if (account && !accountsMap.has(account.toLowerCase())) {
+        accountsMap.set(account.toLowerCase(), { name: account, type: 'bank' as const });
+      }
+      
+      // Parse tags (comma-separated)
+      const tagNames: string[] = tagsStr ? tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+      tagNames.forEach(tagName => {
+        if (!tagsMap.has(tagName.toLowerCase())) {
+          // Generate a random color for new tags
+          const colors = ['#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6'];
+          const randomColor = colors[Math.floor(Math.random() * colors.length)];
+          tagsMap.set(tagName.toLowerCase(), { name: tagName, color: randomColor, isProject: false, isArchived: false });
+        }
+      });
+      
+      return {
+        date: row.Date || '',
+        description: row.Description || '',
+        amount: parseFloat(row.Amount) || 0,
+        type: (row.Type || 'debit').toLowerCase(),
+        categoryMain,
+        categorySub,
+        accountName: account || null,
+        tagNames,
+        status: row.Status || 'confirmed',
+      };
+    }).filter(t => t.date && t.description && t.amount > 0);
+
+    return {
+      version: '1.0',
+      exportType: 'clearspends',
+      exportedAt: new Date().toISOString(),
+      data: {
+        categories: Array.from(categoriesMap.values()),
+        tags: Array.from(tagsMap.values()),
+        accounts: Array.from(accountsMap.values()),
+        transactions: transactionsData,
+      },
+    };
   };
 
   const analyzeImport = useCallback((data: ClearSpendsExport): ImportAnalysis => {
@@ -81,6 +158,39 @@ export function ImportTransactions() {
     };
   }, [categories, tags, accounts, transactions]);
 
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    // Parse header
+    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+    
+    // Parse rows
+    return lines.slice(1).map(line => {
+      const values: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      
+      const row: any = {};
+      headers.forEach((header, i) => {
+        row[header] = values[i] || '';
+      });
+      return row;
+    });
+  };
+
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
@@ -88,16 +198,14 @@ export function ImportTransactions() {
     setIsProcessing(true);
 
     try {
-      // Check file extension
       const fileName = file.name.toLowerCase();
       
       if (fileName.endsWith('.json') || fileName.endsWith('.clearspends.json')) {
-        // Try to parse as ClearSpends format
+        // JSON format
         const text = await file.text();
         const content = JSON.parse(text);
         
         if (isClearSpendsFile(content)) {
-          // It's a ClearSpends file - analyze and show dialog
           const analysisResult = analyzeImport(content);
           setImportData(content);
           setAnalysis(analysisResult);
@@ -109,22 +217,68 @@ export function ImportTransactions() {
             variant: 'destructive',
           });
         }
-      } else if (
-        fileName.endsWith('.csv') || 
-        fileName.endsWith('.xlsx') || 
-        fileName.endsWith('.xls') ||
-        fileName.endsWith('.pdf')
-      ) {
-        // Bank statement - redirect to upload page
+      } else if (fileName.endsWith('.csv')) {
+        // CSV format
+        const text = await file.text();
+        const rows = parseCSV(text);
+        
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          
+          if (isClearSpendsSpreadsheet(headers)) {
+            // ClearSpends CSV export
+            const clearSpendsData = parseSpreadsheetData(rows);
+            const analysisResult = analyzeImport(clearSpendsData);
+            setImportData(clearSpendsData);
+            setAnalysis(analysisResult);
+            setDialogOpen(true);
+          } else {
+            // Regular bank statement CSV
+            toast({
+              title: 'Bank statement detected',
+              description: 'Redirecting to the Upload page for AI processing...',
+            });
+            navigate('/upload');
+          }
+        }
+      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        // Excel format
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer);
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+        
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          
+          if (isClearSpendsSpreadsheet(headers)) {
+            // ClearSpends Excel export
+            const clearSpendsData = parseSpreadsheetData(rows);
+            const analysisResult = analyzeImport(clearSpendsData);
+            setImportData(clearSpendsData);
+            setAnalysis(analysisResult);
+            setDialogOpen(true);
+          } else {
+            // Regular bank statement Excel
+            toast({
+              title: 'Bank statement detected',
+              description: 'Redirecting to the Upload page for AI processing...',
+            });
+            navigate('/upload');
+          }
+        }
+      } else if (fileName.endsWith('.pdf')) {
+        // PDF - always treat as bank statement
         toast({
           title: 'Bank statement detected',
-          description: 'Redirecting to the Upload page for processing...',
+          description: 'Redirecting to the Upload page for AI processing...',
         });
         navigate('/upload');
       } else {
         toast({
           title: 'Unsupported file type',
-          description: 'Please upload a ClearSpends JSON file or bank statement (CSV, Excel, PDF).',
+          description: 'Please upload a ClearSpends file (JSON, CSV, Excel) or bank statement.',
           variant: 'destructive',
         });
       }
@@ -132,7 +286,7 @@ export function ImportTransactions() {
       console.error('Import error:', error);
       toast({
         title: 'Import failed',
-        description: 'Could not read the file. Please ensure it\'s a valid JSON file.',
+        description: 'Could not read the file. Please check the format and try again.',
         variant: 'destructive',
       });
     } finally {
@@ -204,16 +358,24 @@ export function ImportTransactions() {
           <div className="flex items-center gap-3 p-3 rounded-lg glass-card border border-white/5">
             <FileJson className="w-5 h-5 text-primary" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">.clearspends.json</p>
-              <p className="text-xs text-muted-foreground">ClearSpends export file with full metadata</p>
+              <p className="text-sm font-medium text-foreground">ClearSpends JSON</p>
+              <p className="text-xs text-muted-foreground">Full backup with all metadata</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-3 rounded-lg glass-card border border-white/5">
+            <FileSpreadsheet className="w-5 h-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">ClearSpends CSV / Excel</p>
+              <p className="text-xs text-muted-foreground">Exports with categories, accounts & tags</p>
             </div>
           </div>
           
           <div className="flex items-center gap-3 p-3 rounded-lg glass-card border border-white/5">
             <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">CSV, Excel, PDF</p>
-              <p className="text-xs text-muted-foreground">Bank statements → redirects to Upload page</p>
+              <p className="text-sm font-medium text-foreground">Bank statements</p>
+              <p className="text-xs text-muted-foreground">CSV, Excel, PDF → AI processing on Upload page</p>
             </div>
           </div>
         </div>
@@ -223,11 +385,11 @@ export function ImportTransactions() {
       <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/30 border border-muted">
         <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
         <div className="text-sm text-muted-foreground">
-          <p className="font-medium text-foreground mb-1">What gets imported?</p>
+          <p className="font-medium text-foreground mb-1">Smart file detection</p>
           <ul className="space-y-1 list-disc list-inside">
-            <li>New categories and tags are automatically created</li>
+            <li>ClearSpends exports are auto-detected by column structure</li>
+            <li>New categories, tags & accounts are created automatically</li>
             <li>Duplicate transactions are detected and can be skipped</li>
-            <li>You'll review everything before confirming the import</li>
           </ul>
         </div>
       </div>
