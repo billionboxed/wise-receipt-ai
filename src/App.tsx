@@ -21,6 +21,7 @@ import About from "./pages/About";
 import AboutPrint from "./pages/AboutPrint";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import Landing from "./pages/Landing";
 import CategoriesSettings from "./pages/settings/CategoriesSettings";
 import TagsSettings from "./pages/settings/TagsSettings";
 import AccountsSettings from "./pages/settings/AccountsSettings";
@@ -65,13 +66,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/install" element={<Install />} />
       <Route path="/about" element={<About />} />
       <Route path="/about/print" element={<AboutPrint />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
-      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
       <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
