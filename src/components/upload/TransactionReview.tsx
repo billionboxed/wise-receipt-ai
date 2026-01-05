@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Check,
@@ -46,19 +46,31 @@ export function TransactionReview({
 }: TransactionReviewProps) {
   const { categories, accounts, tags } = useExpense();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(transactions.filter(t => t.selected).map(t => t.id))
+    () => new Set(transactions.filter(t => t.selected).map(t => t.id))
   );
+
+  // Store selectedIds in a ref for stable callback access
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
 
   const selectedCount = selectedIds.size;
   const allSelected = selectedCount === transactions.length && transactions.length > 0;
 
+  // Memoize arrays to prevent unnecessary re-renders of child components
+  const stableCategories = useMemo(() => categories, [JSON.stringify(categories.map(c => c.id))]);
+  const stableAccounts = useMemo(() => accounts, [JSON.stringify(accounts.map(a => a.id))]);
+  const stableTags = useMemo(() => tags, [JSON.stringify(tags.map(t => t.id))]);
+
   const toggleSelectAll = useCallback(() => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(transactions.map(t => t.id)));
-    }
-  }, [allSelected, transactions]);
+    setSelectedIds(prev => {
+      const currentAllSelected = prev.size === transactions.length && transactions.length > 0;
+      if (currentAllSelected) {
+        return new Set();
+      } else {
+        return new Set(transactions.map(t => t.id));
+      }
+    });
+  }, [transactions]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -267,9 +279,9 @@ export function TransactionReview({
             key={transaction.id}
             transaction={transaction}
             isSelected={selectedIds.has(transaction.id)}
-            categories={categories}
-            accounts={accounts}
-            tags={tags}
+            categories={stableCategories}
+            accounts={stableAccounts}
+            tags={stableTags}
             onToggleSelect={toggleSelect}
             onUpdate={onUpdate}
           />
@@ -302,9 +314,9 @@ export function TransactionReview({
                   key={transaction.id}
                   transaction={transaction}
                   isSelected={selectedIds.has(transaction.id)}
-                  categories={categories}
-                  accounts={accounts}
-                  tags={tags}
+                  categories={stableCategories}
+                  accounts={stableAccounts}
+                  tags={stableTags}
                   onToggleSelect={toggleSelect}
                   onUpdate={onUpdate}
                 />
