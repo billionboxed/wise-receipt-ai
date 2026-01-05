@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FolderTree, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { FolderTree, Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { Category } from '@/types/expense';
 import { Button } from '@/components/ui/button';
@@ -11,22 +11,45 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export function CategoryManager() {
-  const { categories, addCategory, updateCategory, deleteCategory } = useExpense();
+  const { categories, transactions, addCategory, updateCategory, deleteCategory, updateTransaction } = useExpense();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addSubToMain, setAddSubToMain] = useState<string | null>(null); // For adding subcategory to existing main
+  const [addSubToMain, setAddSubToMain] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newMain, setNewMain] = useState('');
   const [newSub, setNewSub] = useState('');
   const [editMain, setEditMain] = useState('');
   const [editSub, setEditSub] = useState('');
   const [newSubForExisting, setNewSubForExisting] = useState('');
+  
+  // Delete confirmation state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [replacementCategoryId, setReplacementCategoryId] = useState<string>('none');
 
   const mainCategories = [...new Set(categories.map(c => c.main))];
+
+  // Get transactions using a specific category
+  const getTransactionsUsingCategory = (categoryId: string) => {
+    return transactions.filter(t => t.categoryId === categoryId);
+  };
+
+  // Get available replacement categories (excluding the one being deleted)
+  const getReplacementCategories = (excludeId: string) => {
+    return categories.filter(c => c.id !== excludeId);
+  };
 
   const handleAdd = () => {
     if (!newMain.trim() || !newSub.trim()) {
@@ -82,9 +105,50 @@ export function CategoryManager() {
     setEditingId(null);
   };
 
-  const handleDelete = (id: string) => {
-    deleteCategory(id);
-    toast({ title: 'Category Deleted' });
+  const initiateDelete = (category: Category) => {
+    const affectedTransactions = getTransactionsUsingCategory(category.id);
+    setCategoryToDelete(category);
+    setReplacementCategoryId('none');
+    
+    if (affectedTransactions.length > 0) {
+      setDeleteConfirmOpen(true);
+    } else {
+      // No transactions affected, delete directly
+      deleteCategory(category.id);
+      toast({ title: 'Category Deleted' });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!categoryToDelete) return;
+
+    const affectedTransactions = getTransactionsUsingCategory(categoryToDelete.id);
+    
+    // Update transactions with new category or clear category
+    for (const transaction of affectedTransactions) {
+      await updateTransaction(transaction.id, {
+        categoryId: replacementCategoryId === 'none' ? null : replacementCategoryId,
+      });
+    }
+
+    // Delete the category
+    await deleteCategory(categoryToDelete.id);
+
+    const replacementCategory = categories.find(c => c.id === replacementCategoryId);
+    if (replacementCategoryId === 'none') {
+      toast({ 
+        title: 'Category Deleted', 
+        description: `${affectedTransactions.length} transaction${affectedTransactions.length > 1 ? 's are' : ' is'} now uncategorized.` 
+      });
+    } else {
+      toast({ 
+        title: 'Category Deleted', 
+        description: `${affectedTransactions.length} transaction${affectedTransactions.length > 1 ? 's' : ''} moved to "${replacementCategory?.combined}".` 
+      });
+    }
+
+    setDeleteConfirmOpen(false);
+    setCategoryToDelete(null);
   };
 
   const startEdit = (category: Category) => {
@@ -92,6 +156,9 @@ export function CategoryManager() {
     setEditMain(category.main);
     setEditSub(category.sub);
   };
+
+  const affectedCount = categoryToDelete ? getTransactionsUsingCategory(categoryToDelete.id).length : 0;
+  const replacementOptions = categoryToDelete ? getReplacementCategories(categoryToDelete.id) : [];
 
   return (
     <div className="space-y-6">
@@ -197,7 +264,7 @@ export function CategoryManager() {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(cat.id)}
+                            onClick={() => initiateDelete(cat)}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
@@ -211,6 +278,7 @@ export function CategoryManager() {
         ))}
       </div>
 
+      {/* Add Category Dialog */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-[400px] bg-card border-border/50">
           <DialogHeader>
@@ -239,6 +307,54 @@ export function CategoryManager() {
               Cancel
             </Button>
             <Button onClick={handleAdd}>Add Category</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-[450px] bg-card border-border/50">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              Delete Category
+            </DialogTitle>
+            <DialogDescription>
+              This category is used by <strong>{affectedCount} transaction{affectedCount > 1 ? 's' : ''}</strong>. 
+              What would you like to do with them?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+              <p className="text-sm font-medium mb-1">Category to delete:</p>
+              <p className="text-sm text-muted-foreground">{categoryToDelete?.combined}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reassign transactions to:</label>
+              <Select value={replacementCategoryId} onValueChange={setReplacementCategoryId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select replacement category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="text-muted-foreground">Leave uncategorized</span>
+                  </SelectItem>
+                  {replacementOptions.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.combined}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete Category
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

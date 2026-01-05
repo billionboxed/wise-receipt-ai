@@ -228,8 +228,10 @@ function SwipeableTransactionCard({
         
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0 flex-1">
-            {category && (
+            {category ? (
               <span className="truncate max-w-[120px]">{category.combined}</span>
+            ) : (
+              <span className="truncate max-w-[120px] text-warning/70 italic">Uncategorized</span>
             )}
             {account && (
               <>
@@ -653,9 +655,15 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {category?.combined}
-                      </span>
+                      {category ? (
+                        <span className="text-sm text-muted-foreground">
+                          {category.combined}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-warning/70 italic">
+                          Uncategorized
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-foreground">{account?.name}</span>
