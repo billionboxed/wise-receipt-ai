@@ -33,7 +33,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) {
@@ -50,7 +50,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -101,7 +101,7 @@ export default function Auth() {
             title: 'Welcome back!',
             description: 'You have successfully logged in.',
           });
-          navigate('/');
+          navigate('/dashboard');
         }
       } else {
         const { error } = await signUp(formData.email, formData.password);
@@ -124,7 +124,7 @@ export default function Auth() {
             title: 'Account Created!',
             description: 'Your account has been created successfully.',
           });
-          navigate('/');
+          navigate('/dashboard');
         }
       }
     } finally {
