@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowRight, 
@@ -12,6 +12,7 @@ import {
   BarChart3
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 import mockupDashboard from "@/assets/mockup-dashboard.png";
 import mockupAnalytics from "@/assets/mockup-analytics.png";
 import mockupAiChat from "@/assets/mockup-ai-chat.png";
@@ -56,6 +57,13 @@ const fadeInUp = {
 };
 
 export default function Landing() {
+  const { user, loading } = useAuth();
+
+  // Redirect authenticated users to dashboard
+  if (!loading && user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
