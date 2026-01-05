@@ -60,11 +60,11 @@ export function StatCard({
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       
       <div className="relative flex items-start justify-between gap-2">
-        <div className="space-y-1.5 sm:space-y-3 min-w-0 flex-1">
+        <div className="space-y-1.5 sm:space-y-3 min-w-0 flex-1 overflow-hidden">
           <p className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wide truncate">
             {title}
           </p>
-          <p className="text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground truncate">
+          <p className="text-base sm:text-xl lg:text-2xl font-bold tracking-tight text-foreground truncate" title={value}>
             {value}
           </p>
           {change && (
