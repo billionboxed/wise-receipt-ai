@@ -59,8 +59,17 @@ const fadeInUp = {
 export default function Landing() {
   const { user, loading } = useAuth();
 
+  // Show nothing while checking auth to prevent flash
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // Redirect authenticated users to dashboard
-  if (!loading && user) {
+  if (user) {
     return <Navigate to="/dashboard" replace />;
   }
 
