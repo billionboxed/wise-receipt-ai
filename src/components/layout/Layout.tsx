@@ -13,7 +13,7 @@ interface LayoutProps {
 
 export function Layout({ children, hideAIButton = false }: LayoutProps) {
   const location = useLocation();
-  const showAnalyticsFilter = ['/', '/analytics'].includes(location.pathname);
+  const showAnalyticsFilter = ['/dashboard', '/analytics'].includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-background">
