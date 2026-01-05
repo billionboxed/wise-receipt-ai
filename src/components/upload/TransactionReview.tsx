@@ -103,13 +103,35 @@ export function TransactionReview({
       });
       return;
     }
+    
+    // Validate that all selected transactions have category and account
+    const selectedTransactions = transactions.filter(t => ids.includes(t.id));
+    const missingCategory = selectedTransactions.filter(t => !t.suggestedCategoryId);
+    const missingAccount = selectedTransactions.filter(t => !t.suggestedAccountId);
+    
+    if (missingCategory.length > 0 || missingAccount.length > 0) {
+      const issues: string[] = [];
+      if (missingCategory.length > 0) {
+        issues.push(`${missingCategory.length} without category`);
+      }
+      if (missingAccount.length > 0) {
+        issues.push(`${missingAccount.length} without account`);
+      }
+      toast({
+        title: 'Missing required fields',
+        description: `Cannot confirm: ${issues.join(', ')}. Please assign category and account to all selected transactions.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     onConfirm(ids);
     toast({
       title: 'Transactions confirmed',
       description: `${ids.length} transactions have been added to your records.`,
     });
     setSelectedIds(new Set());
-  }, [selectedIds, onConfirm]);
+  }, [selectedIds, transactions, onConfirm]);
 
   const handleSkipSelected = useCallback(() => {
     const ids = Array.from(selectedIds);
