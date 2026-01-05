@@ -115,7 +115,7 @@ export function TransactionDialog({
   }, [mode, open, formData.date, formData.amount, formData.type, transactions]);
 
   const handleSubmit = () => {
-    if (!formData.description || !formData.amount || !formData.categoryId || !formData.accountId) {
+    if (!formData.description || !formData.amount || !formData.accountId) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields.',
@@ -141,7 +141,7 @@ export function TransactionDialog({
         description: formData.description,
         amount,
         type: formData.type,
-        categoryId: formData.categoryId,
+        categoryId: formData.categoryId || null,
         accountId: formData.accountId,
         tagIds: formData.tagIds,
         status: 'confirmed',
@@ -157,7 +157,7 @@ export function TransactionDialog({
         description: formData.description,
         amount,
         type: formData.type,
-        categoryId: formData.categoryId,
+        categoryId: formData.categoryId || null,
         accountId: formData.accountId,
         tagIds: formData.tagIds,
       });
@@ -235,13 +235,16 @@ export function TransactionDialog({
           <div className="space-y-2">
             <Label>Category</Label>
             <Select
-              value={formData.categoryId}
-              onValueChange={value => setFormData(prev => ({ ...prev, categoryId: value }))}
+              value={formData.categoryId || 'none'}
+              onValueChange={value => setFormData(prev => ({ ...prev, categoryId: value === 'none' ? '' : value }))}
             >
               <SelectTrigger className="bg-background/50">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent className="max-h-60">
+                <SelectItem value="none">
+                  <span className="text-muted-foreground italic">Uncategorized</span>
+                </SelectItem>
                 {categories.map(cat => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.combined}
