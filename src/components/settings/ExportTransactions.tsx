@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Calendar, FileDown, Check, Info } from 'lucide-react';
+import { Download, Calendar, FileDown, Check, Info, FileJson, FileSpreadsheet, Table } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,16 +11,26 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 import { ClearSpendsExport } from '@/types/clearspends-export';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx';
+
+type ExportFormat = 'clearspends' | 'csv' | 'excel';
+
+const formatOptions: { id: ExportFormat; label: string; description: string; icon: React.ElementType }[] = [
+  { id: 'clearspends', label: 'ClearSpends JSON', description: 'Full backup with categories, tags & accounts', icon: FileJson },
+  { id: 'csv', label: 'CSV', description: 'Simple spreadsheet format', icon: Table },
+  { id: 'excel', label: 'Excel', description: 'Microsoft Excel workbook', icon: FileSpreadsheet },
+];
 
 export function ExportTransactions() {
   const { transactions, categories, tags, accounts, getCategoryById, getAccountById, getTagById } = useExpense();
-  const { formatAmount } = useCurrency();
+  const { formatAmount, currency } = useCurrency();
   
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfMonth(subMonths(new Date(), 11)),
     to: endOfMonth(new Date()),
   });
   const [exported, setExported] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('clearspends');
 
   // Filter transactions by date range
   const filteredTransactions = useMemo(() => {
@@ -47,7 +57,83 @@ export function ExportTransactions() {
     };
   }, [filteredTransactions]);
 
-  const handleExport = () => {
+  // Build flat transaction data for CSV/Excel
+  const buildFlatData = () => {
+    return filteredTransactions.map(t => {
+      const category = getCategoryById(t.categoryId);
+      const account = getAccountById(t.accountId);
+      const txTags = t.tagIds.map(id => getTagById(id)?.name).filter(Boolean) as string[];
+      
+      return {
+        Date: t.date,
+        Description: t.description,
+        Amount: t.amount,
+        Type: t.type,
+        Category: category?.combined || '',
+        Account: account?.name || '',
+        Tags: txTags.join(', '),
+        Status: t.status,
+      };
+    });
+  };
+
+  const handleExportCSV = () => {
+    const data = buildFlatData();
+    const headers = ['Date', 'Description', 'Amount', 'Type', 'Category', 'Account', 'Tags', 'Status'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(h => {
+          const value = row[h as keyof typeof row];
+          // Escape quotes and wrap in quotes if contains comma
+          const str = String(value);
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        }).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    a.href = url;
+    a.download = `transactions-${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = () => {
+    const data = buildFlatData();
+    
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 12 },  // Date
+      { wch: 40 },  // Description
+      { wch: 12 },  // Amount
+      { wch: 8 },   // Type
+      { wch: 25 },  // Category
+      { wch: 20 },  // Account
+      { wch: 30 },  // Tags
+      { wch: 10 },  // Status
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+    
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    XLSX.writeFile(wb, `transactions-${dateStr}.xlsx`);
+  };
+
+  const handleExportClearSpends = () => {
     // Get unique referenced items
     const usedCategoryIds = new Set(filteredTransactions.map(t => t.categoryId).filter(Boolean));
     const usedAccountIds = new Set(filteredTransactions.map(t => t.accountId).filter(Boolean));
@@ -107,18 +193,71 @@ export function ExportTransactions() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    switch (selectedFormat) {
+      case 'csv':
+        handleExportCSV();
+        break;
+      case 'excel':
+        handleExportExcel();
+        break;
+      case 'clearspends':
+      default:
+        handleExportClearSpends();
+        break;
+    }
 
     setExported(true);
     setTimeout(() => setExported(false), 3000);
     
     toast({
       title: 'Export complete',
-      description: `Exported ${stats.transactionCount} transactions`,
+      description: `Exported ${stats.transactionCount} transactions as ${formatOptions.find(f => f.id === selectedFormat)?.label}`,
     });
   };
 
   return (
     <div className="space-y-6">
+      {/* Format Selection */}
+      <div className="space-y-3">
+        <Label className="text-sm text-muted-foreground">Export Format</Label>
+        <div className="grid gap-2">
+          {formatOptions.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setSelectedFormat(opt.id)}
+              className={cn(
+                'flex items-center gap-3 p-3 rounded-xl border transition-all text-left',
+                selectedFormat === opt.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground/30 hover:bg-muted/50'
+              )}
+            >
+              <div className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center',
+                selectedFormat === opt.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+              )}>
+                <opt.icon className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <p className={cn(
+                  'font-medium text-sm',
+                  selectedFormat === opt.id ? 'text-foreground' : 'text-foreground/80'
+                )}>{opt.label}</p>
+                <p className="text-xs text-muted-foreground">{opt.description}</p>
+              </div>
+              {selectedFormat === opt.id && (
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="w-3 h-3 text-primary-foreground" />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Date Range Selection */}
       <div className="space-y-3">
         <Label className="text-sm text-muted-foreground">Date Range</Label>
@@ -211,6 +350,12 @@ export function ExportTransactions() {
             <p className="text-sm text-muted-foreground">Tags</p>
           </div>
         </div>
+
+        {selectedFormat !== 'clearspends' && (
+          <p className="text-xs text-amber-500/80 pt-2 border-t border-border">
+            Note: CSV/Excel exports only include transaction data. Use ClearSpends JSON for full backup with categories, tags & accounts.
+          </p>
+        )}
       </motion.div>
 
       {/* Export Button */}
@@ -230,7 +375,7 @@ export function ExportTransactions() {
         ) : (
           <>
             <FileDown className="w-5 h-5" />
-            Download Export File
+            Download {formatOptions.find(f => f.id === selectedFormat)?.label}
           </>
         )}
       </Button>
