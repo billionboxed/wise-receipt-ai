@@ -298,6 +298,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -421,8 +422,14 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
           return t.type === typeFilter;
         }
         return true;
+      })
+      .filter(t => {
+        if (tagFilter !== 'all') {
+          return t.tagIds.includes(tagFilter);
+        }
+        return true;
       });
-  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, getCategoryById]);
+  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, getCategoryById]);
 
   const mainCategories = useMemo(() => {
     const unique = new Set(categories.map(c => c.main));
@@ -486,6 +493,27 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="debit">Expense</SelectItem>
                 <SelectItem value="credit">Income</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm shrink-0">
+                <SelectValue placeholder="Tag" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tags</SelectItem>
+                {tags.map(tag => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    <span className="flex items-center gap-2">
+                      <span 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: tag.color }} 
+                      />
+                      {tag.name}
+                      {tag.isArchived && <span className="text-muted-foreground text-xs">(archived)</span>}
+                    </span>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
