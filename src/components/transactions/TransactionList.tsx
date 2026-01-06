@@ -8,6 +8,9 @@ import {
   Edit2,
   Trash2,
   Copy,
+  FolderTree,
+  Wallet,
+  Tag,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -291,6 +294,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
     getTagById,
     deleteTransaction,
     addTransaction,
+    updateTransaction,
   } = useExpense();
   const { formatAmount } = useCurrency();
 
@@ -393,6 +397,61 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
       setSelectedIds(new Set());
     }
   };
+
+  const handleBulkCategoryChange = async (categoryId: string) => {
+    for (const id of selectedIds) {
+      await updateTransaction(id, { categoryId });
+    }
+    toast({
+      title: 'Categories Updated',
+      description: `Updated category for ${selectedIds.size} transaction${selectedIds.size > 1 ? 's' : ''}.`,
+    });
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkAccountChange = async (accountId: string) => {
+    for (const id of selectedIds) {
+      await updateTransaction(id, { accountId });
+    }
+    toast({
+      title: 'Accounts Updated',
+      description: `Updated account for ${selectedIds.size} transaction${selectedIds.size > 1 ? 's' : ''}.`,
+    });
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkTagAdd = async (tagId: string) => {
+    for (const id of selectedIds) {
+      const transaction = transactions.find(t => t.id === id);
+      if (transaction) {
+        const currentTags = transaction.tagIds || [];
+        if (!currentTags.includes(tagId)) {
+          await updateTransaction(id, { tagIds: [...currentTags, tagId] });
+        }
+      }
+    }
+    toast({
+      title: 'Tags Updated',
+      description: `Added tag to ${selectedIds.size} transaction${selectedIds.size > 1 ? 's' : ''}.`,
+    });
+    setSelectedIds(new Set());
+  };
+
+  // Sort categories and accounts alphabetically for dropdowns
+  const sortedCategories = useMemo(() => 
+    [...categories].sort((a, b) => a.combined.localeCompare(b.combined)),
+    [categories]
+  );
+
+  const sortedAccounts = useMemo(() => 
+    [...accounts].sort((a, b) => a.name.localeCompare(b.name)),
+    [accounts]
+  );
+
+  const activeTags = useMemo(() => 
+    tags.filter(t => !t.isArchived).sort((a, b) => a.name.localeCompare(b.name)),
+    [tags]
+  );
 
   const filteredTransactions = useMemo(() => {
     return transactions
@@ -558,27 +617,90 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
 
         {/* Action buttons - separate row on mobile when visible */}
         {selectedIds.size > 0 && (
-          <div className="flex gap-2 w-full md:w-auto md:self-end">
-            {selectedIds.size === 1 && onCopyTransaction && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <span>{selectedIds.size} selected</span>
+            </div>
+            
+            {/* Bulk edit dropdowns */}
+            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex items-center gap-2 min-w-max md:min-w-0 md:flex-wrap">
+                {/* Category dropdown */}
+                <Select onValueChange={handleBulkCategoryChange}>
+                  <SelectTrigger className="w-36 md:w-44 text-xs md:text-sm shrink-0">
+                    <FolderTree className="w-4 h-4 mr-2" />
+                    <span className="truncate">Set Category</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedCategories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.combined}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Account dropdown */}
+                <Select onValueChange={handleBulkAccountChange}>
+                  <SelectTrigger className="w-32 md:w-40 text-xs md:text-sm shrink-0">
+                    <Wallet className="w-4 h-4 mr-2" />
+                    <span className="truncate">Set Account</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedAccounts.map(acc => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Tag dropdown */}
+                <Select onValueChange={handleBulkTagAdd}>
+                  <SelectTrigger className="w-28 md:w-36 text-xs md:text-sm shrink-0">
+                    <Tag className="w-4 h-4 mr-2" />
+                    <span className="truncate">Add Tag</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeTags.map(tag => (
+                      <SelectItem key={tag.id} value={tag.id}>
+                        <span className="flex items-center gap-2">
+                          <span 
+                            className="w-2 h-2 rounded-full" 
+                            style={{ backgroundColor: tag.color }} 
+                          />
+                          {tag.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2 w-full md:w-auto">
+              {selectedIds.size === 1 && onCopyTransaction && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopySelected}
+                  className="flex-1 md:flex-none"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy
+                </Button>
+              )}
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
-                onClick={handleCopySelected}
+                onClick={() => setShowDeleteDialog(true)}
                 className="flex-1 md:flex-none"
               >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete {selectedIds.size}
               </Button>
-            )}
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              className="flex-1 md:flex-none"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete {selectedIds.size}
-            </Button>
+            </div>
           </div>
         )}
       </div>
