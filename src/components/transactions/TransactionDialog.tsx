@@ -245,11 +245,13 @@ export function TransactionDialog({
                 <SelectItem value="none">
                   <span className="text-muted-foreground italic">Uncategorized</span>
                 </SelectItem>
-                {categories.map(cat => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.combined}
-                  </SelectItem>
-                ))}
+                {[...categories]
+                  .sort((a, b) => a.combined.localeCompare(b.combined))
+                  .map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.combined}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
