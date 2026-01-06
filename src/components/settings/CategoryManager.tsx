@@ -28,6 +28,8 @@ export function CategoryManager() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [addSubToMain, setAddSubToMain] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingMainCategory, setEditingMainCategory] = useState<string | null>(null);
+  const [editMainCategoryValue, setEditMainCategoryValue] = useState('');
   const [newMain, setNewMain] = useState('');
   const [newSub, setNewSub] = useState('');
   const [editMain, setEditMain] = useState('');
@@ -119,6 +121,36 @@ export function CategoryManager() {
     }
   };
 
+  const startEditMainCategory = (mainName: string) => {
+    setEditingMainCategory(mainName);
+    setEditMainCategoryValue(mainName);
+  };
+
+  const handleEditMainCategory = async (oldMainName: string) => {
+    if (!editMainCategoryValue.trim()) {
+      toast({ title: 'Error', description: 'Main category name is required', variant: 'destructive' });
+      return;
+    }
+
+    const newMainName = editMainCategoryValue.trim();
+    if (newMainName === oldMainName) {
+      setEditingMainCategory(null);
+      return;
+    }
+
+    // Update all categories with this main category name
+    const categoriesToUpdate = categories.filter(c => c.main === oldMainName);
+    for (const cat of categoriesToUpdate) {
+      await updateCategory(cat.id, {
+        main: newMainName,
+        combined: `${newMainName} > ${cat.sub}`,
+      });
+    }
+
+    toast({ title: 'Main Category Updated', description: `Renamed "${oldMainName}" to "${newMainName}"` });
+    setEditingMainCategory(null);
+  };
+
   const handleConfirmDelete = async () => {
     if (!categoryToDelete) return;
 
@@ -188,18 +220,49 @@ export function CategoryManager() {
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <FolderTree className="w-5 h-5 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground flex-1">{main}</h3>
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => {
-                  setAddSubToMain(main);
-                  setNewSubForExisting('');
-                }}
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
+              {editingMainCategory === main ? (
+                <div className="flex-1 flex items-center gap-2">
+                  <Input
+                    value={editMainCategoryValue}
+                    onChange={e => setEditMainCategoryValue(e.target.value)}
+                    className="h-8 text-sm font-semibold"
+                    autoFocus
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleEditMainCategory(main);
+                      if (e.key === 'Escape') setEditingMainCategory(null);
+                    }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEditMainCategory(main)}>
+                    <Check className="w-4 h-4 text-success" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingMainCategory(null)}>
+                    <X className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-foreground flex-1">{main}</h3>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => startEditMainCategory(main)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      setAddSubToMain(main);
+                      setNewSubForExisting('');
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
             </div>
             
             {/* Add subcategory inline form */}
