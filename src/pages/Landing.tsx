@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
-import mockupDashboard from "@/assets/mockup-dashboard.png";
+import mockupDashboard from "@/assets/mockup-dashboard-new.png";
 import mockupAnalytics from "@/assets/mockup-analytics.png";
 import mockupAiChat from "@/assets/mockup-ai-chat.png";
 
