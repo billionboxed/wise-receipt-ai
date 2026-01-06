@@ -52,6 +52,12 @@ export function TransactionDialog({
 }: TransactionDialogProps) {
   const { categories, accounts, tags, transactions, addTransaction, updateTransaction } = useExpense();
 
+  // Sort categories alphabetically for consistent ordering
+  const sortedCategories = useMemo(() => 
+    [...categories].sort((a, b) => a.combined.localeCompare(b.combined)),
+    [categories]
+  );
+
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     description: '',
@@ -80,7 +86,7 @@ export function TransactionDialog({
         description: prefillData.description,
         amount: prefillData.amount.toString(),
         type: prefillData.type,
-        categoryId: prefillData.categoryId || categories[0]?.id || '',
+        categoryId: prefillData.categoryId || sortedCategories[0]?.id || '',
         accountId: prefillData.accountId || accounts[0]?.id || '',
         tagIds: prefillData.tagIds || [],
       });
@@ -90,12 +96,12 @@ export function TransactionDialog({
         description: '',
         amount: '',
         type: 'debit',
-        categoryId: categories[0]?.id || '',
+        categoryId: sortedCategories[0]?.id || '',
         accountId: accounts[0]?.id || '',
         tagIds: [],
       });
     }
-  }, [transaction, mode, open, categories, accounts, prefillData]);
+  }, [transaction, mode, open, sortedCategories, accounts, prefillData]);
 
   // Check for duplicate transactions
   const duplicateTransaction = useMemo(() => {
@@ -245,13 +251,11 @@ export function TransactionDialog({
                 <SelectItem value="none">
                   <span className="text-muted-foreground italic">Uncategorized</span>
                 </SelectItem>
-                {[...categories]
-                  .sort((a, b) => a.combined.localeCompare(b.combined))
-                  .map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.combined}
-                    </SelectItem>
-                  ))}
+                {sortedCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.combined}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
