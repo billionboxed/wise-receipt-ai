@@ -436,6 +436,19 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
     return Array.from(unique);
   }, [categories]);
 
+  // Calculate filtered totals
+  const filteredTotals = useMemo(() => {
+    const expenses = filteredTransactions
+      .filter(t => t.type === 'debit')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const income = filteredTransactions
+      .filter(t => t.type === 'credit')
+      .reduce((sum, t) => sum + t.amount, 0);
+    return { expenses, income, net: income - expenses };
+  }, [filteredTransactions]);
+
+  const hasActiveFilters = searchQuery || categoryFilter !== 'all' || accountFilter !== 'all' || typeFilter !== 'all' || tagFilter !== 'all';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -518,6 +531,30 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
             </Select>
           </div>
         </div>
+
+        {/* Filtered totals summary */}
+        {hasActiveFilters && filteredTransactions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg bg-muted/50 text-sm">
+            <span className="text-muted-foreground">
+              {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}:
+            </span>
+            {(typeFilter === 'all' || typeFilter === 'debit') && filteredTotals.expenses > 0 && (
+              <span className="text-destructive font-medium">
+                Expenses: {formatAmount(filteredTotals.expenses)}
+              </span>
+            )}
+            {(typeFilter === 'all' || typeFilter === 'credit') && filteredTotals.income > 0 && (
+              <span className="text-success font-medium">
+                Income: {formatAmount(filteredTotals.income)}
+              </span>
+            )}
+            {typeFilter === 'all' && filteredTotals.expenses > 0 && filteredTotals.income > 0 && (
+              <span className={cn("font-medium", filteredTotals.net >= 0 ? "text-success" : "text-destructive")}>
+                Net: {filteredTotals.net >= 0 ? '+' : ''}{formatAmount(Math.abs(filteredTotals.net))}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Action buttons - separate row on mobile when visible */}
         {selectedIds.size > 0 && (
