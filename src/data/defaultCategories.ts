@@ -1,31 +1,48 @@
-// Default categories for new users - simple and essential
+// Default categories for new users - industry standard
 export const defaultCategories = [
-  // Food
-  { main: 'Food', sub: 'Dining', combined: 'Food > Dining' },
-  { main: 'Food', sub: 'Groceries', combined: 'Food > Groceries' },
+  // Household
+  { main: 'Household', sub: 'Groceries', combined: 'Household > Groceries' },
+  { main: 'Household', sub: 'Utilities', combined: 'Household > Utilities' },
+  { main: 'Household', sub: 'Rent/Mortgage', combined: 'Household > Rent/Mortgage' },
   
-  // Bills
-  { main: 'Bills', sub: 'Utilities', combined: 'Bills > Utilities' },
-  { main: 'Bills', sub: 'Subscriptions', combined: 'Bills > Subscriptions' },
+  // Food & Dining
+  { main: 'Food & Dining', sub: 'Restaurants', combined: 'Food & Dining > Restaurants' },
+  { main: 'Food & Dining', sub: 'Coffee & Snacks', combined: 'Food & Dining > Coffee & Snacks' },
   
   // Transportation
   { main: 'Transportation', sub: 'Fuel', combined: 'Transportation > Fuel' },
-  { main: 'Transportation', sub: 'Transit', combined: 'Transportation > Transit' },
+  { main: 'Transportation', sub: 'Public Transit', combined: 'Transportation > Public Transit' },
+  { main: 'Transportation', sub: 'Parking', combined: 'Transportation > Parking' },
   
   // Shopping
+  { main: 'Shopping', sub: 'Clothing', combined: 'Shopping > Clothing' },
+  { main: 'Shopping', sub: 'Electronics', combined: 'Shopping > Electronics' },
   { main: 'Shopping', sub: 'General', combined: 'Shopping > General' },
   
-  // Health
+  // Bills & Subscriptions
+  { main: 'Bills', sub: 'Phone & Internet', combined: 'Bills > Phone & Internet' },
+  { main: 'Bills', sub: 'Insurance', combined: 'Bills > Insurance' },
+  { main: 'Bills', sub: 'Subscriptions', combined: 'Bills > Subscriptions' },
+  
+  // Health & Wellness
   { main: 'Health', sub: 'Medical', combined: 'Health > Medical' },
+  { main: 'Health', sub: 'Pharmacy', combined: 'Health > Pharmacy' },
   
   // Entertainment
-  { main: 'Entertainment', sub: 'General', combined: 'Entertainment > General' },
+  { main: 'Entertainment', sub: 'Movies & Events', combined: 'Entertainment > Movies & Events' },
+  { main: 'Entertainment', sub: 'Hobbies', combined: 'Entertainment > Hobbies' },
   
   // Travel
-  { main: 'Travel', sub: 'General', combined: 'Travel > General' },
+  { main: 'Travel', sub: 'Accommodation', combined: 'Travel > Accommodation' },
+  { main: 'Travel', sub: 'Transport', combined: 'Travel > Transport' },
   
-  // Misc
-  { main: 'Misc', sub: 'Other', combined: 'Misc > Other' },
+  // Personal
+  { main: 'Personal', sub: 'Gifts', combined: 'Personal > Gifts' },
+  { main: 'Personal', sub: 'Education', combined: 'Personal > Education' },
+  
+  // Miscellaneous
+  { main: 'Miscellaneous', sub: 'Other', combined: 'Miscellaneous > Other' },
+  { main: 'Miscellaneous', sub: 'Fees & Charges', combined: 'Miscellaneous > Fees & Charges' },
 ];
 
 export const defaultAccounts = [
