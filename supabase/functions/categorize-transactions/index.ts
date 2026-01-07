@@ -106,10 +106,14 @@ YOUR APPROACH:
    - Europe, Asia, and other regions
 
 DECISION PROCESS:
-- If you recognize the merchant → high confidence
-- If the pattern strongly suggests a category → medium confidence  
-- If uncertain but making educated guess → low confidence
-- Always pick the MOST SPECIFIC matching subcategory
+- First, identify WHAT the transaction is for (auto parts, groceries, subscription, etc.)
+- Then find the CLOSEST matching category from the user's available list
+- If exact subcategory exists → high confidence
+- If only main category matches (e.g., "Transportation" for auto parts) → medium confidence
+- If making best-effort match to nearest category → low confidence
+- NEVER say "no match" - always pick the BEST available option from the list
+- For vehicle-related purchases (parts, maintenance, repairs, gas), look for Transportation, Vehicle, Auto, or Car categories
+- For food purchases, prefer specific subcategories (Restaurants, Groceries, Coffee) over general Food
 
 OUTPUT FORMAT (JSON array only):
 [
