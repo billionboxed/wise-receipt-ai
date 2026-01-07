@@ -79,11 +79,14 @@ YOUR APPROACH:
    - Utilities, telecom providers, insurance companies
    - Banks, payment processors, fintech services
    - Healthcare providers, pharmacies, fitness centers
+   - **Auto parts & vehicle maintenance** (RockAuto, AutoZone, O'Reilly Auto Parts, NAPA, Advance Auto Parts, Pep Boys, Canadian Tire auto, Halfords)
+   - Gas stations & car washes
    
 3. **Decode abbreviations** - Bank statements often use abbreviated names:
    - "AMZN" = Amazon
    - "APPL" = Apple
    - "GOOGL" = Google
+   - "ROCKAUTO" or "ROCK AUTO" = RockAuto (auto parts)
    - "MSFT" = Microsoft
    - "POS" = Point of sale purchase
    - "ATM" = Cash withdrawal
