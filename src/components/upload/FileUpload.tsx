@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { findBestCategory, findCategoryByMain } from '@/utils/categoryMatcher';
 
 interface FileUploadProps {
   onTransactionsParsed: (transactions: ParsedTransaction[]) => void;
@@ -110,48 +111,11 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
     [accounts]
   );
 
+  // Smart category suggestion using the comprehensive matcher
   const suggestCategory = useCallback(
-    (description: string): string => {
-      const lowerDesc = description.toLowerCase();
-
-      const rules: { keywords: string[]; categoryMain: string }[] = [
-        // Food & Dining (International)
-        { keywords: ['restaurant', 'food', 'zomato', 'swiggy', 'uber eats', 'doordash', 'skip the dishes', 'grubhub', 'dominos', 'pizza', 'mcdonald', 'starbucks', 'tim hortons', 'subway', 'wendy', 'burger king', 'kfc', 'taco bell', 'chipotle', 'panera', 'dunkin'], categoryMain: 'Food' },
-        // Groceries (International)
-        { keywords: ['grocery', 'supermarket', 'big bazaar', 'dmart', 'reliance fresh', 'walmart', 'costco', 'loblaws', 'sobeys', 'metro', 'no frills', 'safeway', 'whole foods', 'trader joe', 'kroger', 'publix', 'target', 'aldi', 'lidl', 'tesco', 'sainsbury', 'coles', 'woolworths'], categoryMain: 'Household' },
-        // Fuel (International)
-        { keywords: ['fuel', 'petrol', 'diesel', 'gas station', 'shell', 'esso', 'petro-canada', 'chevron', 'bp', 'exxon', 'mobil', 'sunoco', 'hp', 'indian oil', 'bharat petroleum'], categoryMain: 'Fuel' },
-        // Entertainment & Subscriptions
-        { keywords: ['netflix', 'spotify', 'amazon prime', 'disney', 'subscription', 'hotstar', 'hulu', 'apple music', 'youtube premium', 'hbo max', 'paramount', 'crave'], categoryMain: 'Subscriptions' },
-        { keywords: ['movie', 'pvr', 'inox', 'cinema', 'entertainment', 'cineplex', 'amc', 'regal'], categoryMain: 'Entertainment' },
-        // Utilities
-        { keywords: ['electricity', 'bill', 'water', 'gas', 'internet', 'mobile', 'phone', 'hydro', 'enbridge', 'rogers', 'bell', 'telus', 'at&t', 'verizon', 'comcast', 'xfinity'], categoryMain: 'Household' },
-        // Shopping & Apparel
-        { keywords: ['zara', 'h&m', 'clothes', 'apparel', 'fashion', 'shopping', 'gap', 'old navy', 'uniqlo', 'nike', 'adidas', 'lululemon', 'sephora', 'ulta'], categoryMain: 'Apparel' },
-        // Health
-        { keywords: ['doctor', 'hospital', 'medical', 'pharmacy', 'medicine', 'health', 'shoppers drug mart', 'cvs', 'walgreens', 'rexall', 'dental', 'clinic'], categoryMain: 'Health' },
-        // Travel
-        { keywords: ['vacation', 'travel', 'hotel', 'flight', 'trip', 'holiday', 'airbnb', 'expedia', 'booking.com', 'marriott', 'hilton', 'delta', 'united', 'air canada', 'westjet', 'american airlines'], categoryMain: 'Vacation' },
-        // Transportation
-        { keywords: ['uber', 'lyft', 'taxi', 'transit', 'parking', 'presto', 'compass', 'mta', 'ttc'], categoryMain: 'Fuel' },
-        // Education
-        { keywords: ['school', 'college', 'course', 'education', 'tuition', 'university'], categoryMain: 'Education' },
-        // Transportation & Insurance
-        { keywords: ['maintenance', 'service', 'repair', 'car', 'bike', 'auto'], categoryMain: 'Transportation' },
-        { keywords: ['insurance', 'premium', 'policy'], categoryMain: 'Insurance' },
-        // E-commerce
-        { keywords: ['amazon', 'ebay', 'etsy', 'best buy', 'apple store'], categoryMain: 'Misc' },
-      ];
-
-      for (const rule of rules) {
-        if (rule.keywords.some(keyword => lowerDesc.includes(keyword))) {
-          const category = categories.find(c => c.main === rule.categoryMain);
-          if (category) return category.id;
-        }
-      }
-
-      const miscCategory = categories.find(c => c.main === 'Misc');
-      return miscCategory?.id || categories[0]?.id || undefined;
+    (description: string): string | undefined => {
+      const { categoryId } = findBestCategory(description, categories);
+      return categoryId;
     },
     [categories]
   );
@@ -221,12 +185,10 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
     [accounts, detectAccount]
   );
 
+  // Smart category finder with alias support
   const findCategoryIdByMain = useCallback(
     (categoryMain: string): string | undefined => {
-      const category = categories.find(c => c.main.toLowerCase() === categoryMain.toLowerCase());
-      if (category) return category.id;
-      const miscCategory = categories.find(c => c.main === 'Misc');
-      return miscCategory?.id || categories[0]?.id || undefined;
+      return findCategoryByMain(categoryMain, categories);
     },
     [categories]
   );

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from './use-toast';
+import { defaultCategories, defaultAccounts } from '@/data/defaultCategories';
 
 export interface Category {
   id: string;
@@ -61,6 +62,26 @@ export function useExpenseData() {
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Seed default data for new users
+  const seedDefaultData = useCallback(async (userId: string) => {
+    // Seed categories
+    const categoryInserts = defaultCategories.map(c => ({
+      user_id: userId,
+      main: c.main,
+      sub: c.sub,
+      combined: c.combined,
+    }));
+    await supabase.from('categories').insert(categoryInserts);
+
+    // Seed accounts
+    const accountInserts = defaultAccounts.map(a => ({
+      user_id: userId,
+      name: a.name,
+      type: a.type,
+    }));
+    await supabase.from('accounts').insert(accountInserts);
+  }, []);
+
   // Fetch all data
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -78,12 +99,29 @@ export function useExpenseData() {
         .order('main', { ascending: true });
 
       if (catError) throw catError;
-      setCategories((categoriesData || []).map(c => ({
-        id: c.id,
-        main: c.main,
-        sub: c.sub,
-        combined: c.combined,
-      })));
+
+      // Seed default categories for new users
+      if (!categoriesData || categoriesData.length === 0) {
+        await seedDefaultData(user.id);
+        // Refetch after seeding
+        const { data: newCategories } = await supabase
+          .from('categories')
+          .select('*')
+          .order('main', { ascending: true });
+        setCategories((newCategories || []).map(c => ({
+          id: c.id,
+          main: c.main,
+          sub: c.sub,
+          combined: c.combined,
+        })));
+      } else {
+        setCategories(categoriesData.map(c => ({
+          id: c.id,
+          main: c.main,
+          sub: c.sub,
+          combined: c.combined,
+        })));
+      }
 
       // Fetch accounts
       const { data: accountsData, error: accError } = await supabase
