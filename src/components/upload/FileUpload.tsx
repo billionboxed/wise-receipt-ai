@@ -455,6 +455,56 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
     [detectAccount, suggestCategory]
   );
 
+  // AI-powered categorization using Lovable AI
+  const categorizeWithAI = useCallback(
+    async (txns: ParsedTransaction[]): Promise<ParsedTransaction[]> => {
+      if (txns.length === 0 || categories.length === 0) return txns;
+
+      try {
+        setProcessingMessage('AI is categorizing transactions...');
+        
+        const { data, error } = await supabase.functions.invoke('categorize-transactions', {
+          body: {
+            transactions: txns.map(t => ({
+              id: t.id,
+              description: t.description,
+              amount: t.amount,
+              date: t.date,
+            })),
+            categories: categories.map(c => ({
+              id: c.id,
+              main: c.main,
+              sub: c.sub,
+              combined: c.combined,
+            })),
+          },
+        });
+
+        if (error) {
+          console.error('AI categorization error:', error);
+          return txns; // Fall back to existing suggestions
+        }
+
+        if (data?.success && data?.suggestions) {
+          const suggestionMap = new Map<string, string>(
+            data.suggestions.map((s: { id: string; categoryId: string }) => [s.id, s.categoryId] as [string, string])
+          );
+          
+          return txns.map(t => ({
+            ...t,
+            suggestedCategoryId: (suggestionMap.get(t.id) as string | undefined) || t.suggestedCategoryId,
+          }));
+        }
+
+        return txns;
+      } catch (err) {
+        console.error('AI categorization failed:', err);
+        return txns; // Fall back to existing suggestions
+      }
+    },
+    [categories]
+  );
+
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
@@ -482,9 +532,13 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
           return;
         }
 
+        // Use AI to categorize transactions (enhances PDF AI suggestions and adds categories to Excel)
+        setProcessingMessage('AI is categorizing transactions...');
+        const categorizedTxns = await categorizeWithAI(parsedTxns);
+
         // Check for duplicates
         setProcessingMessage('Checking for duplicates...');
-        const transactionsWithDuplicateCheck = checkForDuplicates(parsedTxns);
+        const transactionsWithDuplicateCheck = checkForDuplicates(categorizedTxns);
         const duplicateCount = transactionsWithDuplicateCheck.filter(t => t.isDuplicate).length;
 
         if (duplicateCount > 0) {
@@ -497,7 +551,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
 
         toast({
           title: 'File processed successfully',
-          description: `Found ${parsedTxns.length} transactions${duplicateCount > 0 ? ` (${duplicateCount} duplicates)` : ''}.`,
+          description: `Found ${parsedTxns.length} transactions${duplicateCount > 0 ? ` (${duplicateCount} duplicates)` : ''}. AI categorization applied.`,
         });
 
         onTransactionsParsed(transactionsWithDuplicateCheck);
@@ -513,7 +567,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         setProcessingMessage('');
       }
     },
-    [parseExcelFile, parsePdfWithAI, onTransactionsParsed, checkForDuplicates]
+    [parseExcelFile, parsePdfWithAI, categorizeWithAI, onTransactionsParsed, checkForDuplicates]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
