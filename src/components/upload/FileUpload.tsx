@@ -151,7 +151,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       }
 
       const miscCategory = categories.find(c => c.main === 'Misc');
-      return miscCategory?.id || '23';
+      return miscCategory?.id || categories[0]?.id || undefined;
     },
     [categories]
   );
@@ -222,11 +222,11 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
   );
 
   const findCategoryIdByMain = useCallback(
-    (categoryMain: string): string => {
+    (categoryMain: string): string | undefined => {
       const category = categories.find(c => c.main.toLowerCase() === categoryMain.toLowerCase());
       if (category) return category.id;
       const miscCategory = categories.find(c => c.main === 'Misc');
-      return miscCategory?.id || '23';
+      return miscCategory?.id || categories[0]?.id || undefined;
     },
     [categories]
   );
