@@ -33,7 +33,7 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert financial document parser specializing in bank and credit card statements from ANY country worldwide. Your task is to extract transactions from bank statement PDFs accurately.
+const systemPrompt = `You are an expert financial document parser specializing in bank and credit card statements from ANY country worldwide. Your task is to extract transactions from bank statement PDFs accurately.
 
 CRITICAL GUIDELINES:
 1. Extract ALL transactions from the document - do not skip any
@@ -43,8 +43,33 @@ CRITICAL GUIDELINES:
 3. For each transaction, identify:
    - date: In YYYY-MM-DD format (required)
    - description: The transaction narration/description (required)
-   - amount: The transaction amount as positive number (required)
+   - amount: The transaction amount as POSITIVE number always (required)
    - type: Either "debit" (withdrawal/expense/purchase) or "credit" (deposit/income/refund)
+
+SMART REFUND/CREDIT DETECTION (CRITICAL):
+Detect credits and refunds using these worldwide patterns - this is essential for accurate categorization:
+
+1. NEGATIVE SIGN: Amount shown as -100.00 or (100.00) → type: "credit"
+2. CREDIT/CR INDICATOR: Column header or label says "Credit" or "CR" → type: "credit"  
+3. DEBIT/DR INDICATOR: If statement uses DR/CR columns, DR = debit, CR = credit
+4. DESCRIPTION KEYWORDS - Mark as type "credit" if description contains:
+   - "REFUND", "CREDIT", "REVERSAL", "RETURN", "CASHBACK", "REBATE"
+   - "PAYMENT RECEIVED", "PAYMENT THANK YOU", "PAYMENT - THANK YOU"
+   - "ADJUSTMENT CREDIT", "DISPUTE CREDIT", "CHARGEBACK"
+   - "REWARDS", "BONUS", "INTEREST EARNED", "DIVIDEND"
+   - "DEPOSIT", "TRANSFER IN", "INCOMING"
+5. PAYMENT SECTION: Transactions in "Payments", "Credits", or "Money In" sections → type: "credit"
+6. STATEMENT FORMAT PATTERNS:
+   - American Express: Negative amounts (e.g., -2,811.96) are credits/payments
+   - Chase/BoA: May use separate columns for debits and credits
+   - UK Banks: Often use "IN" and "OUT" or "Credit" and "Debit" columns
+   - Indian Banks: May use "Cr" and "Dr" suffixes or separate columns
+   - Australian Banks: Often use +/- or separate Credit/Debit columns
+
+IMPORTANT: 
+- If amount is negative OR in credit column OR has credit indicator → type: "credit"
+- Always return amount as positive number, let the "type" field indicate direction
+- When in doubt based on description (PAYMENT, REFUND, etc.), mark as credit
 
 4. Detect the bank/account from the document. Common banks by region:
 
