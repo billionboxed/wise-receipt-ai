@@ -526,69 +526,67 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
           />
         </div>
         
-        {/* Filter row - scrollable on mobile */}
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <div className="flex items-center gap-2 md:gap-3 min-w-max md:min-w-0 md:flex-wrap">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm shrink-0">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {mainCategories.map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Filter row - wrapping grid */}
+        <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:gap-3">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {mainCategories.map(cat => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={accountFilter} onValueChange={setAccountFilter}>
-              <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm shrink-0">
-                <SelectValue placeholder="Account" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Accounts</SelectItem>
-                {accounts.map(acc => (
-                  <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={accountFilter} onValueChange={setAccountFilter}>
+            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
+              <SelectValue placeholder="Account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Accounts</SelectItem>
+              {accounts.map(acc => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  {acc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-24 md:w-32 text-xs md:text-sm shrink-0">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="debit">Expense</SelectItem>
-                <SelectItem value="credit">Income</SelectItem>
-              </SelectContent>
-            </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full md:w-32 text-xs md:text-sm">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="debit">Expense</SelectItem>
+              <SelectItem value="credit">Income</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <Select value={tagFilter} onValueChange={setTagFilter}>
-              <SelectTrigger className="w-28 md:w-40 text-xs md:text-sm shrink-0">
-                <SelectValue placeholder="Tag" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tags</SelectItem>
-                {tags.map(tag => (
-                  <SelectItem key={tag.id} value={tag.id}>
-                    <span className="flex items-center gap-2">
-                      <span 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: tag.color }} 
-                      />
-                      {tag.name}
-                      {tag.isArchived && <span className="text-muted-foreground text-xs">(archived)</span>}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={tagFilter} onValueChange={setTagFilter}>
+            <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
+              <SelectValue placeholder="Tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tags</SelectItem>
+              {tags.map(tag => (
+                <SelectItem key={tag.id} value={tag.id}>
+                  <span className="flex items-center gap-2">
+                    <span 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: tag.color }} 
+                    />
+                    {tag.name}
+                    {tag.isArchived && <span className="text-muted-foreground text-xs">(archived)</span>}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Filtered totals summary */}
@@ -623,59 +621,57 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
             </div>
             
             {/* Bulk edit dropdowns */}
-            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <div className="flex items-center gap-2 min-w-max md:min-w-0 md:flex-wrap">
-                {/* Category dropdown */}
-                <Select onValueChange={handleBulkCategoryChange}>
-                  <SelectTrigger className="w-36 md:w-44 text-xs md:text-sm shrink-0">
-                    <FolderTree className="w-4 h-4 mr-2" />
-                    <span className="truncate">Set Category</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedCategories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.combined}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:gap-3">
+              {/* Category dropdown */}
+              <Select onValueChange={handleBulkCategoryChange}>
+                <SelectTrigger className="w-full md:w-44 text-xs md:text-sm">
+                  <FolderTree className="w-4 h-4 mr-2 shrink-0" />
+                  <span className="truncate">Set Category</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.combined}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-                {/* Account dropdown */}
-                <Select onValueChange={handleBulkAccountChange}>
-                  <SelectTrigger className="w-32 md:w-40 text-xs md:text-sm shrink-0">
-                    <Wallet className="w-4 h-4 mr-2" />
-                    <span className="truncate">Set Account</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedAccounts.map(acc => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Account dropdown */}
+              <Select onValueChange={handleBulkAccountChange}>
+                <SelectTrigger className="w-full md:w-40 text-xs md:text-sm">
+                  <Wallet className="w-4 h-4 mr-2 shrink-0" />
+                  <span className="truncate">Set Account</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedAccounts.map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-                {/* Tag dropdown */}
-                <Select onValueChange={handleBulkTagAdd}>
-                  <SelectTrigger className="w-28 md:w-36 text-xs md:text-sm shrink-0">
-                    <Tag className="w-4 h-4 mr-2" />
-                    <span className="truncate">Add Tag</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeTags.map(tag => (
-                      <SelectItem key={tag.id} value={tag.id}>
-                        <span className="flex items-center gap-2">
-                          <span 
-                            className="w-2 h-2 rounded-full" 
-                            style={{ backgroundColor: tag.color }} 
-                          />
-                          {tag.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Tag dropdown */}
+              <Select onValueChange={handleBulkTagAdd}>
+                <SelectTrigger className="w-full md:w-36 text-xs md:text-sm">
+                  <Tag className="w-4 h-4 mr-2 shrink-0" />
+                  <span className="truncate">Add Tag</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {activeTags.map(tag => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      <span className="flex items-center gap-2">
+                        <span 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: tag.color }} 
+                        />
+                        {tag.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Action buttons */}
