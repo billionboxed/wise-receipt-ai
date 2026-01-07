@@ -61,40 +61,56 @@ serve(async (req) => {
       `${i + 1}. ID: "${t.id}" | "${t.description}" | Amount: ${t.amount} | Date: ${t.date}`
     ).join("\n");
 
-    const systemPrompt = `You are an expert financial transaction categorizer. Your task is to match bank transaction descriptions to the most appropriate category from the user's category list.
+    const systemPrompt = `You are an expert financial analyst with deep knowledge of global merchants, brands, and services. Your task is to intelligently categorize bank transaction descriptions.
 
 AVAILABLE CATEGORIES:
 ${categoryList}
 
-CATEGORIZATION RULES:
-1. Match transactions to the MOST SPECIFIC subcategory when possible
-2. Consider the merchant name, keywords, and transaction context
-3. Common patterns:
-   - Food delivery apps (Zomato, Swiggy, DoorDash, UberEats) → Food > Delivery or similar
-   - Grocery stores → Household > Groceries
-   - Fuel stations → Transportation > Fuel
-   - Streaming services → Subscriptions > Streaming
-   - Restaurants/cafes → Food > Dining Out
-   - Online shopping (Amazon, Flipkart) → Shopping > Online Shopping
-   - Pharmacies → Health > Pharmacy
-   - Ride-share (Uber, Ola, Lyft) → Transportation > Ride Share
-   - Electricity/water/gas bills → Household > Bills & Utilities
-   - ATM withdrawals → Misc > ATM & Cash
-   - Bank fees → Misc > Fees & Charges
-4. If uncertain, choose the closest main category
-5. Only use category IDs from the provided list
+YOUR APPROACH:
+1. **Analyze the description** - Look for merchant names, abbreviations, transaction codes, and patterns
+2. **Use your knowledge** - You know about thousands of businesses worldwide:
+   - Retail chains (Walmart, Target, Costco, Tesco, Carrefour, Big Bazaar, D-Mart)
+   - Restaurants & cafes (Starbucks, McDonald's, Subway, local chains)
+   - E-commerce (Amazon, Flipkart, eBay, Alibaba, Shopee)
+   - Streaming (Netflix, Spotify, Disney+, Apple Music, YouTube Premium)
+   - Ride-share (Uber, Lyft, Ola, Grab, DiDi)
+   - Food delivery (DoorDash, UberEats, Zomato, Swiggy, Deliveroo)
+   - Airlines, hotels, travel agencies
+   - Utilities, telecom providers, insurance companies
+   - Banks, payment processors, fintech services
+   - Healthcare providers, pharmacies, fitness centers
+   
+3. **Decode abbreviations** - Bank statements often use abbreviated names:
+   - "AMZN" = Amazon
+   - "APPL" = Apple
+   - "GOOGL" = Google
+   - "MSFT" = Microsoft
+   - "POS" = Point of sale purchase
+   - "ATM" = Cash withdrawal
+   - "ACH" = Automated clearing house
+   - "EFT" = Electronic funds transfer
+   
+4. **Understand transaction patterns**:
+   - Recurring same-amount charges = likely subscriptions
+   - Round numbers at gas stations = fuel
+   - Small amounts at cafes = coffee/snacks
+   - Large amounts at electronics stores = electronics
+   - Payments to utilities with city names = bills
 
-OUTPUT FORMAT:
-Return a JSON array with objects containing:
-- "id": the transaction ID
-- "categoryId": the matched category ID from the list
-- "confidence": "high", "medium", or "low"
-- "reason": brief explanation (max 10 words)
+5. **International awareness** - Recognize merchants from:
+   - USA, Canada, UK, Australia
+   - India (Paytm, PhonePe, HDFC, ICICI, Reliance, etc.)
+   - Europe, Asia, and other regions
 
-Example:
+DECISION PROCESS:
+- If you recognize the merchant → high confidence
+- If the pattern strongly suggests a category → medium confidence  
+- If uncertain but making educated guess → low confidence
+- Always pick the MOST SPECIFIC matching subcategory
+
+OUTPUT FORMAT (JSON array only):
 [
-  {"id": "tx_1", "categoryId": "cat_123", "confidence": "high", "reason": "Netflix is a streaming service"},
-  {"id": "tx_2", "categoryId": "cat_456", "confidence": "medium", "reason": "Appears to be restaurant"}
+  {"id": "tx_id", "categoryId": "matching_category_id", "confidence": "high|medium|low", "reason": "brief 5-10 word explanation"}
 ]`;
 
     const userPrompt = `Categorize these transactions:
