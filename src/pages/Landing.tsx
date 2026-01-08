@@ -8,11 +8,11 @@ import {
   Upload, 
   Shield, 
   Smartphone,
-  Zap,
   BarChart3
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { Logo } from "@/components/ui/Logo";
 import mockupDashboard from "@/assets/mockup-dashboard-new.png";
 import mockupAnalytics from "@/assets/mockup-analytics.png";
 import mockupAiChat from "@/assets/mockup-ai-chat.png";
@@ -80,9 +80,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
-                <Zap className="w-5 h-5 text-background" />
-              </div>
+              <Logo size="md" />
               <span className="text-xl font-bold">Clear Spends</span>
             </div>
             <div className="flex items-center gap-4">
@@ -357,9 +355,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
-                <Zap className="w-4 h-4 text-background" />
-              </div>
+              <Logo size="sm" />
               <span className="font-semibold">Clear Spends</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">

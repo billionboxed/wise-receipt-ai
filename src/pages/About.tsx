@@ -19,6 +19,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { Logo } from '@/components/ui/Logo';
 
 const features = [
   {
@@ -88,10 +89,10 @@ export default function About() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <div className="w-20 h-20 bg-primary/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-primary/30">
-            <Wallet className="w-10 h-10 text-primary" />
+          <div className="flex justify-center mb-6">
+            <Logo size="xl" className="w-20 h-20" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">ClearSpends</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">Clear Spends</h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Your personal expense tracker. Simple, powerful, and beautifully designed to help you understand your spending.
           </p>

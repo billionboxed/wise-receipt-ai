@@ -10,7 +10,6 @@ import {
   FolderTree,
   Menu,
   TrendingUp,
-  Sparkles,
   LogOut,
   RefreshCcw,
   Palette,
@@ -20,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { Logo } from '@/components/ui/Logo';
 
 interface NavItem {
   label: string;
@@ -54,10 +54,8 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-6 border-b border-border">
         <div className="relative">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-neon">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-accent opacity-50 blur-xl" />
+          <Logo size="lg" />
+          <div className="absolute inset-0 rounded-full bg-foreground opacity-30 blur-xl" />
         </div>
         {!isCollapsed && (
           <motion.div

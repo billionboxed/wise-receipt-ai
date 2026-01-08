@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { Logo } from '@/components/ui/Logo';
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -141,6 +142,9 @@ export default function Auth() {
       >
         <div className="glass-card p-8">
           <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <Logo size="xl" />
+            </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Clear Spends
             </h1>
