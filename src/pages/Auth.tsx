@@ -1,32 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { z } from 'zod';
 import { Logo } from '@/components/ui/Logo';
-
-const authSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
+import { useState } from 'react';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signUp, signIn } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
@@ -55,84 +41,6 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
-  const validateForm = () => {
-    try {
-      authSchema.parse(formData);
-      setErrors({});
-      return true;
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        const fieldErrors: { email?: string; password?: string } = {};
-        err.errors.forEach((error) => {
-          if (error.path[0] === 'email') fieldErrors.email = error.message;
-          if (error.path[0] === 'password') fieldErrors.password = error.message;
-        });
-        setErrors(fieldErrors);
-      }
-      return false;
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setLoading(true);
-
-    try {
-      if (isLogin) {
-        const { error } = await signIn(formData.email, formData.password);
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast({
-              title: 'Login Failed',
-              description: 'Invalid email or password. Please try again.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Login Failed',
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
-        } else {
-          toast({
-            title: 'Welcome back!',
-            description: 'You have successfully logged in.',
-          });
-          navigate('/dashboard');
-        }
-      } else {
-        const { error } = await signUp(formData.email, formData.password);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              title: 'Account Exists',
-              description: 'This email is already registered. Please log in instead.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Sign Up Failed',
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
-        } else {
-          toast({
-            title: 'Account Created!',
-            description: 'Your account has been created successfully.',
-          });
-          navigate('/dashboard');
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <motion.div
@@ -149,76 +57,15 @@ export default function Auth() {
               Clear Spends
             </h1>
             <p className="text-muted-foreground mt-2">
-              {isLogin ? 'Welcome back! Please sign in.' : 'Create your account to get started.'}
+              Sign in with your Google account to get started.
             </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`pl-10 ${errors.password ? 'border-destructive' : ''}`}
-                />
-              </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-              disabled={loading || googleLoading}
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4 mr-2" />
-              )}
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </Button>
-          </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-            </div>
           </div>
 
           <Button
             type="button"
-            variant="outline"
-            className="w-full"
+            className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
             onClick={handleGoogleAuth}
-            disabled={loading || googleLoading}
+            disabled={googleLoading}
           >
             {googleLoading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -242,26 +89,10 @@ export default function Auth() {
                 />
               </svg>
             )}
-            {isLogin ? 'Sign in with Google' : 'Sign up with Google'}
+            Continue with Google
           </Button>
 
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrors({});
-              }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <span className="text-primary font-medium">
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </span>
-            </button>
-          </div>
-
-          <div className="mt-4 text-center text-xs text-muted-foreground">
+          <div className="mt-6 text-center text-xs text-muted-foreground">
             By continuing, you agree to our{' '}
             <Link to="/terms" className="text-primary hover:underline">
               Terms of Service
