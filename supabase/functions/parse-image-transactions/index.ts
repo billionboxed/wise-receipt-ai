@@ -28,12 +28,18 @@ serve(async (req) => {
     // Prepare the image URL for the vision model
     const imageUrl = `data:${mimeType || 'image/png'};base64,${imageBase64}`;
 
+    const currentYear = new Date().getFullYear();
+    const currentDate = new Date().toISOString().split('T')[0];
+    
     const systemPrompt = `You are a financial document parser specializing in extracting transaction data from bank statements, receipts, and financial screenshots.
+
+Current date: ${currentDate}
+Current year: ${currentYear}
 
 Your task is to analyze the image and extract ALL visible transactions.
 
 For each transaction, extract:
-1. date - in YYYY-MM-DD format (convert from any format you see)
+1. date - in YYYY-MM-DD format. IMPORTANT: If only day/month is visible, assume the current year (${currentYear}) unless context suggests otherwise. For dates like "9th Jan" or "Jan 9", use ${currentYear}-01-09.
 2. description - the merchant name or transaction description
 3. amount - as a positive number (remove currency symbols)
 4. type - "debit" for withdrawals/purchases, "credit" for deposits/refunds
@@ -46,10 +52,9 @@ Also detect:
 IMPORTANT:
 - Extract ALL transactions visible in the image
 - For amounts: Remove currency symbols, convert to numbers
-- For dates: Convert to YYYY-MM-DD format
+- For dates: Convert to YYYY-MM-DD format, use ${currentYear} as default year
 - Negative amounts or withdrawals = "debit"
 - Positive amounts, deposits, refunds, or "CR" = "credit"
-- If date is unclear, use reasonable inference from context
 
 Return ONLY valid JSON, no markdown or explanation.`;
 
