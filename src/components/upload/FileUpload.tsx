@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, X, Sparkles, AlertCircle, Zap, FileText } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, Sparkles, AlertCircle, Zap, FileText, Image } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { useExpense } from '@/context/ExpenseContext';
@@ -220,6 +220,58 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       if (!data.success) {
         const errorMessage = data.error || 'Failed to parse PDF';
         const hint = data.hint || 'Try uploading a clearer PDF or use Excel/CSV format.';
+        throw new Error(`${errorMessage}\n\n${hint}`);
+      }
+
+      const parsedData = data.data;
+      const detectedAccountId = findAccountIdByName(parsedData.detectedAccount, file.name);
+
+      const transactions: ParsedTransaction[] = parsedData.transactions.map((t: any, index: number) => ({
+        id: `parsed_${Date.now()}_${index}`,
+        date: t.date || new Date().toISOString().split('T')[0],
+        description: t.description?.trim() || 'Unknown',
+        amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount) || 0,
+        type: t.type === 'credit' ? 'credit' : 'debit',
+        suggestedCategoryId: findCategoryIdByMain(t.suggestedCategory || 'Misc'),
+        suggestedAccountId: detectedAccountId,
+        suggestedTagIds: [],
+        selected: true,
+        confirmed: false,
+      }));
+
+      return transactions.filter(t => t.amount > 0);
+    },
+    [findAccountIdByName, findCategoryIdByMain]
+  );
+
+  // Parse images with AI vision
+  const parseImageWithAI = useCallback(
+    async (file: File): Promise<ParsedTransaction[]> => {
+      setProcessingMessage('Converting image...');
+      
+      // Convert file to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      setProcessingMessage('AI is analyzing your bank statement image...');
+
+      const { data, error } = await supabase.functions.invoke('parse-image-transactions', {
+        body: { imageBase64: base64, fileName: file.name, mimeType: file.type },
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to parse image');
+      }
+
+      if (!data.success) {
+        const errorMessage = data.error || 'Failed to parse image';
+        const hint = data.hint || 'Try uploading a clearer image.';
         throw new Error(`${errorMessage}\n\n${hint}`);
       }
 
@@ -505,6 +557,13 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
     [categories]
   );
 
+  // Check if file is an image
+  const isImageFile = (file: File): boolean => {
+    const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif'];
+    return imageTypes.includes(file.type) || imageExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+  };
+
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
@@ -517,7 +576,10 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       try {
         let parsedTxns: ParsedTransaction[];
         
-        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        if (isImageFile(file)) {
+          // Handle image files with AI vision
+          parsedTxns = await parseImageWithAI(file);
+        } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
           parsedTxns = await parsePdfWithAI(file);
         } else {
           parsedTxns = await parseExcelFile(file);
@@ -567,7 +629,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
         setProcessingMessage('');
       }
     },
-    [parseExcelFile, parsePdfWithAI, categorizeWithAI, onTransactionsParsed, checkForDuplicates]
+    [parseExcelFile, parsePdfWithAI, parseImageWithAI, categorizeWithAI, onTransactionsParsed, checkForDuplicates]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -577,6 +639,11 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
       'application/vnd.ms-excel': ['.xls'],
       'text/csv': ['.csv'],
       'application/pdf': ['.pdf'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/webp': ['.webp'],
+      'image/heic': ['.heic'],
+      'image/heif': ['.heif'],
     },
     maxFiles: 1,
   });
@@ -646,7 +713,7 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               {isProcessing
                 ? 'Detecting accounts, categorizing transactions, and preparing for review'
-                : 'Drag and drop your bank statement or click to browse. Supports Excel, CSV, and PDF files.'}
+                : 'Drag and drop your bank statement or click to browse. Supports Excel, CSV, PDF, and images.'}
             </p>
           </div>
 
@@ -659,6 +726,11 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 text-xs text-primary">
                 <FileText className="w-4 h-4" />
                 <span>PDF with AI</span>
+                <Sparkles className="w-3 h-3" />
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20 text-xs text-accent-foreground">
+                <Image className="w-4 h-4" />
+                <span>Screenshots</span>
                 <Sparkles className="w-3 h-3" />
               </div>
             </div>

@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.spending-forecast]
 verify_jwt = false
+
+[functions.parse-image-transactions]
+verify_jwt = false
+
+[functions.categorize-transactions]
+verify_jwt = false
