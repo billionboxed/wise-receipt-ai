@@ -21,14 +21,26 @@ export function FileUpload({ onTransactionsParsed }: FileUploadProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [processingMessage, setProcessingMessage] = useState('');
 
-  // Check for duplicate transactions based on date + amount
+  // Check for duplicate transactions based on date + amount + type
   const checkForDuplicates = useCallback(
     (parsedTransactions: ParsedTransaction[]): ParsedTransaction[] => {
       return parsedTransactions.map(pt => {
         // Check against existing transactions
-        const duplicate = transactions.find(
-          t => t.date === pt.date && Math.abs(t.amount - pt.amount) < 0.01 && t.type === pt.type
-        );
+        // Compare dates by normalizing to YYYY-MM-DD format
+        const ptDate = pt.date.substring(0, 10); // Ensure YYYY-MM-DD
+        
+        const duplicate = transactions.find(t => {
+          const existingDate = t.date.substring(0, 10);
+          const dateMatch = existingDate === ptDate;
+          const amountMatch = Math.abs(t.amount - pt.amount) < 0.01;
+          const typeMatch = t.type === pt.type;
+          
+          if (dateMatch && amountMatch && typeMatch) {
+            console.log(`Duplicate found: parsed=${ptDate}/${pt.amount}/${pt.type} matches existing=${existingDate}/${t.amount}/${t.type}`);
+          }
+          
+          return dateMatch && amountMatch && typeMatch;
+        });
         
         if (duplicate) {
           return {
