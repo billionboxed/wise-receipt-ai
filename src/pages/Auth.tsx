@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -7,7 +7,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from '@/components/ui/Logo';
-import { useState } from 'react';
+
+// Detect if running in Capacitor native app
+const isNativeApp = () => {
+  return typeof (window as any).Capacitor !== 'undefined' && 
+         (window as any).Capacitor.isNativePlatform?.();
+};
+
+// Get the appropriate redirect URL for OAuth
+const getRedirectUrl = () => {
+  if (isNativeApp()) {
+    // For native apps, use the deep link scheme
+    return 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth/callback';
+  }
+  // For web, use the current origin
+  return `${window.location.origin}/dashboard`;
+};
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -17,10 +32,14 @@ export default function Auth() {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
+      const redirectUrl = getRedirectUrl();
+      console.log('OAuth redirect URL:', redirectUrl);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: isNativeApp(), // Let Capacitor handle the browser
         },
       });
       if (error) {
