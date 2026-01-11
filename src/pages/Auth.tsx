@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from '@/components/ui/Logo';
+import { Browser } from '@capacitor/browser';
 
 // Detect if running in Capacitor native app
 const isNativeApp = () => {
@@ -34,22 +35,38 @@ export default function Auth() {
     try {
       const redirectUrl = getRedirectUrl();
       console.log('OAuth redirect URL:', redirectUrl);
+      console.log('Is native app:', isNativeApp());
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: isNativeApp(), // Let Capacitor handle the browser
+          skipBrowserRedirect: isNativeApp(),
         },
       });
+
       if (error) {
         toast({
           title: 'Google Sign In Failed',
           description: error.message,
           variant: 'destructive',
         });
+        setGoogleLoading(false);
+        return;
       }
-    } finally {
+
+      // For native apps, manually open the OAuth URL in system browser
+      if (isNativeApp() && data?.url) {
+        console.log('Opening OAuth URL in browser:', data.url);
+        await Browser.open({ url: data.url });
+      }
+    } catch (err) {
+      console.error('OAuth error:', err);
+      toast({
+        title: 'Authentication Error',
+        description: 'Failed to start authentication. Please try again.',
+        variant: 'destructive',
+      });
       setGoogleLoading(false);
     }
   };
