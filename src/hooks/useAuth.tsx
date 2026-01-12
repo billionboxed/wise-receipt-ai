@@ -87,7 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (oauthPending) {
         const tokens = getOAuthTokensFromHash();
         if (tokens) {
-          await supabase.auth.setSession(tokens);
+          const { error } = await supabase.auth.setSession(tokens);
+          if (!error) {
+            // Session set successfully - auth listener will update state
+            // Clean URL and redirect to dashboard
+            clearOAuthParamsFromUrl();
+            oauthPending = false;
+            
+            // Force navigation to dashboard after successful OAuth
+            if (window.location.pathname === '/' || window.location.pathname === '/auth') {
+              window.location.href = '/dashboard';
+            }
+            return;
+          }
         }
       }
 
@@ -110,9 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
 
       if (urlHasOAuthParams()) {
-        setTimeout(() => {
-          if (isMounted) clearOAuthParamsFromUrl();
-        }, 0);
+        clearOAuthParamsFromUrl();
       }
     };
 
