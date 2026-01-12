@@ -20,7 +20,8 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          // Use a public route for the OAuth return. We'll redirect to /dashboard once the session is set.
+          redirectTo: `${window.location.origin}/auth`,
         },
       });
       if (error) {
