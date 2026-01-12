@@ -1,9 +1,8 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ExpenseProvider } from "@/context/ExpenseContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
@@ -12,7 +11,6 @@ import { AnalyticsFilterProvider } from "@/context/AnalyticsFilterContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { OnboardingProvider } from "@/context/OnboardingContext";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-import { handleAuthDeepLink, isAuthCallback } from "@/utils/capacitorAuth";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
@@ -35,60 +33,6 @@ import DataSettings from "./pages/settings/DataSettings";
 import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
-
-// Deep link listener for Capacitor
-const DeepLinkHandler = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
-  useEffect(() => {
-    // Check if we're in a native Capacitor app
-    const Capacitor = (window as any).Capacitor;
-    if (!Capacitor?.isNativePlatform?.()) return;
-
-    // Dynamic import of Capacitor App plugin
-    const setupDeepLinkListener = async () => {
-      try {
-        const { App } = await import('@capacitor/app');
-        
-        // Handle app URL open (deep links)
-        App.addListener('appUrlOpen', async (event: { url: string }) => {
-          console.log('Deep link received:', event.url);
-          
-          if (isAuthCallback(event.url)) {
-            const result = await handleAuthDeepLink(event.url);
-            if (!result.error) {
-              navigate('/dashboard', { replace: true });
-            }
-          }
-        });
-
-        // Also check if app was opened with a URL initially
-        const urlOpen = await App.getLaunchUrl();
-        if (urlOpen?.url && isAuthCallback(urlOpen.url)) {
-          console.log('App launched with auth URL:', urlOpen.url);
-          const result = await handleAuthDeepLink(urlOpen.url);
-          if (!result.error) {
-            navigate('/dashboard', { replace: true });
-          }
-        }
-      } catch (error) {
-        console.log('Capacitor App plugin not available:', error);
-      }
-    };
-
-    setupDeepLinkListener();
-  }, [navigate]);
-
-  // Redirect to dashboard if user becomes authenticated
-  useEffect(() => {
-    if (user && window.location.pathname === '/auth') {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, navigate]);
-
-  return null;
-};
 
 const queryClient = new QueryClient();
 
@@ -157,7 +101,6 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <DeepLinkHandler />
                 <AppRoutes />
               </BrowserRouter>
             </AuthProvider>

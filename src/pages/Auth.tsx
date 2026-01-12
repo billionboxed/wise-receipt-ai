@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -7,23 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from '@/components/ui/Logo';
-import { Browser } from '@capacitor/browser';
-
-// Detect if running in Capacitor native app
-const isNativeApp = () => {
-  return typeof (window as any).Capacitor !== 'undefined' && 
-         (window as any).Capacitor.isNativePlatform?.();
-};
-
-// Get the appropriate redirect URL for OAuth
-const getRedirectUrl = () => {
-  if (isNativeApp()) {
-    // For native apps, use the deep link scheme
-    return 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth/callback';
-  }
-  // For web, use the current origin
-  return `${window.location.origin}/dashboard`;
-};
+import { useState } from 'react';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -33,40 +17,20 @@ export default function Auth() {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
-      const redirectUrl = getRedirectUrl();
-      console.log('OAuth redirect URL:', redirectUrl);
-      console.log('Is native app:', isNativeApp());
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: isNativeApp(),
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
-
       if (error) {
         toast({
           title: 'Google Sign In Failed',
           description: error.message,
           variant: 'destructive',
         });
-        setGoogleLoading(false);
-        return;
       }
-
-      // For native apps, manually open the OAuth URL in system browser
-      if (isNativeApp() && data?.url) {
-        console.log('Opening OAuth URL in browser:', data.url);
-        await Browser.open({ url: data.url });
-      }
-    } catch (err) {
-      console.error('OAuth error:', err);
-      toast({
-        title: 'Authentication Error',
-        description: 'Failed to start authentication. Please try again.',
-        variant: 'destructive',
-      });
+    } finally {
       setGoogleLoading(false);
     }
   };
