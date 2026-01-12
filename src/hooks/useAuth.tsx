@@ -32,6 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     };
 
+    const getOAuthTokensFromHash = () => {
+      const raw = window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : window.location.hash;
+
+      if (!raw) return null;
+
+      const params = new URLSearchParams(raw);
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+
+      if (!access_token || !refresh_token) return null;
+      return { access_token, refresh_token };
+    };
+
     const clearOAuthParamsFromUrl = () => {
       // Remove query/hash so refreshes don't re-trigger the callback flow
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -39,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let oauthPending = urlHasOAuthParams();
     let retries = 0;
-    const maxRetries = 12; // ~3s
+    const maxRetries = 60; // ~15s (OAuth callbacks can be slow)
 
     // Set up auth state listener FIRST
     const {
@@ -67,6 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const pollSession = async () => {
+      // Some OAuth flows return tokens in the URL hash (e.g. #access_token=...)
+      // If we don't persist them first, getSession() can stay null.
+      if (oauthPending) {
+        const tokens = getOAuthTokensFromHash();
+        if (tokens) {
+          await supabase.auth.setSession(tokens);
+        }
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
