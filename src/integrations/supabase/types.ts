@@ -168,6 +168,7 @@ export type Database = {
           date: string
           description: string
           id: string
+          recurring_expense_id: string | null
           status: string
           tag_ids: string[] | null
           type: string
@@ -183,6 +184,7 @@ export type Database = {
           date: string
           description: string
           id?: string
+          recurring_expense_id?: string | null
           status?: string
           tag_ids?: string[] | null
           type: string
@@ -198,6 +200,7 @@ export type Database = {
           date?: string
           description?: string
           id?: string
+          recurring_expense_id?: string | null
           status?: string
           tag_ids?: string[] | null
           type?: string
@@ -217,6 +220,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_recurring_expense_id_fkey"
+            columns: ["recurring_expense_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_expenses"
             referencedColumns: ["id"]
           },
         ]
