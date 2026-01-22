@@ -31,6 +31,7 @@ export interface Transaction {
   tagIds: string[];
   status: 'confirmed' | 'pending' | 'skipped';
   aiSuggested?: boolean;
+  recurringExpenseId?: string | null;
 }
 
 export interface ParsedTransaction {

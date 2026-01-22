@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
 
         console.log(`Adding transaction for ${expense.description}`);
 
-        // Create the transaction
+        // Create the transaction with recurring_expense_id to track the source
         const { error: insertError } = await supabase.from("transactions").insert({
           user_id: expense.user_id,
           date: todayStr,
@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
           category_id: expense.category_id,
           account_id: expense.account_id,
           tag_ids: expense.tag_ids || [],
+          recurring_expense_id: expense.id,
         });
 
         if (insertError) {
