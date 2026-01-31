@@ -220,7 +220,7 @@ export function useExpenseData() {
       return;
     }
 
-    setTransactions(prev => [{
+    const newTransaction = {
       id: data.id,
       date: data.date,
       description: data.description,
@@ -231,7 +231,10 @@ export function useExpenseData() {
       tagIds: data.tag_ids || [],
       status: data.status as 'pending' | 'confirmed' | 'skipped',
       aiSuggested: data.ai_suggested || false,
-    }, ...prev]);
+    };
+    setTransactions(prev => [...prev, newTransaction].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    ));
   };
 
   const addTransactions = async (newTransactions: Omit<Transaction, 'id'>[]) => {
@@ -278,7 +281,9 @@ export function useExpenseData() {
       aiSuggested: t.ai_suggested || false,
     }));
 
-    setTransactions(prev => [...mapped, ...prev]);
+    setTransactions(prev => [...prev, ...mapped].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    ));
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
