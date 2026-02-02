@@ -1,20 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useExpense } from '@/context/ExpenseContext';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { TransactionPreviewDrawer } from '@/components/transactions/TransactionPreviewDrawer';
 
 export function RecentTransactions() {
   const { transactions, getCategoryById, getAccountById } = useExpense();
-  const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const handleCategoryClick = (categoryMain: string | undefined, e: React.MouseEvent) => {
     e.stopPropagation();
     if (categoryMain) {
-      navigate(`/transactions?category=${encodeURIComponent(categoryMain)}`);
+      setSelectedCategory(categoryMain);
     }
   };
 
@@ -116,6 +116,13 @@ export function RecentTransactions() {
           </div>
         )}
       </div>
+
+      <TransactionPreviewDrawer
+        open={!!selectedCategory}
+        onOpenChange={(open) => !open && setSelectedCategory(null)}
+        categoryFilter={selectedCategory || undefined}
+        title={selectedCategory || undefined}
+      />
     </motion.div>
   );
 }
