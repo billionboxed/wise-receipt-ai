@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { AIFloatingButton } from '@/components/chat/AIFloatingButton';
 import { AnalyticsFilter } from './AnalyticsFilter';
+import { DatePeriodPicker } from './DatePeriodPicker';
 import { motion } from 'framer-motion';
 
 interface LayoutProps {
@@ -33,7 +34,8 @@ export function Layout({ children, hideAIButton = false }: LayoutProps) {
         <div className={`p-3 sm:p-4 lg:p-8 pt-4 sm:pt-6 lg:pt-8 ${hideAIButton ? 'pb-8' : 'pb-24'} lg:pb-8`}>
           {/* Analytics Filter - shown only on Dashboard and Analytics */}
           {showAnalyticsFilter && (
-            <div className="flex justify-end mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <DatePeriodPicker />
               <AnalyticsFilter />
             </div>
           )}
