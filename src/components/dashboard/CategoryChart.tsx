@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
 
@@ -25,6 +27,11 @@ const chartColors = [
 export function CategoryChart() {
   const { getCategoryById } = useExpense();
   const { filteredTransactions } = useFilteredTransactions();
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (categoryName: string) => {
+    navigate(`/transactions?category=${encodeURIComponent(categoryName)}`);
+  };
 
   const data = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'debit' && t.status === 'confirmed');
@@ -91,6 +98,8 @@ export function CategoryChart() {
                 paddingAngle={3}
                 dataKey="value"
                 strokeWidth={0}
+                onClick={(_, index) => handleCategoryClick(data[index].name)}
+                style={{ cursor: 'pointer' }}
               >
                 {data.map((entry, index) => (
                   <Cell 
@@ -116,12 +125,13 @@ export function CategoryChart() {
 
         <div className="flex-1 w-full space-y-1.5 sm:space-y-2">
           {data.slice(0, 6).map((item, index) => (
-            <motion.div
+            <motion.button
               key={item.name}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + index * 0.05 }}
-              className="flex items-center justify-between gap-2 py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl bg-muted/50 border border-border hover:bg-muted transition-all duration-300"
+              onClick={() => handleCategoryClick(item.name)}
+              className="w-full flex items-center justify-between gap-2 py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl bg-muted/50 border border-border hover:bg-muted hover:border-primary/30 transition-all duration-300 group text-left"
             >
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <div
@@ -130,15 +140,18 @@ export function CategoryChart() {
                 />
                 <span className="text-xs sm:text-sm font-medium text-foreground/90 truncate">{item.name}</span>
               </div>
-              <div className="text-right flex-shrink-0 flex items-center gap-1 sm:gap-2">
-                <span className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">
-                  ₹{item.value.toLocaleString('en-IN')}
-                </span>
-                <span className="text-xs text-muted-foreground hidden sm:inline whitespace-nowrap">
-                  {item.percentage}%
-                </span>
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                <div className="text-right">
+                  <span className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">
+                    ₹{item.value.toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline whitespace-nowrap ml-1">
+                    {item.percentage}%
+                  </span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-            </motion.div>
+            </motion.button>
           ))}
         </div>
       </div>

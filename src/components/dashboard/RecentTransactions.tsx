@@ -2,12 +2,21 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useExpense } from '@/context/ExpenseContext';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
 export function RecentTransactions() {
   const { transactions, getCategoryById, getAccountById } = useExpense();
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (categoryMain: string | undefined, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (categoryMain) {
+      navigate(`/transactions?category=${encodeURIComponent(categoryMain)}`);
+    }
+  };
 
   const recentTransactions = useMemo(() => {
     return [...transactions]
@@ -69,9 +78,15 @@ export function RecentTransactions() {
                   <p className="font-medium text-xs sm:text-sm text-foreground truncate">
                     {transaction.description}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {category?.main} • {account?.name}
-                  </p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  <button 
+                    onClick={(e) => handleCategoryClick(category?.main, e)}
+                    className="hover:text-primary hover:underline transition-colors"
+                  >
+                    {category?.main}
+                  </button>
+                  {' • '}{account?.name}
+                </p>
                 </div>
               </div>
               <div className="text-right flex-shrink-0 ml-2">

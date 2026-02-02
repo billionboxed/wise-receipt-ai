@@ -54,6 +54,7 @@ import { toast } from '@/hooks/use-toast';
 interface TransactionListProps {
   onEditTransaction?: (transaction: Transaction) => void;
   onCopyTransaction?: (transaction: Transaction) => void;
+  initialCategoryFilter?: string;
 }
 
 interface SwipeableTransactionCardProps {
@@ -296,7 +297,7 @@ function SwipeableTransactionCard({
   );
 }
 
-export function TransactionList({ onEditTransaction, onCopyTransaction }: TransactionListProps) {
+export function TransactionList({ onEditTransaction, onCopyTransaction, initialCategoryFilter = 'all' }: TransactionListProps) {
   const {
     transactions,
     categories,
@@ -312,7 +313,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
   const { formatAmount } = useCurrency();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter);
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
