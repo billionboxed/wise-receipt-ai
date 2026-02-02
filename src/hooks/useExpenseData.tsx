@@ -37,6 +37,7 @@ export interface Transaction {
   status: 'pending' | 'confirmed' | 'skipped';
   aiSuggested?: boolean;
   recurringExpenseId?: string | null;
+  created_at?: string;
 }
 
 export interface ParsedTransaction {
@@ -171,6 +172,7 @@ export function useExpenseData() {
         status: t.status as 'pending' | 'confirmed' | 'skipped',
         aiSuggested: t.ai_suggested || false,
         recurringExpenseId: (t as any).recurring_expense_id || null,
+        created_at: t.created_at,
       })));
 
     } catch (error) {

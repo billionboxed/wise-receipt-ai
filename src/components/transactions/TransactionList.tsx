@@ -319,7 +319,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [sortColumn, setSortColumn] = useState<'date' | 'description' | 'category' | 'account' | 'amount'>('date');
+  const [sortColumn, setSortColumn] = useState<'date' | 'created_at' | 'description' | 'category' | 'account' | 'amount'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const handleSort = (column: typeof sortColumn) => {
@@ -327,7 +327,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortColumn(column);
-      setSortDirection(column === 'date' ? 'desc' : 'asc');
+      setSortDirection((column === 'date' || column === 'created_at') ? 'desc' : 'asc');
     }
   };
 
@@ -531,6 +531,11 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
         case 'date':
           comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
           break;
+        case 'created_at':
+          const createdA = a.created_at ? new Date(a.created_at).getTime() : new Date(a.date).getTime();
+          const createdB = b.created_at ? new Date(b.created_at).getTime() : new Date(b.date).getTime();
+          comparison = createdA - createdB;
+          break;
         case 'description':
           comparison = a.description.localeCompare(b.description);
           break;
@@ -648,6 +653,30 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
                   </span>
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          {/* Sort dropdown for mobile */}
+          <Select 
+            value={`${sortColumn}-${sortDirection}`} 
+            onValueChange={(value) => {
+              const [col, dir] = value.split('-') as [typeof sortColumn, 'asc' | 'desc'];
+              setSortColumn(col);
+              setSortDirection(dir);
+            }}
+          >
+            <SelectTrigger className="w-full md:w-44 text-xs md:text-sm">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Date (Newest first)</SelectItem>
+              <SelectItem value="date-asc">Date (Oldest first)</SelectItem>
+              <SelectItem value="created_at-desc">Recently Added</SelectItem>
+              <SelectItem value="created_at-asc">Oldest Added</SelectItem>
+              <SelectItem value="amount-desc">Amount (High to Low)</SelectItem>
+              <SelectItem value="amount-asc">Amount (Low to High)</SelectItem>
+              <SelectItem value="description-asc">Description (A-Z)</SelectItem>
+              <SelectItem value="description-desc">Description (Z-A)</SelectItem>
             </SelectContent>
           </Select>
         </div>

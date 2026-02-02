@@ -32,6 +32,7 @@ export interface Transaction {
   status: 'confirmed' | 'pending' | 'skipped';
   aiSuggested?: boolean;
   recurringExpenseId?: string | null;
+  created_at?: string;
 }
 
 export interface ParsedTransaction {
