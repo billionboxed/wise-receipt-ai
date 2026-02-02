@@ -12,6 +12,9 @@ import {
   Wallet,
   Tag,
   RefreshCcw,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -315,6 +318,26 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [sortColumn, setSortColumn] = useState<'date' | 'description' | 'category' | 'account' | 'amount'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (column: typeof sortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: typeof sortColumn }) => {
+    if (sortColumn !== column) {
+      return <ChevronsUpDown className="w-4 h-4 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-4 h-4 ml-1" /> 
+      : <ArrowDown className="w-4 h-4 ml-1" />;
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -464,7 +487,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
   );
 
   const filteredTransactions = useMemo(() => {
-    return transactions
+    const filtered = transactions
       .filter(t => t.status === 'confirmed')
       .filter(t => {
         if (searchQuery) {
@@ -498,7 +521,36 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
         }
         return true;
       });
-  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, getCategoryById]);
+
+    // Apply sorting
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'date':
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'description':
+          comparison = a.description.localeCompare(b.description);
+          break;
+        case 'category':
+          const catA = getCategoryById(a.categoryId)?.combined || '';
+          const catB = getCategoryById(b.categoryId)?.combined || '';
+          comparison = catA.localeCompare(catB);
+          break;
+        case 'account':
+          const accA = getAccountById(a.accountId)?.name || '';
+          const accB = getAccountById(b.accountId)?.name || '';
+          comparison = accA.localeCompare(accB);
+          break;
+        case 'amount':
+          comparison = a.amount - b.amount;
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, getCategoryById, getAccountById, sortColumn, sortDirection]);
 
   const mainCategories = useMemo(() => {
     const unique = new Set(categories.map(c => c.main));
@@ -792,12 +844,52 @@ export function TransactionList({ onEditTransaction, onCopyTransaction }: Transa
                     aria-label="Select all"
                   />
                 </TableHead>
-                <TableHead className="w-24">Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Account</TableHead>
+                <TableHead 
+                  className="w-24 cursor-pointer hover:text-foreground transition-colors select-none"
+                  onClick={() => handleSort('date')}
+                >
+                  <span className="flex items-center">
+                    Date
+                    <SortIcon column="date" />
+                  </span>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:text-foreground transition-colors select-none"
+                  onClick={() => handleSort('description')}
+                >
+                  <span className="flex items-center">
+                    Description
+                    <SortIcon column="description" />
+                  </span>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:text-foreground transition-colors select-none"
+                  onClick={() => handleSort('category')}
+                >
+                  <span className="flex items-center">
+                    Category
+                    <SortIcon column="category" />
+                  </span>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:text-foreground transition-colors select-none"
+                  onClick={() => handleSort('account')}
+                >
+                  <span className="flex items-center">
+                    Account
+                    <SortIcon column="account" />
+                  </span>
+                </TableHead>
                 <TableHead>Tags</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead 
+                  className="text-right cursor-pointer hover:text-foreground transition-colors select-none"
+                  onClick={() => handleSort('amount')}
+                >
+                  <span className="flex items-center justify-end">
+                    Amount
+                    <SortIcon column="amount" />
+                  </span>
+                </TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
