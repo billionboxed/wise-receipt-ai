@@ -8,6 +8,7 @@ import { ExpenseProvider } from "@/context/ExpenseContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { TransactionDialogProvider } from "@/context/TransactionDialogContext";
 import { AnalyticsFilterProvider } from "@/context/AnalyticsFilterContext";
+import { DateRangeProvider } from "@/context/DateRangeContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { OnboardingProvider } from "@/context/OnboardingContext";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
@@ -54,10 +55,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <ExpenseProvider>
       <AnalyticsFilterProvider>
-        <TransactionDialogProvider>
-          <OnboardingTour />
-          {children}
-        </TransactionDialogProvider>
+        <DateRangeProvider>
+          <TransactionDialogProvider>
+            <OnboardingTour />
+            {children}
+          </TransactionDialogProvider>
+        </DateRangeProvider>
       </AnalyticsFilterProvider>
     </ExpenseProvider>
   );
