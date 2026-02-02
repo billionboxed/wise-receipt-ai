@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart,
@@ -14,7 +14,6 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -26,15 +25,21 @@ import { YearOverYearChart } from '@/components/analytics/YearOverYearChart';
 import { DayOfWeekChart } from '@/components/analytics/DayOfWeekChart';
 import { RecurringExpenses } from '@/components/analytics/RecurringExpenses';
 import { SpendingForecast } from '@/components/analytics/SpendingForecast';
+import { TransactionPreviewDrawer } from '@/components/transactions/TransactionPreviewDrawer';
 
 export default function Analytics() {
   const { getCategoryById, getAccountById, tags } = useExpense();
   const { formatAmount } = useCurrency();
   const { filteredTransactions } = useFilteredTransactions();
-  const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
 
   const handleCategoryClick = (categoryName: string) => {
-    navigate(`/transactions?category=${encodeURIComponent(categoryName)}`);
+    setSelectedCategory(categoryName);
+  };
+
+  const handleAccountClick = (accountName: string) => {
+    setSelectedAccount(accountName);
   };
 
   const confirmedTransactions = useMemo(
@@ -295,6 +300,7 @@ export default function Analytics() {
             className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
           >
             <h3 className="text-base sm:text-lg font-semibold mb-4">Spending by Account</h3>
+            <p className="text-xs text-muted-foreground mb-4 -mt-2">Click a segment to view transactions</p>
             <div className="h-56 sm:h-72 flex items-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -308,6 +314,8 @@ export default function Analytics() {
                     dataKey="value"
                     label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
                     labelLine={false}
+                    onClick={(data) => handleAccountClick(data.name)}
+                    style={{ cursor: 'pointer' }}
                   >
                     {accountData.map((_, index) => (
                       <Cell
@@ -322,6 +330,20 @@ export default function Analytics() {
             </div>
           </motion.div>
         </div>
+
+        {/* Transaction Preview Drawer */}
+        <TransactionPreviewDrawer
+          open={!!selectedCategory}
+          onOpenChange={(open) => !open && setSelectedCategory(null)}
+          categoryFilter={selectedCategory || undefined}
+          title={selectedCategory || undefined}
+        />
+        <TransactionPreviewDrawer
+          open={!!selectedAccount}
+          onOpenChange={(open) => !open && setSelectedAccount(null)}
+          accountFilter={selectedAccount || undefined}
+          title={selectedAccount || undefined}
+        />
       </div>
     </Layout>
   );

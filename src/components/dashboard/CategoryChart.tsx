@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
+import { TransactionPreviewDrawer } from '@/components/transactions/TransactionPreviewDrawer';
 
 const chartColors = [
   'hsl(var(--chart-1))',
@@ -27,10 +27,10 @@ const chartColors = [
 export function CategoryChart() {
   const { getCategoryById } = useExpense();
   const { filteredTransactions } = useFilteredTransactions();
-  const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const handleCategoryClick = (categoryName: string) => {
-    navigate(`/transactions?category=${encodeURIComponent(categoryName)}`);
+    setSelectedCategory(categoryName);
   };
 
   const data = useMemo(() => {
@@ -155,6 +155,13 @@ export function CategoryChart() {
           ))}
         </div>
       </div>
+
+      <TransactionPreviewDrawer
+        open={!!selectedCategory}
+        onOpenChange={(open) => !open && setSelectedCategory(null)}
+        categoryFilter={selectedCategory || undefined}
+        title={selectedCategory || undefined}
+      />
     </motion.div>
   );
 }
