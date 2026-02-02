@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { TransactionDialog, PrefillData } from '@/components/transactions/TransactionDialog';
@@ -9,10 +10,26 @@ import { Link } from 'react-router-dom';
 import { Transaction } from '@/types/expense';
 
 export default function Transactions() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [prefillData, setPrefillData] = useState<PrefillData | null>(null);
+
+  // Read initial category filter from URL
+  const initialCategoryFilter = searchParams.get('category') || 'all';
+  
+  // Clear the URL param after it's been read (to allow manual filter changes)
+  useEffect(() => {
+    if (searchParams.has('category')) {
+      // We don't immediately clear it - let TransactionList read it first
+      const timer = setTimeout(() => {
+        searchParams.delete('category');
+        setSearchParams(searchParams, { replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleAddClick = () => {
     setEditTransaction(null);
@@ -79,6 +96,7 @@ export default function Transactions() {
         <TransactionList 
           onEditTransaction={handleEditTransaction} 
           onCopyTransaction={handleCopyTransaction}
+          initialCategoryFilter={initialCategoryFilter}
         />
 
         {/* Transaction Dialog */}

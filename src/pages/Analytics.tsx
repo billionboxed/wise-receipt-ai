@@ -14,6 +14,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
@@ -30,6 +31,11 @@ export default function Analytics() {
   const { getCategoryById, getAccountById, tags } = useExpense();
   const { formatAmount } = useCurrency();
   const { filteredTransactions } = useFilteredTransactions();
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (categoryName: string) => {
+    navigate(`/transactions?category=${encodeURIComponent(categoryName)}`);
+  };
 
   const confirmedTransactions = useMemo(
     () => filteredTransactions.filter(t => t.status === 'confirmed'),
@@ -208,6 +214,7 @@ export default function Analytics() {
             className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-card border border-border/50"
           >
             <h3 className="text-base sm:text-lg font-semibold mb-4">Spending by Category</h3>
+            <p className="text-xs text-muted-foreground mb-4 -mt-2">Click a bar to view transactions</p>
             <div className="h-56 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryData.slice(0, 8)} layout="vertical">
@@ -215,7 +222,12 @@ export default function Analytics() {
                   <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
                   <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  <Bar 
+                    dataKey="value" 
+                    radius={[0, 4, 4, 0]} 
+                    onClick={(data) => handleCategoryClick(data.name)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {categoryData.slice(0, 8).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
