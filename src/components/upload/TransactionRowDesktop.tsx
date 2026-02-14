@@ -166,7 +166,7 @@ export const TransactionRowDesktop = memo(function TransactionRowDesktop({
                 </div>
               ) : (
                 <div className="flex items-center gap-1 group/desc">
-                  <span className="font-medium line-clamp-2 text-sm">
+                  <span className="font-medium text-sm break-words">
                     {transaction.description}
                   </span>
                   <Button

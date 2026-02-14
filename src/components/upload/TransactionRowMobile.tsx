@@ -139,7 +139,7 @@ export const TransactionRowMobile = memo(function TransactionRowMobile({
               className="flex items-start gap-2 mb-1 cursor-pointer"
               onClick={handleStartEdit}
             >
-              <span className="font-medium text-sm line-clamp-2 flex-1">
+              <span className="font-medium text-sm break-words flex-1">
                 {transaction.description}
               </span>
               <Pencil className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
