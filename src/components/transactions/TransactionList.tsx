@@ -15,6 +15,9 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronsUpDown,
+  MessageSquare,
+  FileText,
+  Pencil,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -70,6 +73,8 @@ interface SwipeableTransactionCardProps {
   transactionTags: Array<{ id: string; name: string; color: string }>;
   formatAmount: (amount: number) => string;
   isRecurring: boolean;
+  source?: 'manual' | 'upload' | 'sms' | 'recurring';
+  unreviewedSms?: boolean;
 }
 
 function SwipeableTransactionCard({
@@ -85,6 +90,8 @@ function SwipeableTransactionCard({
   transactionTags,
   formatAmount,
   isRecurring,
+  source,
+  unreviewedSms,
 }: SwipeableTransactionCardProps) {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [0, 8, 80], [0, 0.25, 1]);
@@ -222,6 +229,17 @@ function SwipeableTransactionCard({
                 {isRecurring && (
                   <span className="flex-shrink-0" title="Recurring expense">
                     <RefreshCcw className="w-3 h-3 text-primary" />
+                  </span>
+                )}
+                {source === 'sms' && (
+                  <span className="flex-shrink-0 flex items-center gap-1" title={unreviewedSms ? 'From SMS — needs review' : 'From SMS'}>
+                    <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                    {unreviewedSms && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                  </span>
+                )}
+                {source === 'upload' && (
+                  <span className="flex-shrink-0" title="From statement upload">
+                    <FileText className="w-3 h-3 text-muted-foreground" />
                   </span>
                 )}
               </div>
