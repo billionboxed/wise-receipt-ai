@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { Logo } from '@/components/ui/Logo';
 import { Seo } from '@/components/Seo';
 import { useState } from 'react';
+import { isNativeMobileApp, signInWithGoogleNative } from '@/lib/auth/nativeGoogleAuth';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -18,6 +19,18 @@ export default function Auth() {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
+      if (isNativeMobileApp()) {
+        const { error } = await signInWithGoogleNative();
+        if (error) {
+          toast({
+            title: 'Google Sign In Failed',
+            description: error.message,
+            variant: 'destructive',
+          });
+        }
+        return;
+      }
+
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: `${window.location.origin}/auth`,
       });
