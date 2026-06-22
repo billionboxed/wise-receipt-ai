@@ -31,6 +31,8 @@ import ThemeSettings from "./pages/settings/ThemeSettings";
 import SettingsHub from "./pages/settings/SettingsHub";
 import RecurringExpensesSettings from "./pages/settings/RecurringExpensesSettings";
 import DataSettings from "./pages/settings/DataSettings";
+import SmsSettings from "./pages/settings/SmsSettings";
+import SmsReview from "./pages/SmsReview";
 import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -88,6 +90,8 @@ function AppRoutes() {
       <Route path="/settings/theme" element={<ProtectedRoute><ThemeSettings /></ProtectedRoute>} />
       <Route path="/settings/recurring" element={<ProtectedRoute><RecurringExpensesSettings /></ProtectedRoute>} />
       <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
+      <Route path="/settings/sms" element={<ProtectedRoute><SmsSettings /></ProtectedRoute>} />
+      <Route path="/sms-review" element={<ProtectedRoute><SmsReview /></ProtectedRoute>} />
       <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
