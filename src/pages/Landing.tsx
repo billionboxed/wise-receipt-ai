@@ -146,6 +146,10 @@ export default function Landing() {
               <img 
                 src={mockupDashboard} 
                 alt="Clear Spends Dashboard" 
+                width={1356}
+                height={532}
+                fetchPriority="high"
+                decoding="async"
                 className="w-full h-auto"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
