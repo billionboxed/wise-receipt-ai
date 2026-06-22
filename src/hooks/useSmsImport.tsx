@@ -13,7 +13,7 @@ import {
 import { parseSmsBatch, ParsedSms, parseSms } from '@/lib/sms/parser';
 import { isLikelyBankSender, normalizeSender } from '@/lib/sms/senders';
 import type { Transaction } from '@/types/expense';
-import { matchClosestCategory } from '@/utils/categoryMatcher';
+import { findBestCategory } from '@/utils/categoryMatcher';
 
 export interface SmsPreferences {
   enabled: boolean;
@@ -120,13 +120,14 @@ export function useSmsImport() {
   /** Convert parsed SMS into Transaction inserts (without dedupe or categorize). */
   const toTransactions = useCallback((parsed: ParsedSms[]): Omit<Transaction, 'id'>[] => {
     return parsed.map(p => {
-      const cat = matchClosestCategory(p.merchant, categories);
+      const match = findBestCategory(p.merchant, categories);
+      const catId = match.categoryId ?? null;
       return {
         date: p.date,
         description: p.merchant,
         amount: p.amount,
         type: p.type,
-        categoryId: cat?.id ?? null,
+        categoryId: catId,
         accountId: resolveAccountId(p),
         tagIds: [],
         status: 'confirmed' as const,
