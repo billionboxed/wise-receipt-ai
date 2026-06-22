@@ -31,6 +31,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (!isOnboardingComplete) {
       const timer = setTimeout(() => {
         setIsTourActive(true);
+        // Mark complete as soon as the tour has auto-started once, so it
+        // never re-triggers on refresh/reopen even if the user dismisses it.
+        localStorage.setItem(ONBOARDING_KEY, 'true');
+        setIsOnboardingComplete(true);
       }, 1000);
       return () => clearTimeout(timer);
     }
