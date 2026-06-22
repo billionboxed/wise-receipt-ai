@@ -14,6 +14,8 @@ import { parseSmsBatch, ParsedSms, parseSms } from '@/lib/sms/parser';
 import { isLikelyBankSender, normalizeSender } from '@/lib/sms/senders';
 import type { Transaction } from '@/types/expense';
 import { findBestCategory } from '@/utils/categoryMatcher';
+import { aiExtractSms, type SmsCandidate, type AiSmsResult } from '@/lib/sms/aiExtract';
+import { useCurrency } from '@/context/CurrencyContext';
 
 export interface SmsPreferences {
   enabled: boolean;
@@ -30,6 +32,9 @@ const DEFAULT_PREFS: SmsPreferences = {
 export function useSmsImport() {
   const { user } = useAuth();
   const { accounts, categories, addTransactions, transactions } = useExpense();
+  const currency = (() => {
+    try { return useCurrency().currency.code; } catch { return undefined; }
+  })();
 
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
   const [allowlist, setAllowlist] = useState<{ id: string; sender: string; enabled: boolean }[]>([]);
@@ -117,18 +122,51 @@ export function useSmsImport() {
     return prefs.defaultAccountId;
   }, [cardMap, prefs.defaultAccountId]);
 
-  /** Convert parsed SMS into Transaction inserts (without dedupe or categorize). */
-  const toTransactions = useCallback((parsed: ParsedSms[]): Omit<Transaction, 'id'>[] => {
-    return parsed.map(p => {
-      const match = findBestCategory(p.merchant, categories);
-      const catId = match.categoryId ?? null;
-      return {
-        date: p.date,
-        description: p.merchant,
-        amount: p.amount,
-        type: p.type,
-        categoryId: catId,
-        accountId: resolveAccountId(p),
+  /** Convert parsed SMS into Transaction inserts using AI extraction for category/account/description. */
+  const toTransactionsAI = useCallback(async (parsed: ParsedSms[]): Promise<Omit<Transaction, 'id'>[]> => {
+    if (parsed.length === 0) return [];
+
+    const candidates: SmsCandidate[] = parsed.map((p, i) => ({
+      id: `${i}_${p.hash}`,
+      sender: p.sender,
+      body: p.raw,
+      occurredAt: p.occurredAt,
+    }));
+
+    const accountRefs = accounts.map(a => ({
+      id: a.id,
+      name: a.name,
+      last4: cardMap.find(c => c.accountId === a.id)?.last4 ?? null,
+    }));
+
+    let ai: AiSmsResult[] = [];
+    try {
+      ai = await aiExtractSms(candidates, categories, accountRefs, currency);
+    } catch (err) {
+      console.error('AI SMS extraction failed, falling back to regex:', err);
+      toast({ title: 'AI parsing unavailable', description: 'Using basic SMS parser instead.', variant: 'destructive' });
+    }
+
+    const aiById = new Map(ai.map(r => [r.id, r]));
+
+    const out: Omit<Transaction, 'id'>[] = [];
+    parsed.forEach((p, i) => {
+      const key = `${i}_${p.hash}`;
+      const r = aiById.get(key);
+
+      // Skip messages AI classified as non-transactions
+      if (r && r.isTransaction === false) return;
+
+      const fallbackCat = findBestCategory(p.merchant, categories).categoryId ?? null;
+      const fallbackAcct = resolveAccountId(p);
+
+      out.push({
+        date: r?.date || p.date,
+        description: (r?.description || p.merchant || '').slice(0, 200),
+        amount: r?.amount && r.amount > 0 ? r.amount : p.amount,
+        type: r?.type || p.type,
+        categoryId: r?.categoryId ?? fallbackCat,
+        accountId: r?.accountId ?? fallbackAcct,
         tagIds: [],
         status: 'confirmed' as const,
         aiSuggested: true,
@@ -136,9 +174,11 @@ export function useSmsImport() {
         smsSender: p.sender,
         smsRaw: p.raw,
         smsReviewed: false,
-      };
+      });
     });
-  }, [categories, resolveAccountId]);
+
+    return out;
+  }, [accounts, cardMap, categories, currency, resolveAccountId]);
 
   /** Read inbox, filter by allowlist, parse, dedupe vs existing transactions, insert. */
   const scanInbox = useCallback(async (sinceEpochMs?: number): Promise<number> => {
@@ -172,13 +212,15 @@ export function useSmsImport() {
         return 0;
       }
 
-      await addTransactions(toTransactions(fresh));
+      toast({ title: 'AI is reading your SMS', description: `Analyzing ${fresh.length} new message(s)…` });
+      const inserts = await toTransactionsAI(fresh);
+      if (inserts.length > 0) await addTransactions(inserts);
       await savePrefs({ lastScanAt: new Date().toISOString() });
-      return fresh.length;
+      return inserts.length;
     } finally {
       setBusy(false);
     }
-  }, [supported, allowlist, addTransactions, existingHashSet, savePrefs, toTransactions]);
+  }, [supported, allowlist, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
 
   /** Discover candidate senders from the inbox so the user can opt in. */
   const discoverSenders = useCallback(async (): Promise<string[]> => {
@@ -208,6 +250,21 @@ export function useSmsImport() {
       allowlist.filter(s => s.enabled).map(s => s.sender.toUpperCase())
     );
 
+    let pending: ParsedSms[] = [];
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const flush = async () => {
+      timer = null;
+      if (pending.length === 0 || cancelled) return;
+      const batch = pending;
+      pending = [];
+      try {
+        const inserts = await toTransactionsAI(batch);
+        if (!cancelled && inserts.length > 0) await addTransactions(inserts);
+      } catch (err) {
+        console.error('Live SMS AI extract failed:', err);
+      }
+    };
+
     (async () => {
       stop = await startSmsListener((msg) => {
         const n = normalizeSender(msg.address);
@@ -217,15 +274,18 @@ export function useSmsImport() {
         const existing = existingHashSet();
         if (existing.has(`${p.date}|${p.amount.toFixed(2)}|${p.type}`)) return;
         if (cancelled) return;
-        addTransactions(toTransactions([p]));
+        pending.push(p);
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { flush(); }, 2000);
       });
     })();
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
       stop?.();
     };
-  }, [supported, prefs.enabled, allowlist, addTransactions, existingHashSet, toTransactions]);
+  }, [supported, prefs.enabled, allowlist, addTransactions, existingHashSet, toTransactionsAI]);
 
   return {
     supported,
