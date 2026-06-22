@@ -118,7 +118,7 @@ export function useRecurringExpenses() {
 
     const { error } = await supabase
       .from('recurring_expenses')
-      .update(updateData)
+      .update(updateData as never)
       .eq('id', id);
 
     if (error) {

@@ -90,7 +90,7 @@ function SwipeableTransactionCard({
   const deleteOpacity = useTransform(x, [0, 8, 80], [0, 0.25, 1]);
   const editOpacity = useTransform(x, [-80, -8, 0], [1, 0.25, 0]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragging = useRef(false);
 
   const handleDragStart = () => {

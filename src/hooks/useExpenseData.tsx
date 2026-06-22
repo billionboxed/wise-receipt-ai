@@ -301,7 +301,7 @@ export function useExpenseData() {
 
     const { error } = await supabase
       .from('transactions')
-      .update(updateData)
+      .update(updateData as never)
       .eq('id', id);
 
     if (error) {
@@ -414,7 +414,7 @@ export function useExpenseData() {
     if (updates.isProject !== undefined) dbUpdates.is_project = updates.isProject;
     if (updates.isArchived !== undefined) dbUpdates.is_archived = updates.isArchived;
 
-    const { error } = await supabase.from('tags').update(dbUpdates).eq('id', id);
+    const { error } = await supabase.from('tags').update(dbUpdates as never).eq('id', id);
     
     if (error) {
       toast({ title: 'Error', description: 'Failed to update tag', variant: 'destructive' });
