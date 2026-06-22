@@ -1,14 +1,26 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const NATIVE_REDIRECT_URI = 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth/callback';
 const NATIVE_LOGIN_FLAG = 'clearspends_native_google_login';
 const HANDOFF_MAX_ATTEMPTS = 80;
 const HANDOFF_RETRY_MS = 250;
 const NATIVE_REDIRECT_HASH = '#native-login';
+
+const nativeSupabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+});
 
 export function isNativeMobileApp() {
   return Capacitor.isNativePlatform();
@@ -82,18 +94,18 @@ export function initNativeGoogleAuthListener() {
       const access_token = readUrlParam(url, 'access_token');
       const refresh_token = readUrlParam(url, 'refresh_token');
       if (access_token && refresh_token) {
-        await supabase.auth.setSession({ access_token, refresh_token });
+        await nativeSupabase.auth.setSession({ access_token, refresh_token });
       }
 
       const code = readUrlParam(url, 'code');
       if (code && exchangedCode !== code) {
         exchangedCode = code;
-        await supabase.auth.exchangeCodeForSession(code);
+        await nativeSupabase.auth.exchangeCodeForSession(code);
       }
 
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await nativeSupabase.auth.getSession();
       return session;
     };
 
@@ -150,7 +162,7 @@ export function initNativeGoogleAuthListener() {
 }
 
 export async function signInWithGoogleNative() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await nativeSupabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: `${window.location.origin}/auth?native=1${NATIVE_REDIRECT_HASH}`,
