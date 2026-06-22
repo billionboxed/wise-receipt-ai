@@ -15,15 +15,24 @@ Add to `android/app/src/main/AndroidManifest.xml` inside `<manifest>`:
 
 ## 2. Plugin (Java)
 
-Create `android/app/src/main/java/app/lovable/sms/SmsReaderPlugin.java`:
+Two files. Put them under `android/app/src/main/java/app/lovable/sms/`.
+
+### 2a. `SmsReaderPlugin.java`
 
 ```java
 package app.lovable.sms;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Telephony;
+import android.telephony.SmsMessage;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
@@ -35,6 +44,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "SmsReader")
 public class SmsReaderPlugin extends Plugin {
+
+  private BroadcastReceiver receiver;
 
   @PluginMethod
   public void checkPermission(PluginCall call) {
@@ -78,23 +89,82 @@ public class SmsReaderPlugin extends Plugin {
 
   @PluginMethod
   public void startListener(PluginCall call) {
-    // Register a BroadcastReceiver for android.provider.Telephony.SMS_RECEIVED
-    // and notifyListeners("smsReceived", data) on each message.
+    if (receiver != null) {
+      JSObject r = new JSObject(); r.put("started", true); call.resolve(r); return;
+    }
+    receiver = new BroadcastReceiver() {
+      @Override
+      public void onReceive(Context context, Intent intent) {
+        if (!Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(intent.getAction())) return;
+        Bundle bundle = intent.getExtras();
+        if (bundle == null) return;
+
+        // Group multipart SMS by sender so we don't fire one event per segment.
+        java.util.Map<String, StringBuilder> bodies = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Long> dates = new java.util.HashMap<>();
+        SmsMessage[] msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent);
+        if (msgs == null) return;
+        for (SmsMessage m : msgs) {
+          String addr = m.getOriginatingAddress();
+          if (addr == null) continue;
+          StringBuilder sb = bodies.get(addr);
+          if (sb == null) { sb = new StringBuilder(); bodies.put(addr, sb); }
+          sb.append(m.getMessageBody() == null ? "" : m.getMessageBody());
+          dates.put(addr, m.getTimestampMillis());
+        }
+        for (java.util.Map.Entry<String, StringBuilder> e : bodies.entrySet()) {
+          JSObject data = new JSObject();
+          data.put("id", String.valueOf(dates.get(e.getKey())) + "-" + e.getKey());
+          data.put("address", e.getKey());
+          data.put("body", e.getValue().toString());
+          data.put("date", dates.get(e.getKey()));
+          notifyListeners("smsReceived", data);
+        }
+      }
+    };
+    IntentFilter filter = new IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION);
+    filter.setPriority(999);
+    getContext().registerReceiver(receiver, filter);
     JSObject ret = new JSObject(); ret.put("started", true); call.resolve(ret);
   }
 
   @PluginMethod
   public void stopListener(PluginCall call) {
+    if (receiver != null) {
+      try { getContext().unregisterReceiver(receiver); } catch (Exception ignored) {}
+      receiver = null;
+    }
     JSObject ret = new JSObject(); ret.put("stopped", true); call.resolve(ret);
+  }
+
+  @Override
+  protected void handleOnDestroy() {
+    if (receiver != null) {
+      try { getContext().unregisterReceiver(receiver); } catch (Exception ignored) {}
+      receiver = null;
+    }
   }
 }
 ```
 
-Register it in `MainActivity.java`:
+### 2b. Register in `MainActivity.java`
 
 ```java
-registerPlugin(SmsReaderPlugin.class);
+import app.lovable.sms.SmsReaderPlugin;
+
+public class MainActivity extends BridgeActivity {
+  @Override
+  public void onCreate(android.os.Bundle savedInstanceState) {
+    registerPlugin(SmsReaderPlugin.class);
+    super.onCreate(savedInstanceState);
+  }
+}
 ```
+
+### 2c. Notes
+
+- The receiver is registered at runtime (not in the manifest) so it only runs while the app is in the foreground. That's intentional — it avoids Android's restrictions on implicit `SMS_RECEIVED` manifest receivers and the Play Store's `SmsReceiver` policy review for background SMS apps.
+- For background delivery while the app is closed, wrap this plugin in a foreground `Service` started from `startListener` and stopped from `stopListener`, and add a persistent notification. Most users won't need this — opening the app once a day triggers the live listener plus a `scanInbox` catch-up.
 
 ## 3. Play Store
 
