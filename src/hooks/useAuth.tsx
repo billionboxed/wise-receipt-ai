@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { initNativeGoogleAuthListener } from '@/lib/auth/nativeGoogleAuth';
+import { initNativeGoogleAuthListener, isNativeBrowserHandoffRequested } from '@/lib/auth/nativeGoogleAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const url = new URL(window.location.href);
       return (
         url.searchParams.has('code') ||
+        url.searchParams.get('native') === '1' ||
         url.searchParams.has('error') ||
         url.searchParams.has('error_description') ||
         url.hash.includes('access_token=') ||
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (tokens) {
           const { error } = await supabase.auth.setSession(tokens);
           if (!error) {
+            if (isNativeBrowserHandoffRequested()) return;
             // Session set successfully - auth listener will update state
             // Clean URL and redirect to dashboard
             clearOAuthParamsFromUrl();
@@ -124,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
 
       if (urlHasOAuthParams()) {
-        clearOAuthParamsFromUrl();
+        if (!isNativeBrowserHandoffRequested()) clearOAuthParamsFromUrl();
       }
     };
 
