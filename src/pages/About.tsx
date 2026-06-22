@@ -92,7 +92,7 @@ export default function About() {
           <div className="flex justify-center mb-6">
             <Logo size="xl" className="w-20 h-20" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">Clear Spends</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">About Clear Spends — Your Personal Expense Tracker</h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Your personal expense tracker. Simple, powerful, and beautifully designed to help you understand your spending.
           </p>
