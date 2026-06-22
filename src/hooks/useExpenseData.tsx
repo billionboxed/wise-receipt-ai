@@ -530,6 +530,8 @@ export function useExpenseData() {
       tagIds: pt.suggestedTagIds || [],
       status: 'confirmed' as const,
       aiSuggested: true,
+      source: 'upload',
+      smsReviewed: true,
     }));
     
     await addTransactions(newTxns);
