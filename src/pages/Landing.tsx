@@ -13,6 +13,7 @@ import {
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/ui/Logo";
+import { Seo } from "@/components/Seo";
 import mockupDashboard from "@/assets/mockup-dashboard-new.png";
 import mockupAnalytics from "@/assets/mockup-analytics.png";
 import mockupAiChat from "@/assets/mockup-ai-chat.png";
@@ -75,6 +76,11 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Seo
+        title="ClearSpends — AI-powered expense tracker"
+        description="Take control of your spending. Import bank statements, log expenses with natural language, and get AI insights — free with ClearSpends."
+        path="/"
+      />
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -97,6 +103,7 @@ export default function Landing() {
         </div>
       </header>
 
+      <main>
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -122,7 +129,7 @@ export default function Landing() {
               </Link>
               <Link to="/about">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
-                  Learn More
+                  Explore features
                 </Button>
               </Link>
             </div>
@@ -349,6 +356,7 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border">
