@@ -5,9 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 const NATIVE_REDIRECT_URI = 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth/callback';
+const NATIVE_LOGIN_FLAG = 'clearspends_native_google_login';
 
 export function isNativeMobileApp() {
   return Capacitor.isNativePlatform();
+}
+
+function isAndroidBrowserFallback() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('native') === '1' || window.localStorage.getItem(NATIVE_LOGIN_FLAG) === '1';
 }
 
 function readUrlParam(url: URL, key: string) {
@@ -51,7 +57,21 @@ async function handleNativeOAuthUrl(rawUrl: string) {
 }
 
 export function initNativeGoogleAuthListener() {
-  if (!isNativeMobileApp()) return () => undefined;
+  if (!isNativeMobileApp()) {
+    const bridgeSessionBackToApp = async () => {
+      if (!isAndroidBrowserFallback()) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token || !session.refresh_token) return;
+
+      window.localStorage.removeItem(NATIVE_LOGIN_FLAG);
+      window.location.href = `${NATIVE_REDIRECT_URI}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
+    };
+
+    bridgeSessionBackToApp().catch(() => undefined);
+    return () => undefined;
+  }
 
   let disposed = false;
   const listener = App.addListener('appUrlOpen', ({ url }) => {
@@ -80,7 +100,7 @@ export async function signInWithGoogleNative() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: NATIVE_REDIRECT_URI,
+      redirectTo: `${window.location.origin}/auth?native=1`,
       skipBrowserRedirect: true,
       queryParams: { prompt: 'select_account' },
     },
@@ -89,6 +109,7 @@ export async function signInWithGoogleNative() {
   if (error) return { error };
   if (!data.url) return { error: new Error('No Google sign-in URL was returned.') };
 
+  window.localStorage.setItem(NATIVE_LOGIN_FLAG, '1');
   await Browser.open({ url: data.url });
   return { error: null };
 }
