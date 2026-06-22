@@ -1,9 +1,11 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+const NATIVE_APP_ID = 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa';
 const NATIVE_REDIRECT_URI = 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth/callback';
 const NATIVE_LOGIN_FLAG = 'clearspends_native_google_login';
 
@@ -11,9 +13,43 @@ export function isNativeMobileApp() {
   return Capacitor.isNativePlatform();
 }
 
-function isAndroidBrowserFallback() {
+export function isNativeAuthBridgeRequest() {
   const params = new URLSearchParams(window.location.search);
   return params.get('native') === '1' || window.localStorage.getItem(NATIVE_LOGIN_FLAG) === '1';
+}
+
+function buildNativeSessionUrl(session: Session) {
+  const query = new URLSearchParams({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  }).toString();
+
+  return `${NATIVE_REDIRECT_URI}?${query}`;
+}
+
+function buildAndroidIntentUrl(session: Session) {
+  const query = new URLSearchParams({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  }).toString();
+  const fallbackUrl = `${window.location.origin}/auth?native=1`;
+
+  return `intent://auth/callback?${query}#Intent;scheme=${NATIVE_APP_ID};package=${NATIVE_APP_ID};S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
+}
+
+export async function bridgeSessionBackToNativeApp(session?: Session | null) {
+  if (!isNativeAuthBridgeRequest()) return false;
+
+  const activeSession = session ?? (await supabase.auth.getSession()).data.session;
+  if (!activeSession?.access_token || !activeSession.refresh_token) return false;
+
+  window.localStorage.removeItem(NATIVE_LOGIN_FLAG);
+  const targetUrl = /Android/i.test(window.navigator.userAgent)
+    ? buildAndroidIntentUrl(activeSession)
+    : buildNativeSessionUrl(activeSession);
+
+  window.location.replace(targetUrl);
+  return true;
 }
 
 function readUrlParam(url: URL, key: string) {
@@ -58,19 +94,25 @@ async function handleNativeOAuthUrl(rawUrl: string) {
 
 export function initNativeGoogleAuthListener() {
   if (!isNativeMobileApp()) {
-    const bridgeSessionBackToApp = async () => {
-      if (!isAndroidBrowserFallback()) return;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token || !session.refresh_token) return;
+    let disposed = false;
+    let attempts = 0;
 
-      window.localStorage.removeItem(NATIVE_LOGIN_FLAG);
-      window.location.href = `${NATIVE_REDIRECT_URI}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
+    const retryBridgeSessionBackToApp = async () => {
+      if (disposed || !isNativeAuthBridgeRequest()) return;
+
+      const bridged = await bridgeSessionBackToNativeApp();
+      if (!bridged && attempts < 80) {
+        attempts += 1;
+        window.setTimeout(() => {
+          retryBridgeSessionBackToApp().catch(() => undefined);
+        }, 250);
+      }
     };
 
-    bridgeSessionBackToApp().catch(() => undefined);
-    return () => undefined;
+    retryBridgeSessionBackToApp().catch(() => undefined);
+    return () => {
+      disposed = true;
+    };
   }
 
   let disposed = false;
