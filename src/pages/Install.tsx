@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Download, Smartphone, CheckCircle, Share, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Seo } from '@/components/Seo';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -67,6 +68,11 @@ export default function Install() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Seo
+        title="Install ClearSpends — Add the Expense Tracker to Your Device"
+        description="Install ClearSpends as a Progressive Web App on iOS, Android, or desktop for one-tap access to your expense tracker."
+        path="/install"
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

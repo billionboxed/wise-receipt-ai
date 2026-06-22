@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
+import { Seo } from '@/components/Seo';
 
 const features = [
   {
@@ -83,6 +84,11 @@ export default function About() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+        <Seo
+          title="About Clear Spends — Your Personal Expense Tracker"
+          description="Learn how Clear Spends helps you track expenses, import bank statements, and understand your spending with AI-powered analytics."
+          path="/about"
+        />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -92,7 +98,7 @@ export default function About() {
           <div className="flex justify-center mb-6">
             <Logo size="xl" className="w-20 h-20" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">Clear Spends</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">About Clear Spends — Your Personal Expense Tracker</h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Your personal expense tracker. Simple, powerful, and beautifully designed to help you understand your spending.
           </p>

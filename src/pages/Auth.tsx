@@ -7,6 +7,7 @@ import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from '@/components/ui/Logo';
+import { Seo } from '@/components/Seo';
 import { useState } from 'react';
 
 export default function Auth() {
@@ -44,6 +45,11 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Seo
+        title="Sign in to Clear Spends"
+        description="Sign in to Clear Spends with your Google account to start tracking expenses and unlocking AI-powered spending insights."
+        path="/auth"
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -55,7 +61,7 @@ export default function Auth() {
               <Logo size="xl" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Clear Spends
+              Sign in to Clear Spends
             </h1>
             <p className="text-muted-foreground mt-2">
               Sign in with your Google account to get started.
