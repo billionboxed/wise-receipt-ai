@@ -893,6 +893,8 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
               transactionTags={transactionTags}
               formatAmount={formatAmount}
               isRecurring={!!transaction.recurringExpenseId}
+              source={transaction.source}
+              unreviewedSms={transaction.source === 'sms' && transaction.smsReviewed === false}
             />
           );
         })}
