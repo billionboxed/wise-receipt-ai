@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { initNativeGoogleAuthListener } from '@/lib/auth/nativeGoogleAuth';
+import { bridgeSessionBackToNativeApp, initNativeGoogleAuthListener, isNativeAuthBridgeRequest } from '@/lib/auth/nativeGoogleAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -71,6 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Keep `loading=true` so ProtectedRoute doesn't redirect away mid-exchange.
       if (oauthPending) {
         if (session) {
+          if (isNativeAuthBridgeRequest()) {
+            bridgeSessionBackToNativeApp(session).catch(() => undefined);
+            return;
+          }
+
           oauthPending = false;
           setLoading(false);
           setTimeout(() => {
@@ -91,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (tokens) {
           const { error } = await supabase.auth.setSession(tokens);
           if (!error) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (await bridgeSessionBackToNativeApp(session)) return;
+
             // Session set successfully - auth listener will update state
             // Clean URL and redirect to dashboard
             clearOAuthParamsFromUrl();
@@ -113,6 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setSession(session);
       setUser(session?.user ?? null);
+
+      if (session && (await bridgeSessionBackToNativeApp(session))) return;
 
       if (oauthPending && !session && retries < maxRetries) {
         retries += 1;
