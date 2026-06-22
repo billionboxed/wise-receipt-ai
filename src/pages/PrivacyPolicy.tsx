@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Seo } from '@/components/Seo';
 
 const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Privacy Policy — ClearSpends"
+        description="How ClearSpends collects, uses, and protects your personal and financial information."
+        path="/privacy"
+      />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Button variant="ghost" asChild className="mb-6">
           <Link to="/">

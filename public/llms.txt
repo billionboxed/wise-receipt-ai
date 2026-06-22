@@ -1,0 +1,13 @@
+# ClearSpends
+
+> ClearSpends is an AI-powered personal expense tracker that imports bank statements, categorizes transactions, and visualizes spending habits.
+
+ClearSpends helps people understand where their money goes. It supports multi-currency accounts, AI categorization of PDF bank statements, natural-language expense logging, recurring expense automation, and analytics like year-over-year comparisons and spending forecasts.
+
+## Pages
+
+- [Home](/): Product overview and features.
+- [About](/about): What ClearSpends is, the feature set, and how it works.
+- [Install](/install): How to install ClearSpends as a PWA on mobile and desktop.
+- [Privacy Policy](/privacy): How user data is collected, stored, and protected.
+- [Terms of Service](/terms): Terms that govern use of ClearSpends.

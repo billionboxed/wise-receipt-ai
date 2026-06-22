@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Seo } from '@/components/Seo';
 
 const TermsOfService = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Terms of Service — ClearSpends"
+        description="The terms that govern your use of ClearSpends, our AI-powered personal expense tracker."
+        path="/terms"
+      />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Button variant="ghost" asChild className="mb-6">
           <Link to="/">
