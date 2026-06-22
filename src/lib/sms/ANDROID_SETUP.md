@@ -178,3 +178,30 @@ with data staying in the user's own account.
 npx cap sync android
 npx cap open android
 ```
+
+## 5. Google sign-in deep link
+
+If the Android app shows a 404 after tapping **Continue with Google**, add this
+intent filter inside the existing `<activity ...>` block in
+`android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data
+    android:scheme="app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa"
+    android:host="auth"
+    android:path="/callback" />
+</intent-filter>
+```
+
+Then run:
+
+```
+npx cap sync android
+```
+
+This is a one-time native Android setup step. Future Lovable UI/code updates do
+not require repeating it unless the native Android folder is recreated.
