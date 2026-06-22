@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { initNativeGoogleAuthListener } from '@/lib/auth/nativeGoogleAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    const cleanupNativeGoogleAuth = initNativeGoogleAuthListener();
 
     const urlHasOAuthParams = () => {
       const url = new URL(window.location.href);
@@ -131,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      cleanupNativeGoogleAuth();
       subscription.unsubscribe();
     };
   }, []);
