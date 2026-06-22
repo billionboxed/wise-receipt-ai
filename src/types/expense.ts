@@ -33,6 +33,10 @@ export interface Transaction {
   aiSuggested?: boolean;
   recurringExpenseId?: string | null;
   created_at?: string;
+  source?: 'manual' | 'upload' | 'sms' | 'recurring';
+  smsSender?: string | null;
+  smsRaw?: string | null;
+  smsReviewed?: boolean;
 }
 
 export interface ParsedTransaction {
