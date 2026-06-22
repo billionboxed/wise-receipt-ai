@@ -335,6 +335,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sortColumn, setSortColumn] = useState<'date' | 'created_at' | 'description' | 'category' | 'account' | 'amount'>('date');
@@ -539,6 +540,11 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
           return t.tagIds.includes(tagFilter);
         }
         return true;
+      })
+      .filter(t => {
+        if (sourceFilter === 'all') return true;
+        if (sourceFilter === 'recurring') return !!t.recurringExpenseId;
+        return (t.source || 'manual') === sourceFilter;
       });
 
     // Apply sorting
@@ -574,7 +580,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
       
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, getCategoryById, getAccountById, sortColumn, sortDirection]);
+  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, sourceFilter, getCategoryById, getAccountById, sortColumn, sortDirection]);
 
   const mainCategories = useMemo(() => {
     const unique = new Set(categories.map(c => c.main));
@@ -592,7 +598,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
     return { expenses, income, net: income - expenses };
   }, [filteredTransactions]);
 
-  const hasActiveFilters = searchQuery || categoryFilter !== 'all' || accountFilter !== 'all' || typeFilter !== 'all' || tagFilter !== 'all';
+  const hasActiveFilters = searchQuery || categoryFilter !== 'all' || accountFilter !== 'all' || typeFilter !== 'all' || tagFilter !== 'all' || sourceFilter !== 'all';
 
   return (
     <motion.div
@@ -671,6 +677,19 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
                   </span>
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-full md:w-36 text-xs md:text-sm">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="upload">Upload</SelectItem>
+              <SelectItem value="sms">SMS</SelectItem>
+              <SelectItem value="recurring">Recurring</SelectItem>
             </SelectContent>
           </Select>
 
