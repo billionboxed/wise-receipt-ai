@@ -33,7 +33,7 @@ export function useSmsImport() {
   const { user } = useAuth();
   const { accounts, categories, addTransactions, transactions } = useExpense();
   const currency = (() => {
-    try { return useCurrency().currency; } catch { return undefined; }
+    try { return useCurrency().currency.code; } catch { return undefined; }
   })();
 
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
