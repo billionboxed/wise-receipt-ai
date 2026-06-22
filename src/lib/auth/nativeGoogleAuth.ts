@@ -92,21 +92,26 @@ export function initNativeGoogleAuthListener() {
       return session;
     };
 
+    const scheduleHandoffRetry = (attempt: number) => {
+      if (attempt >= HANDOFF_MAX_ATTEMPTS) return;
+      timeoutId = window.setTimeout(() => {
+        bridgeSessionBackToApp(attempt + 1).catch(() => undefined);
+      }, HANDOFF_RETRY_MS);
+    };
+
     const bridgeSessionBackToApp = async (attempt = 0) => {
       if (disposed) return;
       if (!isAndroidBrowserFallback()) return;
 
       const session = await resolveBrowserFallbackSession().catch(() => null);
-      if (!session?.access_token || !session.refresh_token) return;
+      if (!session?.access_token || !session.refresh_token) {
+        scheduleHandoffRetry(attempt);
+        return;
+      }
 
       window.localStorage.removeItem(NATIVE_LOGIN_FLAG);
       window.location.replace(`${NATIVE_REDIRECT_URI}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`);
-
-      if (attempt < HANDOFF_MAX_ATTEMPTS) {
-        timeoutId = window.setTimeout(() => {
-          bridgeSessionBackToApp(attempt + 1).catch(() => undefined);
-        }, HANDOFF_RETRY_MS);
-      }
+      scheduleHandoffRetry(attempt);
     };
 
     bridgeSessionBackToApp().catch(() => undefined);
