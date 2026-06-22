@@ -8,6 +8,7 @@ const NATIVE_REDIRECT_URI = 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth
 const NATIVE_LOGIN_FLAG = 'clearspends_native_google_login';
 const HANDOFF_MAX_ATTEMPTS = 80;
 const HANDOFF_RETRY_MS = 250;
+const NATIVE_REDIRECT_HASH = '#native-login';
 
 export function isNativeMobileApp() {
   return Capacitor.isNativePlatform();
@@ -25,6 +26,10 @@ export function isNativeBrowserHandoffRequested() {
 function readUrlParam(url: URL, key: string) {
   const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
   return url.searchParams.get(key) ?? hashParams.get(key);
+}
+
+function appendNativeRedirectHash(url: string) {
+  return url.includes('#') ? url : `${url}${NATIVE_REDIRECT_HASH}`;
 }
 
 async function handleNativeOAuthUrl(rawUrl: string) {
@@ -148,7 +153,7 @@ export async function signInWithGoogleNative() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth?native=1`,
+      redirectTo: `${window.location.origin}/auth?native=1${NATIVE_REDIRECT_HASH}`,
       skipBrowserRedirect: true,
       queryParams: { prompt: 'select_account' },
     },
@@ -158,6 +163,6 @@ export async function signInWithGoogleNative() {
   if (!data.url) return { error: new Error('No Google sign-in URL was returned.') };
 
   window.localStorage.setItem(NATIVE_LOGIN_FLAG, '1');
-  await Browser.open({ url: data.url });
+  await Browser.open({ url: appendNativeRedirectHash(data.url) });
   return { error: null };
 }
