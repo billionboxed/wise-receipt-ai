@@ -151,6 +151,8 @@ export function TransactionDialog({
         accountId: formData.accountId,
         tagIds: formData.tagIds,
         status: 'confirmed',
+        source: 'manual',
+        smsReviewed: true,
       };
       addTransaction(newTransaction);
       toast({

@@ -111,6 +111,8 @@ Deno.serve(async (req) => {
           account_id: expense.account_id,
           tag_ids: expense.tag_ids || [],
           recurring_expense_id: expense.id,
+          source: "recurring",
+          sms_reviewed: true,
         });
 
         if (insertError) {

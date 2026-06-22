@@ -38,6 +38,10 @@ export interface Transaction {
   aiSuggested?: boolean;
   recurringExpenseId?: string | null;
   created_at?: string;
+  source?: 'manual' | 'upload' | 'sms' | 'recurring';
+  smsSender?: string | null;
+  smsRaw?: string | null;
+  smsReviewed?: boolean;
 }
 
 export interface ParsedTransaction {
@@ -173,6 +177,10 @@ export function useExpenseData() {
         aiSuggested: t.ai_suggested || false,
         recurringExpenseId: (t as any).recurring_expense_id || null,
         created_at: t.created_at,
+        source: ((t as any).source || 'manual') as Transaction['source'],
+        smsSender: (t as any).sms_sender ?? null,
+        smsRaw: (t as any).sms_raw ?? null,
+        smsReviewed: (t as any).sms_reviewed ?? true,
       })));
 
     } catch (error) {
@@ -208,6 +216,10 @@ export function useExpenseData() {
         tag_ids: transaction.tagIds,
         status: transaction.status,
         ai_suggested: transaction.aiSuggested || false,
+        source: transaction.source || 'manual',
+        sms_sender: transaction.smsSender ?? null,
+        sms_raw: transaction.smsRaw ?? null,
+        sms_reviewed: transaction.smsReviewed ?? true,
       })
       .select()
       .single();
@@ -233,6 +245,10 @@ export function useExpenseData() {
       tagIds: data.tag_ids || [],
       status: data.status as 'pending' | 'confirmed' | 'skipped',
       aiSuggested: data.ai_suggested || false,
+      source: ((data as any).source || 'manual') as Transaction['source'],
+      smsSender: (data as any).sms_sender ?? null,
+      smsRaw: (data as any).sms_raw ?? null,
+      smsReviewed: (data as any).sms_reviewed ?? true,
     };
     setTransactions(prev => [...prev, newTransaction].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -253,6 +269,10 @@ export function useExpenseData() {
       tag_ids: t.tagIds,
       status: t.status,
       ai_suggested: t.aiSuggested || false,
+      source: t.source || 'manual',
+      sms_sender: t.smsSender ?? null,
+      sms_raw: t.smsRaw ?? null,
+      sms_reviewed: t.smsReviewed ?? true,
     }));
 
     const { data, error } = await supabase
@@ -281,6 +301,10 @@ export function useExpenseData() {
       tagIds: t.tag_ids || [],
       status: t.status as 'pending' | 'confirmed' | 'skipped',
       aiSuggested: t.ai_suggested || false,
+      source: ((t as any).source || 'manual') as Transaction['source'],
+      smsSender: (t as any).sms_sender ?? null,
+      smsRaw: (t as any).sms_raw ?? null,
+      smsReviewed: (t as any).sms_reviewed ?? true,
     }));
 
     setTransactions(prev => [...prev, ...mapped].sort((a, b) => 
@@ -298,6 +322,7 @@ export function useExpenseData() {
     if (updates.accountId !== undefined) updateData.account_id = updates.accountId;
     if (updates.tagIds !== undefined) updateData.tag_ids = updates.tagIds;
     if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.smsReviewed !== undefined) updateData.sms_reviewed = updates.smsReviewed;
 
     const { error } = await supabase
       .from('transactions')
@@ -505,6 +530,8 @@ export function useExpenseData() {
       tagIds: pt.suggestedTagIds || [],
       status: 'confirmed' as const,
       aiSuggested: true,
+      source: 'upload',
+      smsReviewed: true,
     }));
     
     await addTransactions(newTxns);

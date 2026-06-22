@@ -15,6 +15,9 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronsUpDown,
+  MessageSquare,
+  FileText,
+  Pencil,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -70,6 +73,8 @@ interface SwipeableTransactionCardProps {
   transactionTags: Array<{ id: string; name: string; color: string }>;
   formatAmount: (amount: number) => string;
   isRecurring: boolean;
+  source?: 'manual' | 'upload' | 'sms' | 'recurring';
+  unreviewedSms?: boolean;
 }
 
 function SwipeableTransactionCard({
@@ -85,6 +90,8 @@ function SwipeableTransactionCard({
   transactionTags,
   formatAmount,
   isRecurring,
+  source,
+  unreviewedSms,
 }: SwipeableTransactionCardProps) {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [0, 8, 80], [0, 0.25, 1]);
@@ -224,6 +231,17 @@ function SwipeableTransactionCard({
                     <RefreshCcw className="w-3 h-3 text-primary" />
                   </span>
                 )}
+                {source === 'sms' && (
+                  <span className="flex-shrink-0 flex items-center gap-1" title={unreviewedSms ? 'From SMS — needs review' : 'From SMS'}>
+                    <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                    {unreviewedSms && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                  </span>
+                )}
+                {source === 'upload' && (
+                  <span className="flex-shrink-0" title="From statement upload">
+                    <FileText className="w-3 h-3 text-muted-foreground" />
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 {format(parseISO(transaction.date), 'dd MMM yyyy')}
@@ -317,6 +335,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sortColumn, setSortColumn] = useState<'date' | 'created_at' | 'description' | 'category' | 'account' | 'amount'>('date');
@@ -521,6 +540,11 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
           return t.tagIds.includes(tagFilter);
         }
         return true;
+      })
+      .filter(t => {
+        if (sourceFilter === 'all') return true;
+        if (sourceFilter === 'recurring') return !!t.recurringExpenseId;
+        return (t.source || 'manual') === sourceFilter;
       });
 
     // Apply sorting
@@ -556,7 +580,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
       
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, getCategoryById, getAccountById, sortColumn, sortDirection]);
+  }, [transactions, searchQuery, categoryFilter, accountFilter, typeFilter, tagFilter, sourceFilter, getCategoryById, getAccountById, sortColumn, sortDirection]);
 
   const mainCategories = useMemo(() => {
     const unique = new Set(categories.map(c => c.main));
@@ -574,7 +598,7 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
     return { expenses, income, net: income - expenses };
   }, [filteredTransactions]);
 
-  const hasActiveFilters = searchQuery || categoryFilter !== 'all' || accountFilter !== 'all' || typeFilter !== 'all' || tagFilter !== 'all';
+  const hasActiveFilters = searchQuery || categoryFilter !== 'all' || accountFilter !== 'all' || typeFilter !== 'all' || tagFilter !== 'all' || sourceFilter !== 'all';
 
   return (
     <motion.div
@@ -653,6 +677,19 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
                   </span>
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-full md:w-36 text-xs md:text-sm">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="upload">Upload</SelectItem>
+              <SelectItem value="sms">SMS</SelectItem>
+              <SelectItem value="recurring">Recurring</SelectItem>
             </SelectContent>
           </Select>
 
@@ -856,6 +893,8 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
               transactionTags={transactionTags}
               formatAmount={formatAmount}
               isRecurring={!!transaction.recurringExpenseId}
+              source={transaction.source}
+              unreviewedSms={transaction.source === 'sms' && transaction.smsReviewed === false}
             />
           );
         })}
