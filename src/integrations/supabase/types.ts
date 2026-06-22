@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_card_map: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          last4: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          last4: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          last4?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_card_map_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounts: {
         Row: {
           created_at: string
@@ -128,6 +163,68 @@ export type Database = {
           },
         ]
       }
+      sms_preferences: {
+        Row: {
+          created_at: string
+          default_account_id: string | null
+          enabled: boolean
+          last_scan_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_account_id?: string | null
+          enabled?: boolean
+          last_scan_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_account_id?: string | null
+          enabled?: boolean
+          last_scan_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_preferences_default_account_id_fkey"
+            columns: ["default_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_sender_allowlist: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          sender: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          sender: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          sender?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string
@@ -169,6 +266,10 @@ export type Database = {
           description: string
           id: string
           recurring_expense_id: string | null
+          sms_raw: string | null
+          sms_reviewed: boolean
+          sms_sender: string | null
+          source: string
           status: string
           tag_ids: string[] | null
           type: string
@@ -185,6 +286,10 @@ export type Database = {
           description: string
           id?: string
           recurring_expense_id?: string | null
+          sms_raw?: string | null
+          sms_reviewed?: boolean
+          sms_sender?: string | null
+          source?: string
           status?: string
           tag_ids?: string[] | null
           type: string
@@ -201,6 +306,10 @@ export type Database = {
           description?: string
           id?: string
           recurring_expense_id?: string | null
+          sms_raw?: string | null
+          sms_reviewed?: boolean
+          sms_sender?: string | null
+          source?: string
           status?: string
           tag_ids?: string[] | null
           type?: string
