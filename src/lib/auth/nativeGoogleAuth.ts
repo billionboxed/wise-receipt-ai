@@ -1,11 +1,26 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const NATIVE_REDIRECT_URI = 'app.lovable.e9a7d0885b7d43b1a87e025dea4b76fa://auth/callback';
 const NATIVE_LOGIN_FLAG = 'clearspends_native_google_login';
+const HANDOFF_MAX_ATTEMPTS = 80;
+const HANDOFF_RETRY_MS = 250;
+const NATIVE_REDIRECT_HASH = '#native-login';
+
+const nativeSupabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+});
 
 export function isNativeMobileApp() {
   return Capacitor.isNativePlatform();
@@ -16,9 +31,17 @@ function isAndroidBrowserFallback() {
   return params.get('native') === '1' || window.localStorage.getItem(NATIVE_LOGIN_FLAG) === '1';
 }
 
+export function isNativeBrowserHandoffRequested() {
+  return !isNativeMobileApp() && isAndroidBrowserFallback();
+}
+
 function readUrlParam(url: URL, key: string) {
   const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
   return url.searchParams.get(key) ?? hashParams.get(key);
+}
+
+function appendNativeRedirectHash(url: string) {
+  return url.includes('#') ? url : `${url}${NATIVE_REDIRECT_HASH}`;
 }
 
 async function handleNativeOAuthUrl(rawUrl: string) {
@@ -58,19 +81,61 @@ async function handleNativeOAuthUrl(rawUrl: string) {
 
 export function initNativeGoogleAuthListener() {
   if (!isNativeMobileApp()) {
-    const bridgeSessionBackToApp = async () => {
-      if (!isAndroidBrowserFallback()) return;
+    if (new URLSearchParams(window.location.search).get('native') === '1') {
+      window.localStorage.setItem(NATIVE_LOGIN_FLAG, '1');
+    }
+
+    let disposed = false;
+    let timeoutId: number | undefined;
+    let exchangedCode: string | null = null;
+
+    const resolveBrowserFallbackSession = async () => {
+      const url = new URL(window.location.href);
+      const access_token = readUrlParam(url, 'access_token');
+      const refresh_token = readUrlParam(url, 'refresh_token');
+      if (access_token && refresh_token) {
+        await nativeSupabase.auth.setSession({ access_token, refresh_token });
+      }
+
+      const code = readUrlParam(url, 'code');
+      if (code && exchangedCode !== code) {
+        exchangedCode = code;
+        await nativeSupabase.auth.exchangeCodeForSession(code);
+      }
+
       const {
         data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token || !session.refresh_token) return;
+      } = await nativeSupabase.auth.getSession();
+      return session;
+    };
+
+    const scheduleHandoffRetry = (attempt: number) => {
+      if (attempt >= HANDOFF_MAX_ATTEMPTS) return;
+      timeoutId = window.setTimeout(() => {
+        bridgeSessionBackToApp(attempt + 1).catch(() => undefined);
+      }, HANDOFF_RETRY_MS);
+    };
+
+    const bridgeSessionBackToApp = async (attempt = 0) => {
+      if (disposed) return;
+      if (!isAndroidBrowserFallback()) return;
+
+      const session = await resolveBrowserFallbackSession().catch(() => null);
+      if (!session?.access_token || !session.refresh_token) {
+        scheduleHandoffRetry(attempt);
+        return;
+      }
 
       window.localStorage.removeItem(NATIVE_LOGIN_FLAG);
-      window.location.href = `${NATIVE_REDIRECT_URI}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
+      window.location.replace(`${NATIVE_REDIRECT_URI}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`);
+      scheduleHandoffRetry(attempt);
     };
 
     bridgeSessionBackToApp().catch(() => undefined);
-    return () => undefined;
+    return () => {
+      disposed = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
   }
 
   let disposed = false;
@@ -97,10 +162,10 @@ export function initNativeGoogleAuthListener() {
 }
 
 export async function signInWithGoogleNative() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await nativeSupabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth?native=1`,
+      redirectTo: `${window.location.origin}/auth?native=1${NATIVE_REDIRECT_HASH}`,
       skipBrowserRedirect: true,
       queryParams: { prompt: 'select_account' },
     },
@@ -110,6 +175,6 @@ export async function signInWithGoogleNative() {
   if (!data.url) return { error: new Error('No Google sign-in URL was returned.') };
 
   window.localStorage.setItem(NATIVE_LOGIN_FLAG, '1');
-  await Browser.open({ url: data.url });
+  await Browser.open({ url: appendNativeRedirectHash(data.url) });
   return { error: null };
 }
