@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from '@/components/ui/Logo';
@@ -17,19 +17,19 @@ export default function Auth() {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          // Use a public route for the OAuth return. We'll redirect to /dashboard once the session is set.
-          redirectTo: `${window.location.origin}/auth`,
-        },
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: `${window.location.origin}/auth`,
       });
-      if (error) {
+      if (result.error) {
         toast({
           title: 'Google Sign In Failed',
-          description: error.message,
+          description: result.error.message,
           variant: 'destructive',
         });
+        return;
+      }
+      if (!result.redirected) {
+        navigate('/dashboard');
       }
     } finally {
       setGoogleLoading(false);
