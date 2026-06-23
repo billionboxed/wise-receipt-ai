@@ -401,11 +401,23 @@ export function useSmsImport() {
     setPending(prev => prev.filter(p => p.status !== 'deleted'));
   }, [user]);
 
+  const updatePending = useCallback(async (
+    id: string,
+    updates: Partial<Pick<PendingSms, 'suggestedCategoryId' | 'suggestedAccountId' | 'suggestedDescription'>>,
+  ) => {
+    const payload: any = {};
+    if (updates.suggestedCategoryId !== undefined) payload.suggested_category_id = updates.suggestedCategoryId;
+    if (updates.suggestedAccountId !== undefined) payload.suggested_account_id = updates.suggestedAccountId;
+    if (updates.suggestedDescription !== undefined) payload.suggested_description = updates.suggestedDescription;
+    if (Object.keys(payload).length === 0) return;
+    await supabase.from('sms_pending').update(payload).eq('id', id);
+    setPending(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  }, []);
+
   /**
    * Re-apply the current identifier list to existing pending rows.
    * - Rows whose sender+body match no identifier → soft-deleted (recoverable from Deleted SMS).
    * - Rows that match and have no account → auto-filled with that identifier's account.
-   * Returns { removed, autoAssigned }.
    */
   const reapplyIdentifiers = useCallback(async (): Promise<{ removed: number; autoAssigned: number }> => {
     const ids = identifiers
@@ -431,20 +443,7 @@ export function useSmsImport() {
     for (const a of toAssign) await updatePending(a.id, { suggestedAccountId: a.accountId });
 
     return { removed: toRemove.length, autoAssigned: toAssign.length };
-  }, [identifiers, pending, deleteMany]);
-
-  const updatePending = useCallback(async (
-    id: string,
-    updates: Partial<Pick<PendingSms, 'suggestedCategoryId' | 'suggestedAccountId' | 'suggestedDescription'>>,
-  ) => {
-    const payload: any = {};
-    if (updates.suggestedCategoryId !== undefined) payload.suggested_category_id = updates.suggestedCategoryId;
-    if (updates.suggestedAccountId !== undefined) payload.suggested_account_id = updates.suggestedAccountId;
-    if (updates.suggestedDescription !== undefined) payload.suggested_description = updates.suggestedDescription;
-    if (Object.keys(payload).length === 0) return;
-    await supabase.from('sms_pending').update(payload).eq('id', id);
-    setPending(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-  }, []);
+  }, [identifiers, pending, deleteMany, updatePending]);
 
   return {
     supported,
