@@ -401,6 +401,38 @@ export function useSmsImport() {
     setPending(prev => prev.filter(p => p.status !== 'deleted'));
   }, [user]);
 
+  /**
+   * Re-apply the current identifier list to existing pending rows.
+   * - Rows whose sender+body match no identifier → soft-deleted (recoverable from Deleted SMS).
+   * - Rows that match and have no account → auto-filled with that identifier's account.
+   * Returns { removed, autoAssigned }.
+   */
+  const reapplyIdentifiers = useCallback(async (): Promise<{ removed: number; autoAssigned: number }> => {
+    const ids = identifiers
+      .map(i => ({ accountId: i.accountId, needle: i.identifier.toLowerCase() }))
+      .filter(i => i.needle);
+    if (ids.length === 0) return { removed: 0, autoAssigned: 0 };
+
+    const active = pending.filter(p => p.status === 'pending');
+    const toRemove: string[] = [];
+    const toAssign: { id: string; accountId: string }[] = [];
+
+    for (const row of active) {
+      const hay = `${row.smsSender ?? ''} ${row.smsRaw ?? ''}`.toLowerCase();
+      const match = ids.find(i => hay.includes(i.needle));
+      if (!match) {
+        toRemove.push(row.id);
+      } else if (!row.suggestedAccountId) {
+        toAssign.push({ id: row.id, accountId: match.accountId });
+      }
+    }
+
+    if (toRemove.length > 0) await deleteMany(toRemove);
+    for (const a of toAssign) await updatePending(a.id, { suggestedAccountId: a.accountId });
+
+    return { removed: toRemove.length, autoAssigned: toAssign.length };
+  }, [identifiers, pending, deleteMany]);
+
   const updatePending = useCallback(async (
     id: string,
     updates: Partial<Pick<PendingSms, 'suggestedCategoryId' | 'suggestedAccountId' | 'suggestedDescription'>>,
@@ -434,6 +466,7 @@ export function useSmsImport() {
     purgePending,
     emptyTrash,
     updatePending,
+    reapplyIdentifiers,
     reload: loadAll,
   };
 }
