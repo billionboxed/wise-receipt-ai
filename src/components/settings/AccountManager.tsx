@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Building2, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { CreditCard, Building2, Plus, Trash2, Edit2, Check, X, MessageSquare } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { Account } from '@/types/expense';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useSmsImport } from '@/hooks/useSmsImport';
 import {
   Dialog,
   DialogContent,
@@ -24,12 +26,14 @@ import { cn } from '@/lib/utils';
 
 export function AccountManager() {
   const { accounts, addAccount, updateAccount, deleteAccount } = useExpense();
+  const { identifiers, addIdentifier, removeIdentifier } = useSmsImport();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<'bank' | 'credit' | 'cash' | 'wallet'>('bank');
   const [editName, setEditName] = useState('');
   const [editType, setEditType] = useState<'bank' | 'credit' | 'cash' | 'wallet'>('bank');
+  const [identifierDrafts, setIdentifierDrafts] = useState<Record<string, string>>({});
 
   const handleAdd = () => {
     if (!newName.trim()) {
@@ -161,6 +165,50 @@ export function AccountManager() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
+                </div>
+                <div className="mt-4 pt-4 border-t border-border/40">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    SMS identifiers
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {identifiers.filter(i => i.accountId === account.id).map(i => (
+                      <Badge key={i.id} variant="secondary" className="gap-1 pr-1">
+                        {i.identifier}
+                        <button
+                          type="button"
+                          onClick={() => removeIdentifier(i.id)}
+                          className="ml-0.5 rounded hover:bg-background/60 p-0.5"
+                          aria-label="Remove identifier"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                    {identifiers.filter(i => i.accountId === account.id).length === 0 && (
+                      <span className="text-xs text-muted-foreground/70">None yet — SMS for this account won't be tracked.</span>
+                    )}
+                  </div>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const v = (identifierDrafts[account.id] || '').trim();
+                      if (!v) return;
+                      addIdentifier(account.id, v);
+                      setIdentifierDrafts(d => ({ ...d, [account.id]: '' }));
+                    }}
+                    className="flex gap-1.5"
+                  >
+                    <Input
+                      value={identifierDrafts[account.id] || ''}
+                      onChange={(e) => setIdentifierDrafts(d => ({ ...d, [account.id]: e.target.value }))}
+                      placeholder="e.g. 1234, HDFC, ICICI Sal"
+                      className="h-8 text-xs bg-background/50"
+                    />
+                    <Button type="submit" size="sm" variant="outline" className="h-8 px-2">
+                      <Plus className="w-3.5 h-3.5" />
+                    </Button>
+                  </form>
                 </div>
               </>
             )}

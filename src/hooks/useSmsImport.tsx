@@ -39,6 +39,7 @@ export function useSmsImport() {
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
   const [allowlist, setAllowlist] = useState<{ id: string; sender: string; enabled: boolean }[]>([]);
   const [cardMap, setCardMap] = useState<{ last4: string; accountId: string }[]>([]);
+  const [identifiers, setIdentifiers] = useState<{ id: string; accountId: string; identifier: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -47,10 +48,11 @@ export function useSmsImport() {
   const loadAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [p, a, c] = await Promise.all([
+    const [p, a, c, ids] = await Promise.all([
       supabase.from('sms_preferences').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('sms_sender_allowlist').select('id,sender,enabled').eq('user_id', user.id),
       supabase.from('account_card_map').select('last4,account_id').eq('user_id', user.id),
+      supabase.from('account_sms_identifiers').select('id,account_id,identifier').eq('user_id', user.id),
     ]);
     if (p.data) {
       setPrefs({
@@ -61,6 +63,7 @@ export function useSmsImport() {
     }
     setAllowlist((a.data || []).map(r => ({ id: r.id, sender: r.sender, enabled: r.enabled })));
     setCardMap((c.data || []).map(r => ({ last4: r.last4, accountId: r.account_id })));
+    setIdentifiers((ids.data || []).map(r => ({ id: r.id, accountId: r.account_id, identifier: r.identifier })));
     setLoading(false);
   }, [user]);
 
@@ -104,6 +107,29 @@ export function useSmsImport() {
     await supabase.from('sms_sender_allowlist').delete().eq('id', id);
   }, []);
 
+  const addIdentifier = useCallback(async (accountId: string, identifier: string) => {
+    if (!user) return;
+    const value = identifier.trim();
+    if (!value) return;
+    const { data, error } = await supabase
+      .from('account_sms_identifiers')
+      .insert({ user_id: user.id, account_id: accountId, identifier: value })
+      .select()
+      .single();
+    if (error) {
+      toast({ title: 'Could not add identifier', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (data) {
+      setIdentifiers(prev => [...prev, { id: data.id, accountId: data.account_id, identifier: data.identifier }]);
+    }
+  }, [user]);
+
+  const removeIdentifier = useCallback(async (id: string) => {
+    setIdentifiers(prev => prev.filter(i => i.id !== id));
+    await supabase.from('account_sms_identifiers').delete().eq('id', id);
+  }, []);
+
   /** Build a dedupe set from existing transactions' (date, amount, type). */
   const existingHashSet = useCallback(() => {
     const set = new Set<string>();
@@ -133,11 +159,12 @@ export function useSmsImport() {
       occurredAt: p.occurredAt,
     }));
 
-    const accountRefs = accounts.map(a => ({
-      id: a.id,
-      name: a.name,
-      last4: cardMap.find(c => c.accountId === a.id)?.last4 ?? null,
-    }));
+    const accountRefs = accounts.map(a => {
+      const ids = identifiers.filter(i => i.accountId === a.id).map(i => i.identifier);
+      const legacy = cardMap.find(c => c.accountId === a.id)?.last4;
+      if (legacy && !ids.some(s => s.toLowerCase() === legacy.toLowerCase())) ids.push(legacy);
+      return { id: a.id, name: a.name, identifiers: ids };
+    });
 
     let ai: AiSmsResult[] = [];
     try {
@@ -154,8 +181,10 @@ export function useSmsImport() {
       const key = `${i}_${p.hash}`;
       const r = aiById.get(key);
 
-      // Skip messages AI classified as non-transactions
+      // Skip non-transactions, credits (expense-only), and unmatched accounts
       if (r && r.isTransaction === false) return;
+      if (r && r.type === 'credit') return;
+      if (!r && p.type === 'credit') return;
 
       const fallbackCat = findBestCategory(p.merchant, categories).categoryId ?? null;
       const fallbackAcct = resolveAccountId(p);
@@ -178,7 +207,7 @@ export function useSmsImport() {
     });
 
     return out;
-  }, [accounts, cardMap, categories, currency, resolveAccountId]);
+  }, [accounts, cardMap, identifiers, categories, currency, resolveAccountId]);
 
   /** Read inbox, filter by allowlist, parse, dedupe vs existing transactions, insert. */
   const scanInbox = useCallback(async (sinceEpochMs?: number): Promise<number> => {
@@ -204,8 +233,20 @@ export function useSmsImport() {
       });
       const parsed = parseSmsBatch(filtered);
 
+      // Expense-only: drop credits before AI/DB hit
+      const debits = parsed.filter(p => p.type === 'debit');
+
+      // Pre-filter by tracked account identifiers (if any configured)
+      const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
+      const idFiltered = allIds.length === 0
+        ? debits
+        : debits.filter(p => {
+            const hay = `${p.sender} ${p.raw}`.toLowerCase();
+            return allIds.some(id => hay.includes(id));
+          });
+
       const existing = existingHashSet();
-      const fresh = parsed.filter(p => !existing.has(`${p.date}|${p.amount.toFixed(2)}|${p.type}`));
+      const fresh = idFiltered.filter(p => !existing.has(`${p.date}|${p.amount.toFixed(2)}|${p.type}`));
 
       if (fresh.length === 0) {
         await savePrefs({ lastScanAt: new Date().toISOString() });
@@ -220,7 +261,7 @@ export function useSmsImport() {
     } finally {
       setBusy(false);
     }
-  }, [supported, allowlist, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
+  }, [supported, allowlist, identifiers, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
 
   /** Discover candidate senders from the inbox so the user can opt in. */
   const discoverSenders = useCallback(async (): Promise<string[]> => {
@@ -271,6 +312,12 @@ export function useSmsImport() {
         if (enabledSenders.size > 0 && !enabledSenders.has(n) && !isLikelyBankSender(msg.address)) return;
         const p = parseSms(msg);
         if (!p) return;
+        if (p.type === 'credit') return; // expense-only
+        const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
+        if (allIds.length > 0) {
+          const hay = `${p.sender} ${p.raw}`.toLowerCase();
+          if (!allIds.some(id => hay.includes(id))) return;
+        }
         const existing = existingHashSet();
         if (existing.has(`${p.date}|${p.amount.toFixed(2)}|${p.type}`)) return;
         if (cancelled) return;
@@ -285,7 +332,7 @@ export function useSmsImport() {
       if (timer) clearTimeout(timer);
       stop?.();
     };
-  }, [supported, prefs.enabled, allowlist, addTransactions, existingHashSet, toTransactionsAI]);
+  }, [supported, prefs.enabled, allowlist, identifiers, addTransactions, existingHashSet, toTransactionsAI]);
 
   return {
     supported,
@@ -294,10 +341,13 @@ export function useSmsImport() {
     prefs,
     allowlist,
     cardMap,
+    identifiers,
     savePrefs,
     addSender,
     toggleSender,
     removeSender,
+    addIdentifier,
+    removeIdentifier,
     scanInbox,
     discoverSenders,
     reload: loadAll,
