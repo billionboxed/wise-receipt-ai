@@ -194,14 +194,7 @@ export function useSmsImport() {
         }
       }
       const raw = await readInbox(sinceEpochMs);
-      const enabledSenders = new Set(
-        allowlist.filter(s => s.enabled).map(s => s.sender.toUpperCase())
-      );
-      const filtered = raw.filter(m => {
-        const n = normalizeSender(m.address);
-        if (enabledSenders.size === 0) return isLikelyBankSender(m.address);
-        return enabledSenders.has(n) || isLikelyBankSender(m.address);
-      });
+      const filtered = raw.filter(m => isLikelyBankSender(m.address));
       const parsed = parseSmsBatch(filtered);
 
       // Expense-only: drop credits before AI/DB hit
@@ -232,35 +225,13 @@ export function useSmsImport() {
     } finally {
       setBusy(false);
     }
-  }, [supported, allowlist, identifiers, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
-
-  /** Discover candidate senders from the inbox so the user can opt in. */
-  const discoverSenders = useCallback(async (): Promise<string[]> => {
-    if (!supported) return [];
-    const granted = await checkSmsPermission() || await requestSmsPermission();
-    if (!granted) return [];
-    const ninetyDays = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const raw = await readInbox(ninetyDays);
-    const senders = new Map<string, number>();
-    for (const m of raw) {
-      const parsed = parseSms(m);
-      if (!parsed) continue;
-      const n = normalizeSender(m.address);
-      if (!n) continue;
-      senders.set(n, (senders.get(n) || 0) + 1);
-    }
-    return [...senders.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s);
-  }, [supported]);
+  }, [supported, identifiers, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
 
   /** Foreground live listener — wires the native receiver into the import path. */
   useEffect(() => {
     if (!supported || !prefs.enabled) return;
     let stop: (() => void) | null = null;
     let cancelled = false;
-
-    const enabledSenders = new Set(
-      allowlist.filter(s => s.enabled).map(s => s.sender.toUpperCase())
-    );
 
     let pending: ParsedSms[] = [];
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -279,8 +250,7 @@ export function useSmsImport() {
 
     (async () => {
       stop = await startSmsListener((msg) => {
-        const n = normalizeSender(msg.address);
-        if (enabledSenders.size > 0 && !enabledSenders.has(n) && !isLikelyBankSender(msg.address)) return;
+        if (!isLikelyBankSender(msg.address)) return;
         const p = parseSms(msg);
         if (!p) return;
         if (p.type === 'credit') return; // expense-only
@@ -303,24 +273,19 @@ export function useSmsImport() {
       if (timer) clearTimeout(timer);
       stop?.();
     };
-  }, [supported, prefs.enabled, allowlist, identifiers, addTransactions, existingHashSet, toTransactionsAI]);
+  }, [supported, prefs.enabled, identifiers, addTransactions, existingHashSet, toTransactionsAI]);
 
   return {
     supported,
     loading,
     busy,
     prefs,
-    allowlist,
     cardMap,
     identifiers,
     savePrefs,
-    addSender,
-    toggleSender,
-    removeSender,
     addIdentifier,
     removeIdentifier,
     scanInbox,
-    discoverSenders,
     reload: loadAll,
   };
 }
