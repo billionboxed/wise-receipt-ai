@@ -195,6 +195,81 @@ export type Database = {
           },
         ]
       }
+      sms_ingested: {
+        Row: {
+          created_at: string
+          id: string
+          sms_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sms_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sms_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_pending: {
+        Row: {
+          created_at: string
+          id: string
+          occurred_at: string | null
+          parsed_amount: number
+          parsed_date: string
+          parsed_type: string
+          sms_hash: string
+          sms_raw: string | null
+          sms_sender: string | null
+          status: string
+          suggested_account_id: string | null
+          suggested_category_id: string | null
+          suggested_description: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          occurred_at?: string | null
+          parsed_amount: number
+          parsed_date: string
+          parsed_type?: string
+          sms_hash: string
+          sms_raw?: string | null
+          sms_sender?: string | null
+          status?: string
+          suggested_account_id?: string | null
+          suggested_category_id?: string | null
+          suggested_description?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          occurred_at?: string | null
+          parsed_amount?: number
+          parsed_date?: string
+          parsed_type?: string
+          sms_hash?: string
+          sms_raw?: string | null
+          sms_sender?: string | null
+          status?: string
+          suggested_account_id?: string | null
+          suggested_category_id?: string | null
+          suggested_description?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sms_preferences: {
         Row: {
           created_at: string
