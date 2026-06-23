@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Settings,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +20,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Transactions', path: '/transactions', icon: Receipt },
+  { label: 'SMS', path: '/sms-review', icon: MessageSquare },
   { label: 'Upload', path: '/upload', icon: Upload },
   { label: 'AI Chat', path: '/ai-chat', icon: Sparkles },
   { label: 'Analytics', path: '/analytics', icon: TrendingUp },
