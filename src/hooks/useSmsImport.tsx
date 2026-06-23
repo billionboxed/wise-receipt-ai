@@ -11,7 +11,7 @@ import {
   startSmsListener,
 } from '@/lib/sms/native';
 import { parseSmsBatch, ParsedSms, parseSms } from '@/lib/sms/parser';
-import { isLikelyBankSender, normalizeSender } from '@/lib/sms/senders';
+import { isLikelyBankSender } from '@/lib/sms/senders';
 import type { Transaction } from '@/types/expense';
 import { findBestCategory } from '@/utils/categoryMatcher';
 import { aiExtractSms, type SmsCandidate, type AiSmsResult } from '@/lib/sms/aiExtract';
@@ -23,15 +23,49 @@ export interface SmsPreferences {
   lastScanAt: string | null;
 }
 
+export interface PendingSms {
+  id: string;
+  smsHash: string;
+  smsSender: string | null;
+  smsRaw: string | null;
+  occurredAt: string | null;
+  parsedDate: string;
+  parsedAmount: number;
+  parsedType: 'debit' | 'credit';
+  suggestedDescription: string | null;
+  suggestedCategoryId: string | null;
+  suggestedAccountId: string | null;
+  status: 'pending' | 'deleted';
+  createdAt: string;
+}
+
 const DEFAULT_PREFS: SmsPreferences = {
   enabled: false,
   defaultAccountId: null,
   lastScanAt: null,
 };
 
+function mapPending(r: any): PendingSms {
+  return {
+    id: r.id,
+    smsHash: r.sms_hash,
+    smsSender: r.sms_sender ?? null,
+    smsRaw: r.sms_raw ?? null,
+    occurredAt: r.occurred_at ?? null,
+    parsedDate: r.parsed_date,
+    parsedAmount: Number(r.parsed_amount),
+    parsedType: r.parsed_type,
+    suggestedDescription: r.suggested_description ?? null,
+    suggestedCategoryId: r.suggested_category_id ?? null,
+    suggestedAccountId: r.suggested_account_id ?? null,
+    status: r.status,
+    createdAt: r.created_at,
+  };
+}
+
 export function useSmsImport() {
   const { user } = useAuth();
-  const { accounts, categories, addTransactions, transactions } = useExpense();
+  const { accounts, categories, addTransaction } = useExpense();
   const currency = (() => {
     try { return useCurrency().currency.code; } catch { return undefined; }
   })();
@@ -39,6 +73,8 @@ export function useSmsImport() {
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
   const [cardMap, setCardMap] = useState<{ last4: string; accountId: string }[]>([]);
   const [identifiers, setIdentifiers] = useState<{ id: string; accountId: string; identifier: string }[]>([]);
+  const [pending, setPending] = useState<PendingSms[]>([]);
+  const [ingestedHashes, setIngestedHashes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -47,10 +83,12 @@ export function useSmsImport() {
   const loadAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [p, c, ids] = await Promise.all([
+    const [p, c, ids, pend, ing] = await Promise.all([
       supabase.from('sms_preferences').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('account_card_map').select('last4,account_id').eq('user_id', user.id),
       supabase.from('account_sms_identifiers').select('id,account_id,identifier').eq('user_id', user.id),
+      supabase.from('sms_pending').select('*').eq('user_id', user.id).order('parsed_date', { ascending: false }),
+      supabase.from('sms_ingested').select('sms_hash').eq('user_id', user.id),
     ]);
     if (p.data) {
       setPrefs({
@@ -61,6 +99,8 @@ export function useSmsImport() {
     }
     setCardMap((c.data || []).map(r => ({ last4: r.last4, accountId: r.account_id })));
     setIdentifiers((ids.data || []).map(r => ({ id: r.id, accountId: r.account_id, identifier: r.identifier })));
+    setPending((pend.data || []).map(mapPending));
+    setIngestedHashes(new Set((ing.data || []).map((r: any) => r.sms_hash)));
     setLoading(false);
   }, [user]);
 
@@ -101,16 +141,6 @@ export function useSmsImport() {
     await supabase.from('account_sms_identifiers').delete().eq('id', id);
   }, []);
 
-  /** Build a dedupe set from existing transactions' (date, amount, type). */
-  const existingHashSet = useCallback(() => {
-    const set = new Set<string>();
-    for (const t of transactions) {
-      // bucket by date + amount + type so SMS-after-statement-upload don't double
-      set.add(`${t.date}|${t.amount.toFixed(2)}|${t.type}`);
-    }
-    return set;
-  }, [transactions]);
-
   const resolveAccountId = useCallback((p: ParsedSms): string | null => {
     if (p.last4) {
       const hit = cardMap.find(c => c.last4 === p.last4);
@@ -119,9 +149,9 @@ export function useSmsImport() {
     return prefs.defaultAccountId;
   }, [cardMap, prefs.defaultAccountId]);
 
-  /** Convert parsed SMS into Transaction inserts using AI extraction for category/account/description. */
-  const toTransactionsAI = useCallback(async (parsed: ParsedSms[]): Promise<Omit<Transaction, 'id'>[]> => {
-    if (parsed.length === 0) return [];
+  /** Build pending-SMS row payloads from a batch of parsed SMS using AI extraction. */
+  const toPendingRows = useCallback(async (parsed: ParsedSms[]): Promise<any[]> => {
+    if (parsed.length === 0 || !user) return [];
 
     const candidates: SmsCandidate[] = parsed.map((p, i) => ({
       id: `${i}_${p.hash}`,
@@ -147,12 +177,11 @@ export function useSmsImport() {
 
     const aiById = new Map(ai.map(r => [r.id, r]));
 
-    const out: Omit<Transaction, 'id'>[] = [];
+    const out: any[] = [];
     parsed.forEach((p, i) => {
       const key = `${i}_${p.hash}`;
       const r = aiById.get(key);
 
-      // Skip non-transactions, credits (expense-only), and unmatched accounts
       if (r && r.isTransaction === false) return;
       if (r && r.type === 'credit') return;
       if (!r && p.type === 'credit') return;
@@ -161,26 +190,50 @@ export function useSmsImport() {
       const fallbackAcct = resolveAccountId(p);
 
       out.push({
-        date: r?.date || p.date,
-        description: (r?.description || p.merchant || '').slice(0, 200),
-        amount: r?.amount && r.amount > 0 ? r.amount : p.amount,
-        type: r?.type || p.type,
-        categoryId: r?.categoryId ?? fallbackCat,
-        accountId: r?.accountId ?? fallbackAcct,
-        tagIds: [],
-        status: 'confirmed' as const,
-        aiSuggested: true,
-        source: 'sms' as const,
-        smsSender: p.sender,
-        smsRaw: p.raw,
-        smsReviewed: false,
+        user_id: user.id,
+        sms_hash: p.hash,
+        sms_sender: p.sender || null,
+        sms_raw: p.raw,
+        occurred_at: new Date(p.occurredAt).toISOString(),
+        parsed_date: r?.date || p.date,
+        parsed_amount: r?.amount && r.amount > 0 ? r.amount : p.amount,
+        parsed_type: r?.type || p.type,
+        suggested_description: (r?.description || p.merchant || '').slice(0, 200),
+        suggested_category_id: r?.categoryId ?? fallbackCat,
+        suggested_account_id: r?.accountId ?? fallbackAcct,
+        status: 'pending',
       });
     });
 
     return out;
-  }, [accounts, cardMap, identifiers, categories, currency, resolveAccountId]);
+  }, [user, accounts, cardMap, identifiers, categories, currency, resolveAccountId]);
 
-  /** Read inbox, filter by allowlist, parse, dedupe vs existing transactions, insert. */
+  /** Insert pending rows + ingested hashes. Returns saved rows. */
+  const persistPending = useCallback(async (rows: any[]): Promise<PendingSms[]> => {
+    if (!user || rows.length === 0) return [];
+    const { data, error } = await supabase
+      .from('sms_pending')
+      .upsert(rows, { onConflict: 'user_id,sms_hash', ignoreDuplicates: true })
+      .select();
+    if (error) {
+      console.error('Failed to save pending SMS:', error);
+      return [];
+    }
+    const hashes = rows.map(r => ({ user_id: user.id, sms_hash: r.sms_hash }));
+    await supabase.from('sms_ingested').upsert(hashes, { onConflict: 'user_id,sms_hash', ignoreDuplicates: true });
+    const mapped = (data || []).map(mapPending);
+    setPending(prev => {
+      const have = new Set(prev.map(p => p.id));
+      return [...mapped.filter(m => !have.has(m.id)), ...prev];
+    });
+    setIngestedHashes(prev => {
+      const next = new Set(prev);
+      rows.forEach(r => next.add(r.sms_hash));
+      return next;
+    });
+    return mapped;
+  }, [user]);
+
   const scanInbox = useCallback(async (sinceEpochMs?: number): Promise<number> => {
     if (!supported) return 0;
     setBusy(true);
@@ -196,11 +249,8 @@ export function useSmsImport() {
       const raw = await readInbox(sinceEpochMs);
       const filtered = raw.filter(m => isLikelyBankSender(m.address));
       const parsed = parseSmsBatch(filtered);
-
-      // Expense-only: drop credits before AI/DB hit
       const debits = parsed.filter(p => p.type === 'debit');
 
-      // Pre-filter by tracked account identifiers (if any configured)
       const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
       const idFiltered = allIds.length === 0
         ? debits
@@ -209,8 +259,7 @@ export function useSmsImport() {
             return allIds.some(id => hay.includes(id));
           });
 
-      const existing = existingHashSet();
-      const fresh = idFiltered.filter(p => !existing.has(`${p.date}|${p.amount.toFixed(2)}|${p.type}`));
+      const fresh = idFiltered.filter(p => !ingestedHashes.has(p.hash));
 
       if (fresh.length === 0) {
         await savePrefs({ lastScanAt: new Date().toISOString() });
@@ -218,31 +267,30 @@ export function useSmsImport() {
       }
 
       toast({ title: 'AI is reading your SMS', description: `Analyzing ${fresh.length} new message(s)…` });
-      const inserts = await toTransactionsAI(fresh);
-      if (inserts.length > 0) await addTransactions(inserts);
+      const rows = await toPendingRows(fresh);
+      const saved = await persistPending(rows);
       await savePrefs({ lastScanAt: new Date().toISOString() });
-      return inserts.length;
+      return saved.length;
     } finally {
       setBusy(false);
     }
-  }, [supported, identifiers, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
+  }, [supported, identifiers, ingestedHashes, savePrefs, toPendingRows, persistPending]);
 
-  /** Foreground live listener — wires the native receiver into the import path. */
   useEffect(() => {
     if (!supported || !prefs.enabled) return;
     let stop: (() => void) | null = null;
     let cancelled = false;
 
-    let pending: ParsedSms[] = [];
+    let batch: ParsedSms[] = [];
     let timer: ReturnType<typeof setTimeout> | null = null;
     const flush = async () => {
       timer = null;
-      if (pending.length === 0 || cancelled) return;
-      const batch = pending;
-      pending = [];
+      if (batch.length === 0 || cancelled) return;
+      const b = batch;
+      batch = [];
       try {
-        const inserts = await toTransactionsAI(batch);
-        if (!cancelled && inserts.length > 0) await addTransactions(inserts);
+        const rows = await toPendingRows(b);
+        if (!cancelled) await persistPending(rows);
       } catch (err) {
         console.error('Live SMS AI extract failed:', err);
       }
@@ -253,16 +301,15 @@ export function useSmsImport() {
         if (!isLikelyBankSender(msg.address)) return;
         const p = parseSms(msg);
         if (!p) return;
-        if (p.type === 'credit') return; // expense-only
+        if (p.type === 'credit') return;
         const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
         if (allIds.length > 0) {
           const hay = `${p.sender} ${p.raw}`.toLowerCase();
           if (!allIds.some(id => hay.includes(id))) return;
         }
-        const existing = existingHashSet();
-        if (existing.has(`${p.date}|${p.amount.toFixed(2)}|${p.type}`)) return;
+        if (ingestedHashes.has(p.hash)) return;
         if (cancelled) return;
-        pending.push(p);
+        batch.push(p);
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => { flush(); }, 2000);
       });
@@ -273,7 +320,99 @@ export function useSmsImport() {
       if (timer) clearTimeout(timer);
       stop?.();
     };
-  }, [supported, prefs.enabled, identifiers, addTransactions, existingHashSet, toTransactionsAI]);
+  }, [supported, prefs.enabled, identifiers, ingestedHashes, toPendingRows, persistPending]);
+
+  // ---- pending-row actions ----
+
+  const confirmPending = useCallback(async (id: string, overrides?: Partial<Transaction>): Promise<boolean> => {
+    const row = pending.find(p => p.id === id);
+    if (!row) return false;
+    const txn: Omit<Transaction, 'id'> = {
+      date: row.parsedDate,
+      description: (overrides?.description ?? row.suggestedDescription ?? 'SMS Transaction').slice(0, 200),
+      amount: overrides?.amount ?? row.parsedAmount,
+      type: (overrides?.type ?? row.parsedType) as 'debit' | 'credit',
+      categoryId: overrides?.categoryId ?? row.suggestedCategoryId,
+      accountId: overrides?.accountId ?? row.suggestedAccountId,
+      tagIds: overrides?.tagIds ?? [],
+      status: 'confirmed',
+      aiSuggested: true,
+      source: 'sms',
+      smsSender: row.smsSender,
+      smsRaw: row.smsRaw,
+      smsReviewed: true,
+    };
+    try {
+      await addTransaction(txn);
+    } catch (err: any) {
+      toast({ title: 'Could not add transaction', description: err?.message || 'Try again.', variant: 'destructive' });
+      return false;
+    }
+    await supabase.from('sms_pending').delete().eq('id', id);
+    setPending(prev => prev.filter(p => p.id !== id));
+    return true;
+  }, [pending, addTransaction]);
+
+  const confirmMany = useCallback(async (ids: string[]) => {
+    let ok = 0;
+    for (const id of ids) {
+      const success = await confirmPending(id);
+      if (success) ok++;
+    }
+    return ok;
+  }, [confirmPending]);
+
+  const deletePending = useCallback(async (id: string) => {
+    const { error } = await supabase.from('sms_pending').update({ status: 'deleted' }).eq('id', id);
+    if (error) {
+      toast({ title: 'Could not delete', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setPending(prev => prev.map(p => p.id === id ? { ...p, status: 'deleted' } : p));
+  }, []);
+
+  const deleteMany = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { error } = await supabase.from('sms_pending').update({ status: 'deleted' }).in('id', ids);
+    if (error) {
+      toast({ title: 'Could not delete', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setPending(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'deleted' } : p));
+  }, []);
+
+  const restorePending = useCallback(async (id: string) => {
+    const { error } = await supabase.from('sms_pending').update({ status: 'pending' }).eq('id', id);
+    if (error) {
+      toast({ title: 'Could not restore', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setPending(prev => prev.map(p => p.id === id ? { ...p, status: 'pending' } : p));
+  }, []);
+
+  const purgePending = useCallback(async (id: string) => {
+    await supabase.from('sms_pending').delete().eq('id', id);
+    setPending(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const emptyTrash = useCallback(async () => {
+    if (!user) return;
+    await supabase.from('sms_pending').delete().eq('user_id', user.id).eq('status', 'deleted');
+    setPending(prev => prev.filter(p => p.status !== 'deleted'));
+  }, [user]);
+
+  const updatePending = useCallback(async (
+    id: string,
+    updates: Partial<Pick<PendingSms, 'suggestedCategoryId' | 'suggestedAccountId' | 'suggestedDescription'>>,
+  ) => {
+    const payload: any = {};
+    if (updates.suggestedCategoryId !== undefined) payload.suggested_category_id = updates.suggestedCategoryId;
+    if (updates.suggestedAccountId !== undefined) payload.suggested_account_id = updates.suggestedAccountId;
+    if (updates.suggestedDescription !== undefined) payload.suggested_description = updates.suggestedDescription;
+    if (Object.keys(payload).length === 0) return;
+    await supabase.from('sms_pending').update(payload).eq('id', id);
+    setPending(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  }, []);
 
   return {
     supported,
@@ -282,10 +421,19 @@ export function useSmsImport() {
     prefs,
     cardMap,
     identifiers,
+    pending,
     savePrefs,
     addIdentifier,
     removeIdentifier,
     scanInbox,
+    confirmPending,
+    confirmMany,
+    deletePending,
+    deleteMany,
+    restorePending,
+    purgePending,
+    emptyTrash,
+    updatePending,
     reload: loadAll,
   };
 }

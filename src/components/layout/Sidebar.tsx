@@ -15,6 +15,7 @@ import {
   Palette,
   Coins,
   FileJson,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Transactions', path: '/transactions', icon: Receipt },
+  { label: 'SMS Inbox', path: '/sms-review', icon: MessageSquare },
   { label: 'Upload', path: '/upload', icon: Upload },
   { label: 'Analytics', path: '/analytics', icon: TrendingUp },
 ];
