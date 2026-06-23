@@ -37,7 +37,6 @@ export function useSmsImport() {
   })();
 
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
-  const [allowlist, setAllowlist] = useState<{ id: string; sender: string; enabled: boolean }[]>([]);
   const [cardMap, setCardMap] = useState<{ last4: string; accountId: string }[]>([]);
   const [identifiers, setIdentifiers] = useState<{ id: string; accountId: string; identifier: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,9 +47,8 @@ export function useSmsImport() {
   const loadAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [p, a, c, ids] = await Promise.all([
+    const [p, c, ids] = await Promise.all([
       supabase.from('sms_preferences').select('*').eq('user_id', user.id).maybeSingle(),
-      supabase.from('sms_sender_allowlist').select('id,sender,enabled').eq('user_id', user.id),
       supabase.from('account_card_map').select('last4,account_id').eq('user_id', user.id),
       supabase.from('account_sms_identifiers').select('id,account_id,identifier').eq('user_id', user.id),
     ]);
@@ -61,7 +59,6 @@ export function useSmsImport() {
         lastScanAt: p.data.last_scan_at,
       });
     }
-    setAllowlist((a.data || []).map(r => ({ id: r.id, sender: r.sender, enabled: r.enabled })));
     setCardMap((c.data || []).map(r => ({ last4: r.last4, accountId: r.account_id })));
     setIdentifiers((ids.data || []).map(r => ({ id: r.id, accountId: r.account_id, identifier: r.identifier })));
     setLoading(false);
@@ -80,32 +77,6 @@ export function useSmsImport() {
       last_scan_at: merged.lastScanAt,
     });
   }, [user, prefs]);
-
-  const addSender = useCallback(async (sender: string) => {
-    if (!user) return;
-    const norm = normalizeSender(sender) || sender.toUpperCase();
-    const { data } = await supabase
-      .from('sms_sender_allowlist')
-      .upsert({ user_id: user.id, sender: norm, enabled: true }, { onConflict: 'user_id,sender' })
-      .select()
-      .single();
-    if (data) {
-      setAllowlist(prev => {
-        const without = prev.filter(s => s.sender !== norm);
-        return [...without, { id: data.id, sender: data.sender, enabled: data.enabled }];
-      });
-    }
-  }, [user]);
-
-  const toggleSender = useCallback(async (id: string, enabled: boolean) => {
-    setAllowlist(prev => prev.map(s => s.id === id ? { ...s, enabled } : s));
-    await supabase.from('sms_sender_allowlist').update({ enabled }).eq('id', id);
-  }, []);
-
-  const removeSender = useCallback(async (id: string) => {
-    setAllowlist(prev => prev.filter(s => s.id !== id));
-    await supabase.from('sms_sender_allowlist').delete().eq('id', id);
-  }, []);
 
   const addIdentifier = useCallback(async (accountId: string, identifier: string) => {
     if (!user) return;
@@ -223,14 +194,7 @@ export function useSmsImport() {
         }
       }
       const raw = await readInbox(sinceEpochMs);
-      const enabledSenders = new Set(
-        allowlist.filter(s => s.enabled).map(s => s.sender.toUpperCase())
-      );
-      const filtered = raw.filter(m => {
-        const n = normalizeSender(m.address);
-        if (enabledSenders.size === 0) return isLikelyBankSender(m.address);
-        return enabledSenders.has(n) || isLikelyBankSender(m.address);
-      });
+      const filtered = raw.filter(m => isLikelyBankSender(m.address));
       const parsed = parseSmsBatch(filtered);
 
       // Expense-only: drop credits before AI/DB hit
@@ -261,35 +225,13 @@ export function useSmsImport() {
     } finally {
       setBusy(false);
     }
-  }, [supported, allowlist, identifiers, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
-
-  /** Discover candidate senders from the inbox so the user can opt in. */
-  const discoverSenders = useCallback(async (): Promise<string[]> => {
-    if (!supported) return [];
-    const granted = await checkSmsPermission() || await requestSmsPermission();
-    if (!granted) return [];
-    const ninetyDays = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const raw = await readInbox(ninetyDays);
-    const senders = new Map<string, number>();
-    for (const m of raw) {
-      const parsed = parseSms(m);
-      if (!parsed) continue;
-      const n = normalizeSender(m.address);
-      if (!n) continue;
-      senders.set(n, (senders.get(n) || 0) + 1);
-    }
-    return [...senders.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s);
-  }, [supported]);
+  }, [supported, identifiers, addTransactions, existingHashSet, savePrefs, toTransactionsAI]);
 
   /** Foreground live listener — wires the native receiver into the import path. */
   useEffect(() => {
     if (!supported || !prefs.enabled) return;
     let stop: (() => void) | null = null;
     let cancelled = false;
-
-    const enabledSenders = new Set(
-      allowlist.filter(s => s.enabled).map(s => s.sender.toUpperCase())
-    );
 
     let pending: ParsedSms[] = [];
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -308,8 +250,7 @@ export function useSmsImport() {
 
     (async () => {
       stop = await startSmsListener((msg) => {
-        const n = normalizeSender(msg.address);
-        if (enabledSenders.size > 0 && !enabledSenders.has(n) && !isLikelyBankSender(msg.address)) return;
+        if (!isLikelyBankSender(msg.address)) return;
         const p = parseSms(msg);
         if (!p) return;
         if (p.type === 'credit') return; // expense-only
@@ -332,24 +273,19 @@ export function useSmsImport() {
       if (timer) clearTimeout(timer);
       stop?.();
     };
-  }, [supported, prefs.enabled, allowlist, identifiers, addTransactions, existingHashSet, toTransactionsAI]);
+  }, [supported, prefs.enabled, identifiers, addTransactions, existingHashSet, toTransactionsAI]);
 
   return {
     supported,
     loading,
     busy,
     prefs,
-    allowlist,
     cardMap,
     identifiers,
     savePrefs,
-    addSender,
-    toggleSender,
-    removeSender,
     addIdentifier,
     removeIdentifier,
     scanInbox,
-    discoverSenders,
     reload: loadAll,
   };
 }
