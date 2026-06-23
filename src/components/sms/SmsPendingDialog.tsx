@@ -27,7 +27,6 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
     date: '',
     description: '',
     amount: '',
-    type: 'debit' as 'debit' | 'credit',
     categoryId: '',
     accountId: '',
   });
@@ -38,7 +37,6 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
       date: row.parsedDate,
       description: row.suggestedDescription ?? '',
       amount: String(row.parsedAmount),
-      type: row.parsedType,
       categoryId: row.suggestedCategoryId ?? '',
       accountId: row.suggestedAccountId ?? '',
     });
@@ -59,7 +57,7 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
       date: form.date,
       description: form.description,
       amount: amt,
-      type: form.type,
+      type: 'debit',
       categoryId: form.categoryId || null,
       accountId: form.accountId || null,
     });
@@ -98,21 +96,9 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
             <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="bg-background/50" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              <Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="bg-background/50" />
-            </div>
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select value={form.type} onValueChange={(v: 'debit' | 'credit') => setForm(f => ({ ...f, type: v }))}>
-                <SelectTrigger className="bg-background/50"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="debit">Expense</SelectItem>
-                  <SelectItem value="credit">Income</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Amount</Label>
+            <Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="bg-background/50" />
           </div>
 
           <div className="space-y-2">
