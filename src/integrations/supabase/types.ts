@@ -49,6 +49,38 @@ export type Database = {
           },
         ]
       }
+      account_sms_identifiers: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          identifier: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          identifier: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_sms_identifiers_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounts: {
         Row: {
           created_at: string
