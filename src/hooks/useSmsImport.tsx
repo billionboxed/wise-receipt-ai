@@ -328,7 +328,7 @@ export function useSmsImport() {
     const row = pending.find(p => p.id === id);
     if (!row) return false;
     const txn: Omit<Transaction, 'id'> = {
-      date: row.parsedDate,
+      date: (overrides?.date ?? row.parsedDate),
       description: (overrides?.description ?? row.suggestedDescription ?? 'SMS Transaction').slice(0, 200),
       amount: overrides?.amount ?? row.parsedAmount,
       type: (overrides?.type ?? row.parsedType) as 'debit' | 'credit',

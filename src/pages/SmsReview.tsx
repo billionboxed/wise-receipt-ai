@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
-import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw } from 'lucide-react';
+import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2 } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSmsImport, type PendingSms } from '@/hooks/useSmsImport';
 import { toast } from '@/hooks/use-toast';
+import { SmsPendingDialog } from '@/components/sms/SmsPendingDialog';
+import { cn } from '@/lib/utils';
 
 /**
  * Duplicate rule (mirrors statement-import):
@@ -26,6 +28,94 @@ function findDuplicate(row: PendingSms, transactions: { id: string; date: string
   );
 }
 
+interface SwipeRowProps {
+  row: PendingSms;
+  isDup: boolean;
+  dupOf?: { description: string; date: string } | null;
+  selected: boolean;
+  onToggleSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  categoryLabel: string;
+  accountLabel: string;
+  amountLabel: string;
+}
+
+function SwipeRow({ row, isDup, dupOf, selected, onToggleSelect, onEdit, onDelete, categoryLabel, accountLabel, amountLabel }: SwipeRowProps) {
+  const x = useMotionValue(0);
+  const deleteOpacity = useTransform(x, [0, 8, 80], [0, 0.25, 1]);
+  const editOpacity = useTransform(x, [-80, -8, 0], [1, 0.25, 0]);
+  const isDragging = useRef(false);
+
+  const handleDragStart = () => { isDragging.current = true; };
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    isDragging.current = false;
+    const threshold = 60;
+    if (info.offset.x < -threshold) onEdit();
+    else if (info.offset.x > threshold) onDelete();
+    animate(x, 0);
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <motion.div style={{ opacity: deleteOpacity }} className="absolute left-0 top-0 bottom-0 flex items-center z-0 pointer-events-none">
+        <div className="h-full px-6 bg-destructive text-destructive-foreground flex items-center justify-center">
+          <Trash2 className="w-5 h-5" />
+        </div>
+      </motion.div>
+      <motion.div style={{ opacity: editOpacity }} className="absolute right-0 top-0 bottom-0 flex items-center z-0 pointer-events-none">
+        <div className="h-full px-6 bg-primary text-primary-foreground flex items-center justify-center">
+          <Edit2 className="w-5 h-5" />
+        </div>
+      </motion.div>
+
+      <motion.div
+        style={{ x }}
+        drag="x"
+        dragConstraints={{ left: -80, right: 80 }}
+        dragElastic={0.2}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          'p-3 rounded-xl border bg-background flex items-start gap-3 relative z-10 cursor-grab active:cursor-grabbing',
+          isDup ? 'border-amber-500/40 bg-amber-500/5' : 'border-border'
+        )}
+      >
+        <Checkbox checked={selected} onCheckedChange={onToggleSelect} className="mt-1" onClick={e => e.stopPropagation()} />
+        <div className="flex-1 min-w-0" onClick={() => { if (!isDragging.current) onEdit(); }}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium truncate">{row.suggestedDescription || 'SMS Transaction'}</p>
+            <span className="font-semibold whitespace-nowrap">{amountLabel}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {format(parseISO(row.parsedDate), 'dd MMM yyyy')}
+            {row.smsSender && <> • {row.smsSender}</>}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+            {isDup && dupOf && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="border-amber-500/60 text-amber-600 dark:text-amber-400 gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Possible duplicate
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Same date and amount as "{dupOf.description}" on {format(parseISO(dupOf.date), 'dd MMM yyyy')}.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <Badge variant="secondary" className="text-xs">{categoryLabel}</Badge>
+            <Badge variant="outline" className="text-xs">{accountLabel}</Badge>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2 italic">Tap to edit · Swipe ← edit · Swipe → delete</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function SmsReview() {
   const { transactions, categories, accounts } = useExpense();
   const { formatAmount } = useCurrency();
@@ -35,6 +125,8 @@ export default function SmsReview() {
     deletePending, deleteMany, updatePending,
   } = useSmsImport();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editRow, setEditRow] = useState<PendingSms | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const activeRows = useMemo(() => pending.filter(p => p.status === 'pending'), [pending]);
 
@@ -52,12 +144,6 @@ export default function SmsReview() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
-
-  const onConfirmOne = async (id: string) => {
-    const ok = await confirmPending(id);
-    if (ok) toast({ title: 'Added to transactions' });
-    setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
   };
 
   const onConfirmSelected = async () => {
@@ -97,58 +183,23 @@ export default function SmsReview() {
 
   const renderRow = (entry: { row: PendingSms; dup?: any }) => {
     const t = entry.row;
-    const isDup = !!entry.dup;
     return (
-      <motion.div
+      <SwipeRow
         key={t.id}
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`p-3 rounded-xl border bg-background flex items-start gap-3 ${
-          isDup ? 'border-amber-500/40 bg-amber-500/5' : 'border-border'
-        }`}
-      >
-        <Checkbox checked={selected.has(t.id)} onCheckedChange={() => toggle(t.id)} className="mt-1" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium truncate">{t.suggestedDescription || 'SMS Transaction'}</p>
-            <span className="font-semibold whitespace-nowrap">{formatAmount(t.parsedAmount)}</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {format(parseISO(t.parsedDate), 'dd MMM yyyy')}
-            {t.smsSender && <> • {t.smsSender}</>}
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
-            {isDup && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="border-amber-500/60 text-amber-600 dark:text-amber-400 gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Possible duplicate
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Same date and amount as "{entry.dup.description}" on {format(parseISO(entry.dup.date), 'dd MMM yyyy')}.
-                </TooltipContent>
-              </Tooltip>
-            )}
-            <Badge variant="secondary" className="text-xs">{getCat(t.suggestedCategoryId)?.combined ?? 'Uncategorized'}</Badge>
-            <Badge variant="outline" className="text-xs">{getAcc(t.suggestedAccountId)?.name ?? 'No account'}</Badge>
-          </div>
-          {t.smsRaw && (
-            <details className="mt-2 text-xs">
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Original SMS</summary>
-              <p className="mt-1 p-2 rounded bg-muted/50 whitespace-pre-wrap break-words">{t.smsRaw}</p>
-            </details>
-          )}
-        </div>
-        <div className="flex flex-col gap-1">
-          <Button size="sm" className="h-8" onClick={() => onConfirmOne(t.id)}>
-            <Check className="w-4 h-4 mr-1" /> Confirm
-          </Button>
-          <Button size="sm" variant="ghost" className="h-8 text-muted-foreground hover:text-destructive" onClick={() => deletePending(t.id)}>
-            <Trash2 className="w-4 h-4 mr-1" /> Delete
-          </Button>
-        </div>
-      </motion.div>
+        row={t}
+        isDup={!!entry.dup}
+        dupOf={entry.dup ? { description: entry.dup.description, date: entry.dup.date } : null}
+        selected={selected.has(t.id)}
+        onToggleSelect={() => toggle(t.id)}
+        onEdit={() => { setEditRow(t); setDialogOpen(true); }}
+        onDelete={async () => {
+          await deletePending(t.id);
+          toast({ title: 'Moved to Deleted SMS', description: 'Restore from Settings → SMS Auto-Import.' });
+        }}
+        categoryLabel={getCat(t.suggestedCategoryId)?.combined ?? 'Uncategorized'}
+        accountLabel={getAcc(t.suggestedAccountId)?.name ?? 'No account'}
+        amountLabel={formatAmount(t.parsedAmount)}
+      />
     );
   };
 
@@ -224,6 +275,21 @@ export default function SmsReview() {
             )}
           </div>
         )}
+
+        <SmsPendingDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          row={editRow}
+          onConfirm={async (id, overrides) => {
+            const ok = await confirmPending(id, overrides as any);
+            if (ok) toast({ title: 'Added to transactions' });
+            setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+          }}
+          onDelete={async (id) => {
+            await deletePending(id);
+            toast({ title: 'Moved to Deleted SMS', description: 'Restore from Settings → SMS Auto-Import.' });
+          }}
+        />
       </div>
     </Layout>
   );
