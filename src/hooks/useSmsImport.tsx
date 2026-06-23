@@ -107,6 +107,29 @@ export function useSmsImport() {
     await supabase.from('sms_sender_allowlist').delete().eq('id', id);
   }, []);
 
+  const addIdentifier = useCallback(async (accountId: string, identifier: string) => {
+    if (!user) return;
+    const value = identifier.trim();
+    if (!value) return;
+    const { data, error } = await supabase
+      .from('account_sms_identifiers')
+      .insert({ user_id: user.id, account_id: accountId, identifier: value })
+      .select()
+      .single();
+    if (error) {
+      toast({ title: 'Could not add identifier', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (data) {
+      setIdentifiers(prev => [...prev, { id: data.id, accountId: data.account_id, identifier: data.identifier }]);
+    }
+  }, [user]);
+
+  const removeIdentifier = useCallback(async (id: string) => {
+    setIdentifiers(prev => prev.filter(i => i.id !== id));
+    await supabase.from('account_sms_identifiers').delete().eq('id', id);
+  }, []);
+
   /** Build a dedupe set from existing transactions' (date, amount, type). */
   const existingHashSet = useCallback(() => {
     const set = new Set<string>();
