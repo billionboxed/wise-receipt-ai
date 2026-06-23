@@ -20,7 +20,7 @@ interface CategoryRef {
 interface AccountRef {
   id: string;
   name: string;
-  last4?: string | null;
+  identifiers?: string[];
 }
 
 interface AiSmsResult {
@@ -76,9 +76,16 @@ serve(async (req) => {
     const categoryList = categories.map((c) => `- "${c.id}" → ${c.combined}`).join("\n");
     const accountList = (accounts || []).length
       ? accounts
-          .map((a) => `- "${a.id}" → ${a.name}${a.last4 ? ` (card ending ${a.last4})` : ""}`)
+          .map((a) => {
+            const ids = (a.identifiers || []).filter(Boolean);
+            return `- "${a.id}" → ${a.name}${ids.length ? ` [identifiers: ${ids.join(", ")}]` : ""}`;
+          })
           .join("\n")
       : "(none)";
+
+    const hasAnyIdentifiers = (accounts || []).some(
+      (a) => (a.identifiers || []).length > 0,
+    );
 
     const smsList = messages
       .map((m) => {
@@ -87,13 +94,16 @@ serve(async (req) => {
       })
       .join("\n\n");
 
-    const systemPrompt = `You are a financial SMS parser for a personal expense tracker.
+    const systemPrompt = `You are a financial SMS parser for a personal EXPENSE tracker.
 You receive bank/wallet SMS notifications and must extract clean transaction data.
 
 USER'S CATEGORIES (pick the CLOSEST matching id; never invent new ones):
 ${categoryList}
 
-USER'S ACCOUNTS (match by card last-4 in the SMS, or by bank/wallet name; otherwise null):
+USER'S ACCOUNTS — each has free-form "identifiers" (card last-4, bank/wallet name,
+ keywords). Match an SMS to an account ONLY when the SMS sender or body contains
+ one of that account's identifiers (case-insensitive substring). If nothing matches,
+ the user is NOT tracking that account — set isTransaction:false:
 ${accountList}
 
 CURRENCY: ${currency || "user default"}
@@ -102,21 +112,21 @@ CURRENT YEAR: ${currentYear} (use this when the SMS date has no year)
 RULES:
 1. Set "isTransaction": false for OTPs, promos, balance-only alerts, login alerts,
    future-debit notices, EMI reminders, autopay reminders, and anything that is not a
-   completed money movement. For these, leave other fields null.
-2. "type" = "debit" for spends (debited, spent, paid, purchase, withdrawn, sent, charged).
-   "type" = "credit" for refunds, reversals, cashback, money received, salary, credited.
-3. "amount" = absolute number (no currency symbol, no commas).
+   completed money movement. Leave other fields null.
+2. THIS IS AN EXPENSE TRACKER. Set "isTransaction": false for ALL credit-side events
+   (credited, received, refund, refunded, reversed, cashback, salary, money received,
+   IMPS/NEFT/UPI inwards). Only outgoing spends count.
+3. ${hasAnyIdentifiers ? "If NONE of the user's account identifiers match the SMS sender or body, set isTransaction:false. We only track listed accounts." : "No identifiers configured; pick the best account match or null."}
+4. "type" must be "debit" for every returned transaction. Never return "credit".
+5. "amount" = absolute number (no currency symbol, no commas).
 4. "date" = ISO yyyy-mm-dd. Prefer the transaction date in the SMS body; if missing,
    use the SMS received date. Inject the current year when the body lacks one.
-5. "merchant" = the raw merchant/payee as the SMS shows it (e.g. "SWIGGY*BLR").
-6. "description" = a clean, human-readable description you would write for the user
-   (e.g. "Swiggy order", "ATM withdrawal", "Salary credit", "UPI to Ramesh").
-   You MAY rewrite/clarify; keep it faithful to the SMS, no invented detail.
-7. "categoryId" = closest match from the list above, or null if truly nothing fits.
-8. "accountId" = match using last-4 in the SMS, or the bank/wallet name in the sender
-   or body; otherwise null.
-9. "confidence" = 0..1 (your own confidence in the extracted transaction).
-10. "reason" = brief 3-10 word note (e.g. "Swiggy = Food Delivery").
+6. "merchant" = raw merchant/payee as the SMS shows it.
+7. "description" = clean, human-readable description (e.g. "Swiggy order",
+   "ATM withdrawal", "UPI to Ramesh"). Rewrite for clarity, stay faithful, no invention.
+8. "categoryId" = closest match from the list above, or null if nothing fits.
+9. "accountId" = the account whose identifier matched. Null only if no identifiers configured.
+10. "confidence" = 0..1. "reason" = brief 3-10 word note.
 
 OUTPUT: a single JSON array, one object per input SMS, in the SAME order and using
 the SAME "id" values. Return ONLY the JSON array, no prose, no markdown fences.`;
@@ -183,11 +193,16 @@ the SAME "id" values. Return ONLY the JSON array, no prose, no markdown fences.`
 
     const validCategoryIds = new Set(categories.map((c) => c.id));
     const validAccountIds = new Set((accounts || []).map((a) => a.id));
-    results = results.map((r) => ({
-      ...r,
-      categoryId: r.categoryId && validCategoryIds.has(r.categoryId) ? r.categoryId : null,
-      accountId: r.accountId && validAccountIds.has(r.accountId) ? r.accountId : null,
-    }));
+    results = results.map((r) => {
+      const accountId = r.accountId && validAccountIds.has(r.accountId) ? r.accountId : null;
+      const categoryId = r.categoryId && validCategoryIds.has(r.categoryId) ? r.categoryId : null;
+      // Expense tracker: drop credits, drop unmatched accounts when identifiers configured
+      const isTx =
+        r.isTransaction &&
+        r.type === "debit" &&
+        (!hasAnyIdentifiers || accountId !== null);
+      return { ...r, accountId, categoryId, isTransaction: !!isTx };
+    });
 
     return new Response(
       JSON.stringify({ success: true, results }),
