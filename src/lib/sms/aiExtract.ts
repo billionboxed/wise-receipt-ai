@@ -33,7 +33,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 export async function aiExtractSms(
   candidates: SmsCandidate[],
   categories: Pick<Category, 'id' | 'combined'>[],
-  accounts: (Pick<Account, 'id' | 'name'> & { last4?: string | null })[],
+  accounts: (Pick<Account, 'id' | 'name'> & { identifiers?: string[] })[],
   currency?: string,
 ): Promise<AiSmsResult[]> {
   if (candidates.length === 0) return [];
