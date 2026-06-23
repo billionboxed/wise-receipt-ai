@@ -1,36 +1,20 @@
-import { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Plus, Trash2, Smartphone, Loader2, ListChecks, RotateCcw } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Smartphone, Loader2, RotateCcw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSmsImport } from '@/hooks/useSmsImport';
 import { useExpense } from '@/context/ExpenseContext';
 import { toast } from '@/hooks/use-toast';
-import { DEFAULT_BANK_SENDERS } from '@/lib/sms/senders';
 
 export default function SmsSettings() {
   const { accounts } = useExpense();
   const {
-    supported, loading, busy, prefs, allowlist,
-    savePrefs, addSender, toggleSender, removeSender,
-    scanInbox, discoverSenders,
+    supported, loading, busy, prefs,
+    savePrefs, scanInbox,
   } = useSmsImport();
-
-  const [newSender, setNewSender] = useState('');
-  const [discovered, setDiscovered] = useState<string[] | null>(null);
-
-  // Seed default senders on first enable
-  useEffect(() => {
-    if (prefs.enabled && allowlist.length === 0 && !loading) {
-      DEFAULT_BANK_SENDERS.slice(0, 12).forEach(s => addSender(s));
-    }
-  }, [prefs.enabled, allowlist.length, loading, addSender]);
 
   const onToggle = async (enabled: boolean) => {
     await savePrefs({ enabled });
@@ -49,14 +33,6 @@ export default function SmsSettings() {
       title: count > 0 ? `Imported ${count} transaction${count > 1 ? 's' : ''}` : 'No new transactions',
       description: count > 0 ? 'Review them in the SMS inbox.' : 'Nothing new from your bank SMS.',
     });
-  };
-
-  const handleDiscover = async () => {
-    const list = await discoverSenders();
-    setDiscovered(list);
-    if (list.length === 0) {
-      toast({ title: 'No senders found', description: 'No bank-like SMS in the inbox.' });
-    }
   };
 
   return (
@@ -119,67 +95,13 @@ export default function SmsSettings() {
               </Select>
             </div>
 
-            {/* Watched senders */}
-            <div className="p-4 rounded-xl glass-card border border-white/5 space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <p className="font-medium">Watched senders</p>
-                  <p className="text-sm text-muted-foreground">Only SMS from these senders are imported.</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={handleDiscover} disabled={!supported || busy}>
-                  <ListChecks className="w-4 h-4 mr-1" /> Detect from inbox
-                </Button>
-              </div>
-
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add sender e.g. HDFCBK"
-                  value={newSender}
-                  onChange={e => setNewSender(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && newSender.trim()) {
-                      addSender(newSender.trim()); setNewSender('');
-                    }
-                  }}
-                />
-                <Button onClick={() => { if (newSender.trim()) { addSender(newSender.trim()); setNewSender(''); } }}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {allowlist.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No senders yet. Add one above or detect from inbox.</p>
-                )}
-                {allowlist.map(s => (
-                  <Badge key={s.id} variant={s.enabled ? 'default' : 'secondary'} className="flex items-center gap-1.5">
-                    <button onClick={() => toggleSender(s.id, !s.enabled)} className="cursor-pointer">{s.sender}</button>
-                    <Trash2 className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100" onClick={() => removeSender(s.id)} />
-                  </Badge>
-                ))}
-              </div>
-
-              {discovered && discovered.length > 0 && (
-                <div className="pt-3 border-t border-border/30 space-y-2">
-                  <p className="text-sm font-medium">Detected in your inbox:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {discovered.map(s => {
-                      const already = allowlist.some(a => a.sender === s);
-                      return (
-                        <Badge
-                          key={s}
-                          variant={already ? 'secondary' : 'outline'}
-                          className="cursor-pointer"
-                          onClick={() => !already && addSender(s)}
-                        >
-                          {already ? '✓ ' : '+ '}{s}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            <Alert>
+              <Info className="w-4 h-4" />
+              <AlertDescription>
+                Only SMS that match an <NavLink to="/settings/accounts" className="underline font-medium">account identifier</NavLink> are imported.
+                Add card last-4 digits or bank keywords (e.g. <code>1234</code>, <code>HDFC</code>) to each account.
+              </AlertDescription>
+            </Alert>
 
             {/* Scan controls */}
             <div className="p-4 rounded-xl glass-card border border-white/5 space-y-3">
