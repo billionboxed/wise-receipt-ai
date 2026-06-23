@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
-import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2 } from 'lucide-react';
+import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2, History, Filter, Info } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { useSmsImport, type PendingSms } from '@/hooks/useSmsImport';
 import { toast } from '@/hooks/use-toast';
 import { SmsPendingDialog } from '@/components/sms/SmsPendingDialog';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 /**
  * Duplicate rule (mirrors statement-import):
@@ -120,9 +124,9 @@ export default function SmsReview() {
   const { transactions, categories, accounts } = useExpense();
   const { formatAmount } = useCurrency();
   const {
-    pending, busy, supported, prefs,
+    pending, busy, supported, prefs, identifiers,
     scanInbox, confirmPending, confirmMany,
-    deletePending, deleteMany, updatePending,
+    deletePending, deleteMany, updatePending, reapplyIdentifiers,
   } = useSmsImport();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editRow, setEditRow] = useState<PendingSms | null>(null);
@@ -170,11 +174,29 @@ export default function SmsReview() {
     toast({ title: 'Accounts updated' });
   };
 
-  const onScan = async () => {
-    const n = await scanInbox(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const onScan = async (mode: 'new' | 'all' = 'new') => {
+    // 'new' → last 30 days; 'all' → entire inbox. Hashes in sms_ingested dedupe in both cases.
+    const since = mode === 'new' ? Date.now() - 30 * 24 * 60 * 60 * 1000 : undefined;
+    const n = await scanInbox(since);
     toast({
       title: n > 0 ? `Found ${n} new SMS` : 'No new SMS',
-      description: n > 0 ? 'Review and confirm to add to transactions.' : 'Nothing new from your bank SMS.',
+      description: n > 0
+        ? 'Review and confirm to add to transactions.'
+        : mode === 'all'
+          ? 'Every bank SMS in your inbox has already been handled.'
+          : 'Nothing new from your bank SMS.',
+    });
+  };
+
+  const onCleanInbox = async () => {
+    if (!window.confirm('Remove pending SMS that don\'t match any of your account identifiers? They\'ll move to Deleted SMS and can be restored from settings.')) return;
+    const { removed, autoAssigned } = await reapplyIdentifiers();
+    const parts: string[] = [];
+    if (removed) parts.push(`${removed} removed`);
+    if (autoAssigned) parts.push(`${autoAssigned} account-assigned`);
+    toast({
+      title: parts.length ? 'Inbox cleaned' : 'Nothing to clean',
+      description: parts.length ? parts.join(' · ') : 'All pending SMS already match an identifier.',
     });
   };
 
@@ -217,12 +239,53 @@ export default function SmsReview() {
             </p>
           </div>
           {supported && prefs.enabled && (
-            <Button variant="outline" size="sm" onClick={onScan} disabled={busy}>
-              {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1" />}
-              Scan now
-            </Button>
+            <div className="flex items-center gap-2">
+              {identifiers.length > 0 && activeRows.length > 0 && (
+                <Button variant="outline" size="sm" onClick={onCleanInbox} disabled={busy}>
+                  <Filter className="w-4 h-4 mr-1" />
+                  Clean inbox
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={busy}>
+                    {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1" />}
+                    Scan
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => onScan('new')}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    <div className="flex flex-col">
+                      <span>Scan new</span>
+                      <span className="text-[10px] text-muted-foreground">Last 30 days</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onScan('all')}>
+                    <History className="w-4 h-4 mr-2" />
+                    <div className="flex flex-col">
+                      <span>Re-scan all SMS</span>
+                      <span className="text-[10px] text-muted-foreground">Entire inbox · skips already-handled</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
+
+        {supported && prefs.enabled && activeRows.length > 0 && identifiers.length === 0 && (
+          <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 text-xs flex items-start gap-2">
+            <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-foreground">No account identifiers configured</p>
+              <p className="text-muted-foreground mt-0.5">
+                Add identifiers (card last-4, account number, etc.) so only SMS for accounts you track land here.{' '}
+                <Link to="/settings/sms" className="text-primary underline underline-offset-2">Open SMS settings</Link>
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span><b className="text-foreground">{freshRows.length}</b> new</span>
