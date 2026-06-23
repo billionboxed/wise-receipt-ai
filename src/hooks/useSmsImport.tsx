@@ -346,6 +346,8 @@ export function useSmsImport() {
     addSender,
     toggleSender,
     removeSender,
+    addIdentifier,
+    removeIdentifier,
     scanInbox,
     discoverSenders,
     reload: loadAll,
