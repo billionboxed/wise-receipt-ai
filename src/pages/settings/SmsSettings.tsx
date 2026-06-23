@@ -33,15 +33,13 @@ export default function SmsSettings() {
   }, [prefs.enabled, allowlist.length, loading, addSender]);
 
   const onToggle = async (enabled: boolean) => {
+    await savePrefs({ enabled });
     if (!supported && enabled) {
       toast({
-        title: 'Available on Android only',
-        description: 'SMS auto-import requires the native Android app.',
-        variant: 'destructive',
+        title: 'Saved for Android',
+        description: 'SMS auto-import runs on the Android app. Your preferences will activate there.',
       });
-      return;
     }
-    await savePrefs({ enabled });
   };
 
   const handleScan = async (days: number) => {
