@@ -37,7 +37,6 @@ export function useSmsImport() {
   })();
 
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
-  const [allowlist, setAllowlist] = useState<{ id: string; sender: string; enabled: boolean }[]>([]);
   const [cardMap, setCardMap] = useState<{ last4: string; accountId: string }[]>([]);
   const [identifiers, setIdentifiers] = useState<{ id: string; accountId: string; identifier: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,9 +47,8 @@ export function useSmsImport() {
   const loadAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [p, a, c, ids] = await Promise.all([
+    const [p, c, ids] = await Promise.all([
       supabase.from('sms_preferences').select('*').eq('user_id', user.id).maybeSingle(),
-      supabase.from('sms_sender_allowlist').select('id,sender,enabled').eq('user_id', user.id),
       supabase.from('account_card_map').select('last4,account_id').eq('user_id', user.id),
       supabase.from('account_sms_identifiers').select('id,account_id,identifier').eq('user_id', user.id),
     ]);
@@ -61,7 +59,6 @@ export function useSmsImport() {
         lastScanAt: p.data.last_scan_at,
       });
     }
-    setAllowlist((a.data || []).map(r => ({ id: r.id, sender: r.sender, enabled: r.enabled })));
     setCardMap((c.data || []).map(r => ({ last4: r.last4, accountId: r.account_id })));
     setIdentifiers((ids.data || []).map(r => ({ id: r.id, accountId: r.account_id, identifier: r.identifier })));
     setLoading(false);
@@ -80,32 +77,6 @@ export function useSmsImport() {
       last_scan_at: merged.lastScanAt,
     });
   }, [user, prefs]);
-
-  const addSender = useCallback(async (sender: string) => {
-    if (!user) return;
-    const norm = normalizeSender(sender) || sender.toUpperCase();
-    const { data } = await supabase
-      .from('sms_sender_allowlist')
-      .upsert({ user_id: user.id, sender: norm, enabled: true }, { onConflict: 'user_id,sender' })
-      .select()
-      .single();
-    if (data) {
-      setAllowlist(prev => {
-        const without = prev.filter(s => s.sender !== norm);
-        return [...without, { id: data.id, sender: data.sender, enabled: data.enabled }];
-      });
-    }
-  }, [user]);
-
-  const toggleSender = useCallback(async (id: string, enabled: boolean) => {
-    setAllowlist(prev => prev.map(s => s.id === id ? { ...s, enabled } : s));
-    await supabase.from('sms_sender_allowlist').update({ enabled }).eq('id', id);
-  }, []);
-
-  const removeSender = useCallback(async (id: string) => {
-    setAllowlist(prev => prev.filter(s => s.id !== id));
-    await supabase.from('sms_sender_allowlist').delete().eq('id', id);
-  }, []);
 
   const addIdentifier = useCallback(async (accountId: string, identifier: string) => {
     if (!user) return;
