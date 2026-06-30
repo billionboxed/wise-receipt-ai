@@ -32,12 +32,15 @@ export default function SmsSettings() {
     }
   };
 
-  const handleScan = async (days: number) => {
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
-    const count = await scanInbox(since);
+  const handleScan = async (fullRescan: boolean) => {
+    const { added, removed, autoAssigned } = await scanInbox({ fullRescan });
+    const parts: string[] = [];
+    if (added) parts.push(`${added} added`);
+    if (removed) parts.push(`${removed} cleaned`);
+    if (autoAssigned) parts.push(`${autoAssigned} account-assigned`);
     toast({
-      title: count > 0 ? `Found ${count} new SMS` : 'No new SMS',
-      description: count > 0 ? 'Review and confirm in SMS Inbox.' : 'Nothing new from your bank SMS.',
+      title: parts.length ? 'Scan complete' : 'No new SMS',
+      description: parts.length ? parts.join(' · ') : 'Nothing new from your bank SMS.',
     });
   };
 
@@ -121,12 +124,12 @@ export default function SmsSettings() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => handleScan(30)} disabled={!supported || busy}>
+                <Button onClick={() => handleScan(false)} disabled={!supported || busy}>
                   {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />}
-                  Scan last 30 days
+                  Scan new
                 </Button>
-                <Button variant="outline" onClick={() => handleScan(90)} disabled={!supported || busy}>
-                  Scan last 90 days
+                <Button variant="outline" onClick={() => handleScan(true)} disabled={!supported || busy}>
+                  Scan all SMS
                 </Button>
                 <NavLink to="/sms-review" className="ml-auto">
                   <Button variant="ghost">Open SMS inbox →</Button>
