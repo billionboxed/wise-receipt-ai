@@ -459,6 +459,9 @@ export function useSmsImport() {
     return { removed: toRemove.length, autoAssigned: toAssign.length };
   }, [identifiers, pending, deleteMany, updatePending]);
 
+  // Keep ref in sync so scanInbox can invoke it without a circular dep.
+  useEffect(() => { reapplyIdentifiersRef.current = reapplyIdentifiers; }, [reapplyIdentifiers]);
+
   return {
     supported,
     loading,
