@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useExpense } from '@/context/ExpenseContext';
@@ -79,6 +79,11 @@ export function useSmsImport() {
   const [busy, setBusy] = useState(false);
 
   const supported = isSmsSupported();
+
+  // Ref to break the circular dep between scanInbox and reapplyIdentifiers.
+  const reapplyIdentifiersRef = useRef<() => Promise<{ removed: number; autoAssigned: number }>>(
+    async () => ({ removed: 0, autoAssigned: 0 }),
+  );
 
   const loadAll = useCallback(async () => {
     if (!user) return;
