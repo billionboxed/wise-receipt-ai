@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
-import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2, History, Filter, Info } from 'lucide-react';
+import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2, History, Info } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Button } from '@/components/ui/button';
@@ -126,7 +126,7 @@ export default function SmsReview() {
   const {
     pending, busy, supported, prefs, identifiers,
     scanInbox, confirmPending, confirmMany,
-    deletePending, deleteMany, updatePending, reapplyIdentifiers,
+    deletePending, deleteMany, updatePending,
   } = useSmsImport();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editRow, setEditRow] = useState<PendingSms | null>(null);
@@ -175,28 +175,18 @@ export default function SmsReview() {
   };
 
   const onScan = async (mode: 'new' | 'all' = 'new') => {
-    // 'new' → last 30 days; 'all' → entire inbox. Hashes in sms_ingested dedupe in both cases.
-    const since = mode === 'new' ? Date.now() - 30 * 24 * 60 * 60 * 1000 : undefined;
-    const n = await scanInbox(since);
+    const { added, removed, autoAssigned } = await scanInbox({ fullRescan: mode === 'all' });
+    const parts: string[] = [];
+    if (added) parts.push(`${added} added`);
+    if (removed) parts.push(`${removed} cleaned`);
+    if (autoAssigned) parts.push(`${autoAssigned} account-assigned`);
     toast({
-      title: n > 0 ? `Found ${n} new SMS` : 'No new SMS',
-      description: n > 0
-        ? 'Review and confirm to add to transactions.'
+      title: parts.length ? 'Scan complete' : 'No new SMS',
+      description: parts.length
+        ? parts.join(' · ')
         : mode === 'all'
           ? 'Every bank SMS in your inbox has already been handled.'
           : 'Nothing new from your bank SMS.',
-    });
-  };
-
-  const onCleanInbox = async () => {
-    if (!window.confirm('Remove pending SMS that don\'t match any of your account identifiers? They\'ll move to Deleted SMS and can be restored from settings.')) return;
-    const { removed, autoAssigned } = await reapplyIdentifiers();
-    const parts: string[] = [];
-    if (removed) parts.push(`${removed} removed`);
-    if (autoAssigned) parts.push(`${autoAssigned} account-assigned`);
-    toast({
-      title: parts.length ? 'Inbox cleaned' : 'Nothing to clean',
-      description: parts.length ? parts.join(' · ') : 'All pending SMS already match an identifier.',
     });
   };
 
@@ -240,12 +230,6 @@ export default function SmsReview() {
           </div>
           {supported && prefs.enabled && (
             <div className="flex items-center gap-2">
-              {identifiers.length > 0 && activeRows.length > 0 && (
-                <Button variant="outline" size="sm" onClick={onCleanInbox} disabled={busy}>
-                  <Filter className="w-4 h-4 mr-1" />
-                  Clean inbox
-                </Button>
-              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" disabled={busy}>
@@ -258,13 +242,13 @@ export default function SmsReview() {
                     <RotateCcw className="w-4 h-4 mr-2" />
                     <div className="flex flex-col">
                       <span>Scan new</span>
-                      <span className="text-[10px] text-muted-foreground">Last 30 days</span>
+                      <span className="text-[10px] text-muted-foreground">Since last scan</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onScan('all')}>
                     <History className="w-4 h-4 mr-2" />
                     <div className="flex flex-col">
-                      <span>Re-scan all SMS</span>
+                      <span>Scan all SMS</span>
                       <span className="text-[10px] text-muted-foreground">Entire inbox · skips already-handled</span>
                     </div>
                   </DropdownMenuItem>

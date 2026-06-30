@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useExpense } from '@/context/ExpenseContext';
@@ -79,6 +79,11 @@ export function useSmsImport() {
   const [busy, setBusy] = useState(false);
 
   const supported = isSmsSupported();
+
+  // Ref to break the circular dep between scanInbox and reapplyIdentifiers.
+  const reapplyIdentifiersRef = useRef<() => Promise<{ removed: number; autoAssigned: number }>>(
+    async () => ({ removed: 0, autoAssigned: 0 }),
+  );
 
   const loadAll = useCallback(async () => {
     if (!user) return;
@@ -234,8 +239,11 @@ export function useSmsImport() {
     return mapped;
   }, [user]);
 
-  const scanInbox = useCallback(async (sinceEpochMs?: number): Promise<number> => {
-    if (!supported) return 0;
+  const scanInbox = useCallback(async (
+    opts: { fullRescan?: boolean } = {},
+  ): Promise<{ added: number; removed: number; autoAssigned: number }> => {
+    const empty = { added: 0, removed: 0, autoAssigned: 0 };
+    if (!supported) return empty;
     setBusy(true);
     try {
       const granted = await checkSmsPermission();
@@ -243,9 +251,12 @@ export function useSmsImport() {
         const ok = await requestSmsPermission();
         if (!ok) {
           toast({ title: 'Permission denied', description: 'Enable SMS access in system settings.', variant: 'destructive' });
-          return 0;
+          return empty;
         }
       }
+      const sinceEpochMs = opts.fullRescan
+        ? undefined
+        : (prefs.lastScanAt ? new Date(prefs.lastScanAt).getTime() : Date.now() - 30 * 24 * 60 * 60 * 1000);
       const raw = await readInbox(sinceEpochMs);
       const filtered = raw.filter(m => isLikelyBankSender(m.address));
       const parsed = parseSmsBatch(filtered);
@@ -261,20 +272,23 @@ export function useSmsImport() {
 
       const fresh = idFiltered.filter(p => !ingestedHashes.has(p.hash));
 
-      if (fresh.length === 0) {
-        await savePrefs({ lastScanAt: new Date().toISOString() });
-        return 0;
+      let added = 0;
+      if (fresh.length > 0) {
+        toast({ title: 'AI is reading your SMS', description: `Analyzing ${fresh.length} new message(s)…` });
+        const rows = await toPendingRows(fresh);
+        const saved = await persistPending(rows);
+        added = saved.length;
       }
-
-      toast({ title: 'AI is reading your SMS', description: `Analyzing ${fresh.length} new message(s)…` });
-      const rows = await toPendingRows(fresh);
-      const saved = await persistPending(rows);
       await savePrefs({ lastScanAt: new Date().toISOString() });
-      return saved.length;
+      // Auto-clean existing pending rows against current identifiers.
+      const cleaned = allIds.length > 0
+        ? await reapplyIdentifiersRef.current()
+        : { removed: 0, autoAssigned: 0 };
+      return { added, ...cleaned };
     } finally {
       setBusy(false);
     }
-  }, [supported, identifiers, ingestedHashes, savePrefs, toPendingRows, persistPending]);
+  }, [supported, identifiers, ingestedHashes, prefs.lastScanAt, savePrefs, toPendingRows, persistPending]);
 
   useEffect(() => {
     if (!supported || !prefs.enabled) return;
@@ -444,6 +458,9 @@ export function useSmsImport() {
 
     return { removed: toRemove.length, autoAssigned: toAssign.length };
   }, [identifiers, pending, deleteMany, updatePending]);
+
+  // Keep ref in sync so scanInbox can invoke it without a circular dep.
+  useEffect(() => { reapplyIdentifiersRef.current = reapplyIdentifiers; }, [reapplyIdentifiers]);
 
   return {
     supported,
