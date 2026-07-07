@@ -68,12 +68,25 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_pending_sms",
     description: "List pending (parsed but unconfirmed) SMS transactions.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    parameters: {
+      type: "object",
+      properties: {
+        accountName: { ...str, description: "Filter to pending SMS assigned to this account (partial match)." },
+        accountId: str,
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "list_deleted_sms",
     description: "List soft-deleted SMS in the Deleted SMS bin.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    parameters: {
+      type: "object",
+      properties: {
+        accountName: { ...str, description: "Filter deleted SMS by account (partial match on sender/body)." },
+      },
+      additionalProperties: false,
+    },
   },
 
   // ---------- Single-item mutations (no approval) ----------
@@ -105,6 +118,23 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "update_expense",
+    description: "Update fields on a single transaction. Provide only the fields to change.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: str,
+        date: str,
+        description: str,
+        amount: num,
+        categoryId: str,
+        accountId: str,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "add_category",
     description: "Create a new category. `combined` is auto-formed as 'main > sub'.",
     parameters: {
@@ -113,6 +143,28 @@ export const TOOLS: ToolDef[] = [
       required: ["main", "sub"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "rename_category",
+    description: "Rename a category (updates main and/or sub).",
+    parameters: {
+      type: "object",
+      properties: { id: str, main: str, sub: str },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_category",
+    description: "Delete a category. Existing transactions get reassigned to Uncategorized.",
+    parameters: {
+      type: "object",
+      properties: { id: str },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    needsApproval: true,
+    summary: (a) => `Delete category ${a.id} (transactions move to Uncategorized)`,
   },
   {
     name: "add_tag",
@@ -125,6 +177,38 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "rename_tag",
+    description: "Rename or recolor a tag.",
+    parameters: {
+      type: "object",
+      properties: { id: str, name: str, color: str },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "archive_tag",
+    description: "Archive (soft-hide) or unarchive a tag.",
+    parameters: {
+      type: "object",
+      properties: { id: str, archived: bool },
+      required: ["id", "archived"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_tag",
+    description: "Permanently delete a tag. Existing transactions lose that tag.",
+    parameters: {
+      type: "object",
+      properties: { id: str },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    needsApproval: true,
+    summary: (a) => `Delete tag ${a.id}`,
+  },
+  {
     name: "add_account",
     description: "Create a new account.",
     parameters: {
@@ -134,6 +218,20 @@ export const TOOLS: ToolDef[] = [
         type: { ...str, description: "bank | credit | cash | wallet" },
       },
       required: ["name", "type"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "rename_account",
+    description: "Rename an account or change its type.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: str,
+        name: str,
+        type: { ...str, description: "bank | credit | cash | wallet" },
+      },
+      required: ["id"],
       additionalProperties: false,
     },
   },
@@ -159,6 +257,21 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "edit_pending_sms",
+    description: "Update the suggested description, category, or account on a pending SMS before confirming.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: str,
+        description: str,
+        categoryId: str,
+        accountId: str,
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "confirm_pending_sms",
     description: "Turn one pending SMS into a confirmed transaction.",
     parameters: {
@@ -167,6 +280,14 @@ export const TOOLS: ToolDef[] = [
       required: ["id"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "reapply_identifiers",
+    description:
+      "Re-run the current SMS identifiers over all pending rows: auto-assign matching account, soft-delete non-matching rows.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+    needsApproval: true,
+    summary: () => "Re-apply identifiers to all pending SMS (auto-assign + soft-delete non-matching)",
   },
   {
     name: "delete_pending_sms",
