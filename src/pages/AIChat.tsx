@@ -1,670 +1,338 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Send, Loader2, Sparkles, Plus, Check, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useExpense } from '@/context/ExpenseContext';
-import { useCurrency } from '@/context/CurrencyContext';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Loader2, Send, Sparkles, Check, X, Undo2, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { AgentUndoProvider, useAgentUndo } from '@/hooks/useAgentUndo';
+import { useAgentTools } from '@/hooks/useAgentTools';
+import { TOOLS, TOOL_MAP, isDestructive } from '@/lib/agent/tools';
+import { useCurrency } from '@/context/CurrencyContext';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  expenseAction?: ExpenseAction;
+// ---------- Message types ----------
+interface ToolCall { id: string; type: 'function'; function: { name: string; arguments: string } }
+
+type ApiMessage =
+  | { role: 'user'; content: string }
+  | { role: 'assistant'; content?: string | null; tool_calls?: ToolCall[] }
+  | { role: 'tool'; tool_call_id: string; name: string; content: string };
+
+interface ToolCallStatus {
+  status: 'awaiting-approval' | 'running' | 'done' | 'denied' | 'error';
+  result?: any;
+  error?: string;
 }
 
-interface ExpenseAction {
-  type: 'add_expense';
-  date: string;
-  description: string;
-  amount: number;
-  expenseType: 'debit' | 'credit';
-  category?: string;
-  account?: string;
+// Compact tool result cards (JSON strings kept but UI shows summary)
+function safeParseArgs(s: string) { try { return JSON.parse(s || '{}'); } catch { return {}; } }
+
+function ToolBubble({ call, status, onApprove, onDeny }: {
+  call: ToolCall;
+  status: ToolCallStatus;
+  onApprove: () => void;
+  onDeny: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const def = TOOL_MAP[call.function.name];
+  const args = safeParseArgs(call.function.arguments);
+  const summary = def?.summary?.(args) ?? def?.description ?? call.function.name;
+
+  return (
+    <Card className="mb-2 p-3 bg-muted/40 border-border/60 text-sm">
+      <div className="flex items-start gap-2">
+        <Wrench className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium">{call.function.name}</span>
+            {status.status === 'awaiting-approval' && (
+              <Badge variant="outline" className="text-amber-600 border-amber-500/50">Approval needed</Badge>
+            )}
+            {status.status === 'running' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {status.status === 'done' && <Badge variant="outline" className="text-green-600 border-green-500/50">Done</Badge>}
+            {status.status === 'denied' && <Badge variant="outline">Denied</Badge>}
+            {status.status === 'error' && <Badge variant="destructive">Error</Badge>}
+          </div>
+          {status.status === 'awaiting-approval' && (
+            <p className="mt-1 text-muted-foreground">{summary}</p>
+          )}
+          <button
+            className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            Details
+          </button>
+          {open && (
+            <pre className="mt-2 text-xs whitespace-pre-wrap break-words bg-background/50 p-2 rounded max-h-48 overflow-auto">
+{`args: ${JSON.stringify(args, null, 2)}${status.result !== undefined ? `\n\nresult: ${JSON.stringify(status.result, null, 2)}` : ''}${status.error ? `\n\nerror: ${status.error}` : ''}`}
+            </pre>
+          )}
+          {status.status === 'awaiting-approval' && (
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" onClick={onApprove} className="h-8"><Check className="w-3.5 h-3.5 mr-1" /> Approve</Button>
+              <Button size="sm" variant="outline" onClick={onDeny} className="h-8"><X className="w-3.5 h-3.5 mr-1" /> Deny</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
 }
 
-interface InlineFormState {
-  date: string;
-  description: string;
-  amount: string;
-  category: string;
-  account: string;
-  tagIds: string[];
-  isSubmitting: boolean;
-  isAdded: boolean;
-}
+function ChatInner() {
+  const { execute, summaryContext } = useAgentTools();
+  const { entry: undoEntry, clear: clearUndo } = useAgentUndo();
+  const { currency } = useCurrency();
 
-export default function AIChat() {
-  const { transactions, categories, accounts, tags, addTransaction } = useExpense();
-  const { formatAmount } = useCurrency();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: "Hi! I'm your expense assistant. Ask me about your spending, or tell me about an expense to add it. For example: \"I spent $45 on groceries yesterday\" or \"What did I spend on food this month?\""
-    }
-  ]);
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [toolStatus, setToolStatus] = useState<Record<string, ToolCallStatus>>({});
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [inlineForms, setInlineForms] = useState<Record<number, InlineFormState>>({});
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    const el = scrollRef.current?.parentElement;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, toolStatus, loading]);
 
-  const getExpenseContext = useCallback(() => {
-    const now = new Date();
-    const confirmedTransactions = transactions.filter(t => t.status === 'confirmed');
-    const debitTransactions = confirmedTransactions.filter(t => t.type === 'debit');
-    
-    // Current month
-    const thisMonthTxns = debitTransactions.filter(t => {
-      const date = new Date(t.date);
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    });
-    const thisMonthSpent = thisMonthTxns.reduce((sum, t) => sum + t.amount, 0);
-
-    // Last month
-    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-    const lastMonthTxns = debitTransactions.filter(t => {
-      const date = new Date(t.date);
-      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
-    });
-    const lastMonthSpent = lastMonthTxns.reduce((sum, t) => sum + t.amount, 0);
-
-    // Category spending (all-time with details)
-    const categorySpending: Record<string, { total: number; count: number; avgTransaction: number }> = {};
-    debitTransactions.forEach(t => {
-      const cat = categories.find(c => c.id === t.categoryId);
-      const catName = cat?.combined || 'Uncategorized';
-      if (!categorySpending[catName]) {
-        categorySpending[catName] = { total: 0, count: 0, avgTransaction: 0 };
-      }
-      categorySpending[catName].total += t.amount;
-      categorySpending[catName].count += 1;
-    });
-    Object.values(categorySpending).forEach(cat => {
-      cat.avgTransaction = cat.count > 0 ? Math.round(cat.total / cat.count) : 0;
-    });
-
-    // Monthly spending by category (last 6 months)
-    const monthlyByCategory: Record<string, Record<string, number>> = {};
-    for (let i = 0; i < 6; i++) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = format(m, 'MMM yyyy');
-      monthlyByCategory[monthKey] = {};
-      
-      debitTransactions
-        .filter(t => {
-          const d = new Date(t.date);
-          return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear();
-        })
-        .forEach(t => {
-          const cat = categories.find(c => c.id === t.categoryId)?.combined || 'Uncategorized';
-          monthlyByCategory[monthKey][cat] = (monthlyByCategory[monthKey][cat] || 0) + t.amount;
-        });
-    }
-
-    // Yearly spending
-    const yearlySpending: Record<string, number> = {};
-    debitTransactions.forEach(t => {
-      const year = new Date(t.date).getFullYear().toString();
-      yearlySpending[year] = (yearlySpending[year] || 0) + t.amount;
-    });
-
-    // Monthly spending trend
-    const monthlySpending: Record<string, number> = {};
-    debitTransactions.forEach(t => {
-      const monthKey = format(new Date(t.date), 'MMM yyyy');
-      monthlySpending[monthKey] = (monthlySpending[monthKey] || 0) + t.amount;
-    });
-
-    // Tag spending with details
-    const tagSpending: Record<string, { total: number; count: number; isArchived: boolean; isProject: boolean }> = {};
-    debitTransactions.forEach(t => {
-      t.tagIds?.forEach(tagId => {
-        const tag = tags.find(tg => tg.id === tagId);
-        if (tag) {
-          if (!tagSpending[tag.name]) {
-            tagSpending[tag.name] = { total: 0, count: 0, isArchived: tag.isArchived || false, isProject: tag.isProject || false };
-          }
-          tagSpending[tag.name].total += t.amount;
-          tagSpending[tag.name].count += 1;
-        }
+  // The core loop: send current message history to the edge function.
+  // Runs any non-approval tools automatically, then re-calls the model.
+  // Stops when the model returns no tool_calls, or when a needsApproval call is pending.
+  const runLoop = useCallback(async (history: ApiMessage[]) => {
+    let current = history;
+    for (let step = 0; step < 8; step++) {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('agent-chat', {
+        body: {
+          messages: current,
+          tools: TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+          systemContext: `Currency: ${currency.code} (${currency.symbol})\n${summaryContext}`,
+        },
       });
-    });
-
-    // Account spending
-    const accountSpending: Record<string, { total: number; count: number; type: string }> = {};
-    debitTransactions.forEach(t => {
-      const acc = accounts.find(a => a.id === t.accountId);
-      if (acc) {
-        if (!accountSpending[acc.name]) {
-          accountSpending[acc.name] = { total: 0, count: 0, type: acc.type };
-        }
-        accountSpending[acc.name].total += t.amount;
-        accountSpending[acc.name].count += 1;
+      setLoading(false);
+      if (error) {
+        toast({ title: 'AI error', description: error.message, variant: 'destructive' });
+        return;
       }
-    });
-
-    // Top expenses
-    const topExpenses = [...debitTransactions]
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10)
-      .map(t => ({
-        date: t.date,
-        description: t.description,
-        amount: t.amount,
-        category: categories.find(c => c.id === t.categoryId)?.combined,
-        account: accounts.find(a => a.id === t.accountId)?.name,
-        tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean)
-      }));
-
-    // Recent transactions
-    const recentTransactions = [...debitTransactions]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 20)
-      .map(t => ({
-        date: t.date,
-        description: t.description,
-        amount: t.amount,
-        category: categories.find(c => c.id === t.categoryId)?.combined,
-        account: accounts.find(a => a.id === t.accountId)?.name,
-        tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean)
-      }));
-
-    // All transactions summary for complex queries
-    const allTransactionsSummary = debitTransactions.map(t => ({
-      date: t.date,
-      description: t.description,
-      amount: t.amount,
-      category: categories.find(c => c.id === t.categoryId)?.combined || 'Uncategorized',
-      account: accounts.find(a => a.id === t.accountId)?.name,
-      tags: t.tagIds?.map(tid => tags.find(tg => tg.id === tid)?.name).filter(Boolean) || []
-    }));
-
-    // Statistics
-    const totalAllTimeSpent = debitTransactions.reduce((sum, t) => sum + t.amount, 0);
-    const avgTransactionAmount = debitTransactions.length > 0 ? Math.round(totalAllTimeSpent / debitTransactions.length) : 0;
-    const highestExpense = debitTransactions.length > 0 ? Math.max(...debitTransactions.map(t => t.amount)) : 0;
-    const lowestExpense = debitTransactions.length > 0 ? Math.min(...debitTransactions.map(t => t.amount)) : 0;
-
-    return {
-      currentDate: format(now, 'MMMM d, yyyy'),
-      currentMonth: format(now, 'MMMM yyyy'),
-      
-      // Spending totals
-      thisMonthSpent,
-      lastMonthSpent,
-      totalAllTimeSpent,
-      monthOverMonthChange: lastMonthSpent > 0 ? ((thisMonthSpent - lastMonthSpent) / lastMonthSpent * 100).toFixed(1) + '%' : 'N/A',
-      
-      // Statistics
-      transactionCount: debitTransactions.length,
-      avgTransactionAmount,
-      highestExpense,
-      lowestExpense,
-      
-      // Breakdowns
-      categorySpending,
-      monthlyByCategory,
-      yearlySpending,
-      monthlySpending,
-      tagSpending,
-      accountSpending,
-      
-      // Transaction lists
-      topExpenses,
-      recentTransactions,
-      allTransactions: allTransactionsSummary,
-      
-      // Available options
-      availableCategories: categories.map(c => ({ name: c.combined, main: c.main, sub: c.sub })),
-      availableAccounts: accounts.map(a => ({ name: a.name, type: a.type })),
-      availableTags: tags.map(t => ({ name: t.name, isArchived: t.isArchived, isProject: t.isProject }))
-    };
-  }, [transactions, categories, accounts, tags]);
-
-  const parseExpenseAction = useCallback((content: string): ExpenseAction | null => {
-    const codeBlockMatch = content.match(/```expense\s*([\s\S]*?)```/i);
-    const taggedMatch = content.match(/\[EXPENSE_ACTION\]([\s\S]*?)\[\/EXPENSE_ACTION\]/i);
-
-    const jsonText = (codeBlockMatch?.[1] ?? taggedMatch?.[1])?.trim();
-    if (!jsonText) return null;
-
-    try {
-      const data = JSON.parse(jsonText);
-
-      // Accept either legacy formats or the current ```expense``` format.
-      if ((data?.action ?? data?.type) == null) return null;
-
-      return {
-        type: 'add_expense',
-        date: data.date || format(new Date(), 'yyyy-MM-dd'),
-        description: data.description || '',
-        amount: Number(data.amount) || 0,
-        expenseType: data.type === 'credit' ? 'credit' : 'debit',
-        category: data.suggestedCategory ?? data.category,
-        account: data.account,
+      const msg = data?.message as ApiMessage | undefined;
+      if (!msg) return;
+      const assistantMsg: ApiMessage = {
+        role: 'assistant',
+        content: (msg as any).content ?? null,
+        tool_calls: (msg as any).tool_calls,
       };
-    } catch {
-      return null;
-    }
-  }, []);
+      current = [...current, assistantMsg];
+      setMessages(current);
 
-  const initializeInlineForm = useCallback((index: number, action: ExpenseAction) => {
-    const matchedCategory = categories.find(c =>
-      c.combined.toLowerCase().includes(action.category?.toLowerCase() || '') ||
-      action.category?.toLowerCase().includes(c.combined.toLowerCase())
-    );
+      const calls = assistantMsg.tool_calls || [];
+      if (calls.length === 0) return;
 
-    const matchedAccount = accounts.find(a =>
-      a.name.toLowerCase().includes(action.account?.toLowerCase() || '') ||
-      action.account?.toLowerCase().includes(a.name.toLowerCase())
-    );
-
-    setInlineForms(prev => ({
-      ...prev,
-      [index]: {
-        date: action.date,
-        description: action.description,
-        amount: action.amount.toString(),
-        category: matchedCategory?.id || categories[0]?.id || '',
-        account: matchedAccount?.id || accounts[0]?.id || '',
-        tagIds: [],
-        isSubmitting: false,
-        isAdded: false,
+      // Initialize statuses; pause on any approval-needed tool.
+      const nextStatus: Record<string, ToolCallStatus> = {};
+      let hasApproval = false;
+      for (const c of calls) {
+        if (isDestructive(c.function.name)) {
+          nextStatus[c.id] = { status: 'awaiting-approval' };
+          hasApproval = true;
+        } else {
+          nextStatus[c.id] = { status: 'running' };
+        }
       }
-    }));
-  }, [categories, accounts]);
+      setToolStatus((s) => ({ ...s, ...nextStatus }));
 
-  const updateInlineForm = useCallback((index: number, field: keyof InlineFormState, value: string | string[]) => {
-    setInlineForms(prev => ({
-      ...prev,
-      [index]: { ...prev[index], [field]: value }
-    }));
-  }, []);
+      if (hasApproval) return; // wait for user to click Approve/Deny
 
-  const toggleTag = useCallback((index: number, tagId: string) => {
-    setInlineForms(prev => {
-      const form = prev[index];
-      if (!form) return prev;
-      const newTagIds = form.tagIds.includes(tagId)
-        ? form.tagIds.filter(id => id !== tagId)
-        : [...form.tagIds, tagId];
-      return { ...prev, [index]: { ...form, tagIds: newTagIds } };
-    });
-  }, []);
-
-  const handleInlineSubmit = useCallback(async (index: number, action: ExpenseAction) => {
-    const form = inlineForms[index];
-    if (!form || form.isSubmitting || form.isAdded) return;
-
-    if (!form.description || !form.amount || !form.category || !form.account) {
-      toast({ title: 'Please fill all fields', variant: 'destructive' });
-      return;
+      // Execute all auto tools, collect tool-result messages.
+      const toolMessages: ApiMessage[] = [];
+      for (const c of calls) {
+        const args = safeParseArgs(c.function.arguments);
+        const res = await execute(c.function.name, args);
+        setToolStatus((s) => ({
+          ...s,
+          [c.id]: res.ok
+            ? { status: 'done', result: res.data }
+            : { status: 'error', error: res.error },
+        }));
+        toolMessages.push({
+          role: 'tool',
+          tool_call_id: c.id,
+          name: c.function.name,
+          content: JSON.stringify(res.ok ? { ok: true, data: res.data } : { ok: false, error: res.error }),
+        });
+      }
+      current = [...current, ...toolMessages];
+      setMessages(current);
     }
-
-    const amount = parseFloat(form.amount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({ title: 'Invalid amount', variant: 'destructive' });
-      return;
-    }
-
-    setInlineForms(prev => ({
-      ...prev,
-      [index]: { ...prev[index], isSubmitting: true }
-    }));
-
-    try {
-      await addTransaction({
-        date: form.date,
-        description: form.description,
-        amount,
-        type: action.expenseType,
-        categoryId: form.category || null,
-        accountId: form.account || null,
-        status: 'confirmed',
-        tagIds: form.tagIds,
-      });
-
-      setInlineForms(prev => ({
-        ...prev,
-        [index]: { ...prev[index], isSubmitting: false, isAdded: true }
-      }));
-
-      toast({ title: 'Transaction added!', description: `${form.description} - ${formatAmount(amount)}` });
-    } catch (error) {
-      setInlineForms(prev => ({
-        ...prev,
-        [index]: { ...prev[index], isSubmitting: false }
-      }));
-      toast({ title: 'Failed to add transaction', variant: 'destructive' });
-    }
-  }, [inlineForms, addTransaction, formatAmount]);
+  }, [execute, summaryContext, currency]);
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage = input.trim();
+    const text = input.trim();
+    if (!text || loading) return;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
+    const next: ApiMessage[] = [...messages, { role: 'user', content: text }];
+    setMessages(next);
+    await runLoop(next);
+  }, [input, loading, messages, runLoop]);
 
-    try {
-      const context = getExpenseContext();
+  // Handle Approve / Deny on a specific tool call.
+  const resolveApproval = useCallback(async (callId: string, approve: boolean) => {
+    // Find the tool call in the last assistant message.
+    const lastAsst = [...messages].reverse().find((m) => m.role === 'assistant' && m.tool_calls);
+    const call = lastAsst && (lastAsst as any).tool_calls?.find((c: ToolCall) => c.id === callId);
+    if (!call) return;
+    const args = safeParseArgs(call.function.arguments);
 
-      const { data, error } = await supabase.functions.invoke('expense-ai-chat', {
-        body: {
-          message: userMessage,
-          context,
-          conversationHistory: messages.slice(-10)
-        }
-      });
-
-      if (error) throw error;
-
-      const responseContent = data.response || "I'm sorry, I couldn't process that request.";
-      const expenseAction = parseExpenseAction(responseContent);
-
-      const newMessageIndex = messages.length + 1;
-
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: responseContent,
-        expenseAction: expenseAction || undefined
-      }]);
-
-      if (expenseAction) {
-        setTimeout(() => initializeInlineForm(newMessageIndex, expenseAction), 100);
-      }
-
-    } catch (error) {
-      console.error('AI Chat error:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: "Sorry, I encountered an error. Please try again."
-      }]);
-    } finally {
-      setIsLoading(false);
+    if (!approve) {
+      setToolStatus((s) => ({ ...s, [callId]: { status: 'denied' } }));
+      const toolMsg: ApiMessage = {
+        role: 'tool', tool_call_id: callId, name: call.function.name,
+        content: JSON.stringify({ ok: false, error: 'User denied this action.' }),
+      };
+      // Also auto-resolve any other still-pending approvals in the same batch to denied? Keep them pending independently.
+      const next = [...messages, toolMsg];
+      setMessages(next);
+      await runLoop(next);
+      return;
     }
-  }, [input, isLoading, messages, getExpenseContext, parseExpenseAction, initializeInlineForm]);
 
-  const formatMessage = useCallback((content: string) => {
-    return content
-      .replace(/```expense[\s\S]*?```/gi, '')
-      .replace(/\[EXPENSE_ACTION\][\s\S]*?\[\/EXPENSE_ACTION\]/gi, '')
-      .trim();
-  }, []);
+    setToolStatus((s) => ({ ...s, [callId]: { status: 'running' } }));
+    const res = await execute(call.function.name, args);
+    setToolStatus((s) => ({
+      ...s,
+      [callId]: res.ok ? { status: 'done', result: res.data } : { status: 'error', error: res.error },
+    }));
+    const toolMsg: ApiMessage = {
+      role: 'tool', tool_call_id: callId, name: call.function.name,
+      content: JSON.stringify(res.ok ? { ok: true, data: res.data } : { ok: false, error: res.error }),
+    };
+    const next = [...messages, toolMsg];
+    setMessages(next);
+    await runLoop(next);
+  }, [messages, execute, runLoop]);
+
+  const doUndo = useCallback(async () => {
+    if (!undoEntry) return;
+    try {
+      await undoEntry.run();
+      toast({ title: 'Reverted', description: undoEntry.label });
+    } catch (e: any) {
+      toast({ title: 'Undo failed', description: e?.message || 'Try again', variant: 'destructive' });
+    } finally {
+      clearUndo();
+    }
+  }, [undoEntry, clearUndo]);
 
   const quickActions = useMemo(() => [
-    "What did I spend this month?",
-    "Show my top categories",
-    "How much on food?"
+    'What did I spend this month?',
+    'Scan all my SMS',
+    'Show my pending SMS',
   ], []);
 
   return (
     <Layout>
       <div className="flex flex-col h-[calc(100vh-10rem)] lg:h-[calc(100vh-6rem)]">
         {/* Header */}
-        <div className="flex items-center gap-3 pb-4 border-b border-border/50">
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-border/50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-semibold text-foreground">AI Assistant</h1>
-              <p className="text-xs text-muted-foreground">Expense insights & tracking</p>
+              <h1 className="font-semibold text-foreground text-sm">ClearSpends Assistant</h1>
+              <p className="text-xs text-muted-foreground">Chat, then act — bulk changes need your OK.</p>
             </div>
           </div>
+          {undoEntry && (
+            <Button size="sm" variant="outline" onClick={doUndo} className="h-8">
+              <Undo2 className="w-3.5 h-3.5 mr-1.5" />
+              Undo
+            </Button>
+          )}
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 pr-2" ref={scrollRef}>
-          <div className="space-y-4 py-4">
-            {messages.map((message, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/50 text-foreground'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{formatMessage(message.content)}</p>
-
-                  {/* Inline expense form */}
-                  {message.expenseAction && (() => {
-                    // Initialize form if not yet done
-                    if (!inlineForms[index]) {
-                      initializeInlineForm(index, message.expenseAction);
-                    }
-                    const form = inlineForms[index];
-                    if (!form) return null;
-
-                    if (form.isAdded) {
-                      return (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="mt-3 flex items-center gap-2 text-sm text-green-500"
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>Transaction added successfully!</span>
-                        </motion.div>
-                      );
-                    }
-
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mt-3 p-3 rounded-xl bg-background/60 border border-border/50 space-y-3"
-                      >
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Plus className="w-3 h-3" />
-                          <span>Add Transaction</span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Date</Label>
-                            <Input
-                              type="date"
-                              value={form.date}
-                              onChange={(e) => updateInlineForm(index, 'date', e.target.value)}
-                              className="h-8 text-xs bg-background/50"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Amount</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={form.amount}
-                              onChange={(e) => updateInlineForm(index, 'amount', e.target.value)}
-                              className="h-8 text-xs bg-background/50"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Description</Label>
-                          <Input
-                            value={form.description}
-                            onChange={(e) => updateInlineForm(index, 'description', e.target.value)}
-                            className="h-8 text-xs bg-background/50"
-                            placeholder="Description"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Category</Label>
-                            <Select
-                              value={form.category}
-                              onValueChange={(v) => updateInlineForm(index, 'category', v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs bg-background/50">
-                                <SelectValue placeholder="Category" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-48">
-                                {categories.map(cat => (
-                                  <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                                    {cat.combined}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Account</Label>
-                            <Select
-                              value={form.account}
-                              onValueChange={(v) => updateInlineForm(index, 'account', v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs bg-background/50">
-                                <SelectValue placeholder="Account" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {accounts.map(acc => (
-                                  <SelectItem key={acc.id} value={acc.id} className="text-xs">
-                                    {acc.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        {/* Tags */}
-                        {tags.length > 0 && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Tags</Label>
-                            <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-background/50 border border-border/50 min-h-[36px]">
-                              {tags.filter(t => !t.isArchived).map(tag => {
-                                const isSelected = form.tagIds.includes(tag.id);
-                                return (
-                                  <Badge
-                                    key={tag.id}
-                                    variant="secondary"
-                                    className="cursor-pointer text-xs transition-all hover:scale-105"
-                                    style={{
-                                      backgroundColor: isSelected ? tag.color : 'transparent',
-                                      color: isSelected ? '#ffffff' : tag.color,
-                                      borderColor: tag.color,
-                                      borderWidth: '1px',
-                                      textShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
-                                    }}
-                                    onClick={() => toggleTag(index, tag.id)}
-                                  >
-                                    {tag.name}
-                                    {isSelected && <X className="w-2.5 h-2.5 ml-1" />}
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        <Button
-                          size="sm"
-                          className="w-full h-8 text-xs gap-2"
-                          onClick={() => handleInlineSubmit(index, message.expenseAction!)}
-                          disabled={form.isSubmitting}
-                        >
-                          {form.isSubmitting ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Plus className="w-3 h-3" />
-                          )}
-                          Add {form.description} - {formatAmount(parseFloat(form.amount) || 0)}
-                        </Button>
-                      </motion.div>
-                    );
-                  })()}
+        <ScrollArea className="flex-1 pr-2">
+          <div ref={scrollRef} className="space-y-3 py-4">
+            {messages.length === 0 && (
+              <div className="text-center text-sm text-muted-foreground py-8">
+                <p className="mb-3">Ask me anything about your spending — or ask me to do it.</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {quickActions.map((q) => (
+                    <Button key={q} size="sm" variant="outline" className="h-8 text-xs"
+                      onClick={() => { setInput(q); setTimeout(() => sendMessage(), 0); }}>
+                      {q}
+                    </Button>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
-
-            {isLoading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex justify-start"
-              >
-                <div className="bg-muted/50 rounded-2xl px-4 py-2.5">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                </div>
-              </motion.div>
+              </div>
+            )}
+            {messages.map((m, i) => {
+              if (m.role === 'user') {
+                return (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[85%] rounded-2xl px-4 py-2 bg-primary text-primary-foreground text-sm">
+                      {m.content}
+                    </div>
+                  </div>
+                );
+              }
+              if (m.role === 'assistant') {
+                return (
+                  <div key={i} className="max-w-[95%]">
+                    {m.content && (
+                      <div className="text-sm whitespace-pre-wrap text-foreground mb-2">{m.content}</div>
+                    )}
+                    {(m.tool_calls || []).map((c) => (
+                      <ToolBubble
+                        key={c.id}
+                        call={c}
+                        status={toolStatus[c.id] || { status: 'done' }}
+                        onApprove={() => resolveApproval(c.id, true)}
+                        onDeny={() => resolveApproval(c.id, false)}
+                      />
+                    ))}
+                  </div>
+                );
+              }
+              return null; // tool messages hidden — status shown via ToolBubble above
+            })}
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Thinking…
+              </div>
             )}
           </div>
         </ScrollArea>
 
-        {/* Quick Actions */}
-        {messages.length === 1 && (
-          <div className="flex gap-2 flex-wrap py-2">
-            {quickActions.map((action) => (
-              <Button
-                key={action}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => {
-                  setInput(action);
-                  setTimeout(() => inputRef.current?.focus(), 0);
-                }}
-              >
-                {action}
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {/* Input */}
-        <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+        {/* Composer */}
+        <div className="pt-3 border-t border-border/50 flex gap-2">
           <Input
-            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Ask about spending or add an expense..."
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            placeholder="Add ₹250 coffee, scan SMS, delete last expense…"
+            disabled={loading}
             className="flex-1"
-            disabled={isLoading}
+            autoFocus
           />
-          <Button
-            onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
-            size="icon"
-            className="bg-gradient-to-r from-primary to-accent"
-          >
-            <Send className="w-4 h-4" />
+          <Button onClick={sendMessage} disabled={!input.trim() || loading} size="icon">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </div>
     </Layout>
+  );
+}
+
+export default function AIChat() {
+  return (
+    <AgentUndoProvider>
+      <ChatInner />
+    </AgentUndoProvider>
   );
 }
