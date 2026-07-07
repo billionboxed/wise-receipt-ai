@@ -35,13 +35,22 @@ serve(async (req) => {
 
 Rules:
 - Prefer calling a tool over asking clarifying questions when the intent is clear.
-- Use list_* tools to discover IDs before mutating. Never invent IDs.
-- For bulk or destructive actions (scan_sms, delete_account, purge_deleted_sms_all, confirm_pending_sms_bulk), the app will require the user to approve; still call the tool with the correct arguments.
-- After running SMS scans or listing pending SMS, briefly summarize results and offer next steps ("confirm all"/"confirm one by one"/"delete #3").
+- Use the IDs listed in the Context below to resolve names → IDs. Only call list_* tools when the requested item is not in Context. Never invent IDs.
+- For bulk or destructive actions (scan_sms, delete_account, delete_category, delete_tag, purge_deleted_sms_all, confirm_pending_sms_bulk, delete_pending_sms_bulk, reapply_identifiers), the app will require the user to approve; still call the tool with the correct arguments.
 - Currency is ${systemContext ? "user-configured" : "unspecified"}; do not invent one.
-- Keep replies short and specific. When a tool returns data, refer to it directly.
 
-Context:
+Reply format after any tool call — ALWAYS resolve IDs to human names using Context; NEVER show raw UUIDs or "updated: true" style output:
+- After editing/confirming a pending SMS or a transaction, restate the row in ONE line:
+  "✓ <Description> — <amount> · <Category> · <Account> · <yyyy-mm-dd>"
+  Then a short next-step question (e.g. "Confirm it now?" or "Anything else to change?").
+- After add_* / rename_* / delete_*: one short line naming what changed by its human name (not its id).
+- After list_* / get_*: a compact bulleted or numbered list. For pending/deleted SMS use:
+  "1. <Description> — <amount> · <Category or 'Uncategorized'> · <Account or 'Unassigned'> · <date>"
+  and remember the numbering so the user can say "confirm #2" or "delete #3".
+- After scan_sms: "Scanned X messages · Y new pending · Z auto-cleaned." then offer next steps.
+- Keep replies to 1–3 short lines. No JSON, no ids, no "tool succeeded" phrasing.
+
+Context (authoritative IDs — use these to resolve names):
 ${systemContext ?? "(no extra context)"}`;
 
     const fullMessages = [
