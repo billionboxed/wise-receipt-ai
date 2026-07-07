@@ -53,7 +53,7 @@ export function useAgentTools() {
 
   const {
     transactions, categories, tags, accounts,
-    addTransaction, deleteTransaction,
+    addTransaction, deleteTransaction, updateTransaction,
     addCategory, addTag, addAccount, deleteAccount, updateAccount,
   } = expense;
 
@@ -105,10 +105,34 @@ export function useAgentTools() {
           id: i.id, identifier: i.identifier, accountId: i.accountId,
           accountName: accounts.find((a) => a.id === i.accountId)?.name,
         })) };
-      case 'list_pending_sms':
-        return { ok: true, data: sms.pending.filter((p) => p.status === 'pending').map(slimPending) };
-      case 'list_deleted_sms':
-        return { ok: true, data: sms.pending.filter((p) => p.status === 'deleted').map(slimPending) };
+      case 'list_pending_sms': {
+        let out = sms.pending.filter((p) => p.status === 'pending');
+        if (args?.accountId) out = out.filter((p) => p.suggestedAccountId === args.accountId);
+        if (args?.accountName) {
+          const needle = String(args.accountName).toLowerCase();
+          const acc = accounts.find((a) => a.name.toLowerCase().includes(needle));
+          if (acc) {
+            const idSet = new Set(sms.identifiers.filter((i) => i.accountId === acc.id).map((i) => i.identifier.toLowerCase()));
+            out = out.filter((p) => {
+              if (p.suggestedAccountId === acc.id) return true;
+              const hay = `${p.smsSender ?? ''} ${p.smsRaw ?? ''}`.toLowerCase();
+              for (const n of idSet) if (hay.includes(n)) return true;
+              return hay.includes(needle);
+            });
+          } else {
+            out = out.filter((p) => `${p.smsSender ?? ''} ${p.smsRaw ?? ''}`.toLowerCase().includes(needle));
+          }
+        }
+        return { ok: true, data: out.map(slimPending) };
+      }
+      case 'list_deleted_sms': {
+        let out = sms.pending.filter((p) => p.status === 'deleted');
+        if (args?.accountName) {
+          const needle = String(args.accountName).toLowerCase();
+          out = out.filter((p) => `${p.smsSender ?? ''} ${p.smsRaw ?? ''}`.toLowerCase().includes(needle));
+        }
+        return { ok: true, data: out.map(slimPending) };
+      }
 
       // -------- Single mutations (with undo) --------
       case 'add_expense': {
@@ -154,6 +178,25 @@ export function useAgentTools() {
           return { deleted: true };
         });
       }
+      case 'update_expense': {
+        const snap = transactions.find((t) => t.id === args.id);
+        if (!snap) return { ok: false, error: 'Transaction not found' };
+        const updates: Partial<Transaction> = {};
+        for (const k of ['date','description','categoryId','accountId'] as const) {
+          if (args[k] !== undefined) (updates as any)[k] = args[k];
+        }
+        if (args.amount !== undefined) updates.amount = Number(args.amount);
+        return safe(async () => {
+          await updateTransaction(args.id, updates);
+          const before: Partial<Transaction> = {};
+          for (const k of Object.keys(updates) as (keyof Transaction)[]) (before as any)[k] = (snap as any)[k];
+          undo.set({
+            label: `Undo: revert "${snap.description}"`,
+            run: async () => { await updateTransaction(args.id, before); },
+          });
+          return { updated: true };
+        });
+      }
       case 'add_category': {
         const combined = `${args.main} > ${args.sub}`;
         return safe(async () => {
@@ -170,6 +213,33 @@ export function useAgentTools() {
           return { added: true, id: newId, combined };
         });
       }
+      case 'rename_category': {
+        const snap = categories.find((c) => c.id === args.id);
+        if (!snap) return { ok: false, error: 'Category not found' };
+        const main = args.main ?? snap.main;
+        const sub = args.sub ?? snap.sub;
+        const combined = `${main} > ${sub}`;
+        return safe(async () => {
+          await expense.updateCategory(args.id, { main, sub, combined });
+          undo.set({
+            label: `Undo: restore category "${snap.combined}"`,
+            run: async () => { await expense.updateCategory(args.id, { main: snap.main, sub: snap.sub, combined: snap.combined }); },
+          });
+          return { renamed: true, combined };
+        });
+      }
+      case 'delete_category': {
+        const snap = categories.find((c) => c.id === args.id);
+        if (!snap) return { ok: false, error: 'Category not found' };
+        return safe(async () => {
+          await expense.deleteCategory(args.id);
+          undo.set({
+            label: `Undo: recreate category "${snap.combined}"`,
+            run: async () => { await addCategory({ main: snap.main, sub: snap.sub, combined: snap.combined }); },
+          });
+          return { deleted: true };
+        });
+      }
       case 'add_tag': {
         return safe(async () => {
           const before = new Set(tags.map((t) => t.id));
@@ -183,6 +253,46 @@ export function useAgentTools() {
             });
           }
           return { added: true, id: newId };
+        });
+      }
+      case 'rename_tag': {
+        const snap = tags.find((t) => t.id === args.id);
+        if (!snap) return { ok: false, error: 'Tag not found' };
+        const updates: Partial<Tag> = {};
+        if (args.name !== undefined) updates.name = args.name;
+        if (args.color !== undefined) updates.color = args.color;
+        return safe(async () => {
+          await expense.updateTag(args.id, updates);
+          undo.set({
+            label: `Undo: restore tag "${snap.name}"`,
+            run: async () => { await expense.updateTag(args.id, { name: snap.name, color: snap.color }); },
+          });
+          return { renamed: true };
+        });
+      }
+      case 'archive_tag': {
+        const snap = tags.find((t) => t.id === args.id);
+        if (!snap) return { ok: false, error: 'Tag not found' };
+        const target = !!args.archived;
+        return safe(async () => {
+          await expense.updateTag(args.id, { isArchived: target } as any);
+          undo.set({
+            label: `Undo: ${target ? 'un-archive' : 'archive'} tag "${snap.name}"`,
+            run: async () => { await expense.updateTag(args.id, { isArchived: !target } as any); },
+          });
+          return { archived: target };
+        });
+      }
+      case 'delete_tag': {
+        const snap = tags.find((t) => t.id === args.id);
+        if (!snap) return { ok: false, error: 'Tag not found' };
+        return safe(async () => {
+          await expense.deleteTag(args.id);
+          undo.set({
+            label: `Undo: recreate tag "${snap.name}"`,
+            run: async () => { await addTag({ name: snap.name, color: snap.color }); },
+          });
+          return { deleted: true };
         });
       }
       case 'add_account': {
@@ -211,6 +321,42 @@ export function useAgentTools() {
             run: async () => { await addAccount({ name: snap.name, type: snap.type }); },
           });
           return { deleted: true };
+        });
+      }
+      case 'rename_account': {
+        const snap = accounts.find((a) => a.id === args.id);
+        if (!snap) return { ok: false, error: 'Account not found' };
+        const updates: Partial<Account> = {};
+        if (args.name !== undefined) updates.name = args.name;
+        if (args.type !== undefined && ['bank','credit','cash','wallet'].includes(args.type)) updates.type = args.type;
+        return safe(async () => {
+          await updateAccount(args.id, updates);
+          undo.set({
+            label: `Undo: restore account "${snap.name}"`,
+            run: async () => { await updateAccount(args.id, { name: snap.name, type: snap.type }); },
+          });
+          return { renamed: true };
+        });
+      }
+      case 'edit_pending_sms': {
+        const snap = sms.pending.find((p) => p.id === args.id);
+        if (!snap) return { ok: false, error: 'Pending SMS not found' };
+        const updates: any = {};
+        if (args.description !== undefined) updates.suggestedDescription = args.description;
+        if (args.categoryId !== undefined) updates.suggestedCategoryId = args.categoryId;
+        if (args.accountId !== undefined) updates.suggestedAccountId = args.accountId;
+        return safe(async () => {
+          await sms.updatePending(args.id, updates);
+          const revert: any = {
+            suggestedDescription: snap.suggestedDescription,
+            suggestedCategoryId: snap.suggestedCategoryId,
+            suggestedAccountId: snap.suggestedAccountId,
+          };
+          undo.set({
+            label: 'Undo: revert pending SMS edit',
+            run: async () => { await sms.updatePending(args.id, revert); },
+          });
+          return { updated: true };
         });
       }
       case 'add_sms_identifier': {
@@ -306,13 +452,20 @@ export function useAgentTools() {
           return { purged: true, reversible: false };
         });
       }
+      case 'reapply_identifiers': {
+        return safe(async () => {
+          const res = await sms.reapplyIdentifiers();
+          undo.set(null);
+          return res;
+        });
+      }
 
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
     }
   }, [
     transactions, categories, tags, accounts, sms, expense,
-    addTransaction, deleteTransaction, addCategory, addTag, addAccount, deleteAccount, undo,
+    addTransaction, deleteTransaction, updateTransaction, addCategory, addTag, addAccount, deleteAccount, updateAccount, undo,
   ]);
 
   // Small snapshot the model always gets so it can resolve names → ids without extra tool calls
