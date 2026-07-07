@@ -275,10 +275,10 @@ export function useAgentTools() {
         if (!snap) return { ok: false, error: 'Tag not found' };
         const target = !!args.archived;
         return safe(async () => {
-          await expense.updateTag(args.id, { archived: target } as any);
+          await expense.updateTag(args.id, { isArchived: target } as any);
           undo.set({
             label: `Undo: ${target ? 'un-archive' : 'archive'} tag "${snap.name}"`,
-            run: async () => { await expense.updateTag(args.id, { archived: !target } as any); },
+            run: async () => { await expense.updateTag(args.id, { isArchived: !target } as any); },
           });
           return { archived: target };
         });
@@ -465,7 +465,7 @@ export function useAgentTools() {
     }
   }, [
     transactions, categories, tags, accounts, sms, expense,
-    addTransaction, deleteTransaction, addCategory, addTag, addAccount, deleteAccount, undo,
+    addTransaction, deleteTransaction, updateTransaction, addCategory, addTag, addAccount, deleteAccount, updateAccount, undo,
   ]);
 
   // Small snapshot the model always gets so it can resolve names → ids without extra tool calls
