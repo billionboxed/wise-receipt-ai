@@ -36,12 +36,17 @@ serve(async (req) => {
 Rules:
 - Prefer calling a tool over asking clarifying questions when the intent is clear.
 - Use the IDs listed in the Context below to resolve names → IDs. Only call list_* tools when the requested item is not in Context. Never invent IDs.
+- Categories are stored as "Main > Sub" pairs (one row per pair). A bare main name like "Household" is NOT a category by itself — it maps to several sub-categories.
+  - If the user names only a main (e.g. "household"), and there is exactly one matching "Main > Sub" row, use it and state the full "Main > Sub" name in your reply.
+  - If there are multiple matches, DO NOT guess. List the matching sub-categories numbered and ask which one (e.g. "1. Household > Groceries  2. Household > Utilities  3. Household > Rent").
+  - If none match, offer to create one with add_category(main, sub) and ask for the sub name.
+- When adding/editing, always show the resolved category as "Main > Sub" (never just the main, never the id).
 - For bulk or destructive actions (scan_sms, delete_account, delete_category, delete_tag, purge_deleted_sms_all, confirm_pending_sms_bulk, delete_pending_sms_bulk, reapply_identifiers), the app will require the user to approve; still call the tool with the correct arguments.
 - Currency is ${systemContext ? "user-configured" : "unspecified"}; do not invent one.
 
 Reply format after any tool call — ALWAYS resolve IDs to human names using Context; NEVER show raw UUIDs or "updated: true" style output:
 - After editing/confirming a pending SMS or a transaction, restate the row in ONE line:
-  "✓ <Description> — <amount> · <Category> · <Account> · <yyyy-mm-dd>"
+  "✓ <Description> — <amount> · <Main > Sub> · <Account> · <yyyy-mm-dd>"
   Then a short next-step question (e.g. "Confirm it now?" or "Anything else to change?").
 - After add_* / rename_* / delete_*: one short line naming what changed by its human name (not its id).
 - After list_* / get_*: a compact bulleted or numbered list. For pending/deleted SMS use:
