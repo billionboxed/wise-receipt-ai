@@ -10,7 +10,7 @@ import {
   readInbox,
   startSmsListener,
 } from '@/lib/sms/native';
-import { parseSmsBatch, ParsedSms, parseSms } from '@/lib/sms/parser';
+import { parseSmsBatch, parseSmsBatchLoose, ParsedSms, parseSms, parseSmsLoose } from '@/lib/sms/parser';
 import { isLikelyBankSender } from '@/lib/sms/senders';
 import type { Transaction } from '@/types/expense';
 import { findBestCategory } from '@/utils/categoryMatcher';
@@ -259,25 +259,24 @@ export function useSmsImport() {
         : (prefs.lastScanAt ? new Date(prefs.lastScanAt).getTime() : Date.now() - 30 * 24 * 60 * 60 * 1000);
       const raw = await readInbox(sinceEpochMs);
       const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
-      // When the user has identifiers, trust them as the primary filter — many
-      // bank/wallet sender IDs (Jupiter, CSB, niche NBFCs) aren't in our built-in
-      // list, so relying on it alone drops real transaction SMS.
-      const preFiltered = allIds.length > 0
-        ? raw.filter(m => {
-            const hay = `${m.address ?? ''} ${m.body ?? ''}`.toLowerCase();
-            return allIds.some(id => hay.includes(id));
-          })
-        : raw.filter(m => isLikelyBankSender(m.address));
-      const parsed = parseSmsBatch(preFiltered);
-      const debits = parsed.filter(p => p.type === 'debit');
-      const idFiltered = allIds.length === 0
-        ? debits
-        : debits.filter(p => {
-            const hay = `${p.sender} ${p.raw}`.toLowerCase();
-            return allIds.some(id => hay.includes(id));
-          });
-
-      const fresh = idFiltered.filter(p => !ingestedHashes.has(p.hash));
+      // Two structurally different pipelines:
+      //  - With identifiers: user has told us which accounts to track. Trust the
+      //    identifier match as the gate and let AI classify every remaining SMS.
+      //    The regex parser is only used for fallback fields, never as a filter.
+      //  - Without identifiers: fall back to the bank-sender heuristic + strict
+      //    regex parser so we don't flood AI with the entire inbox.
+      let fresh: ParsedSms[];
+      if (allIds.length > 0) {
+        const matched = raw.filter(m => {
+          const hay = `${m.address ?? ''} ${m.body ?? ''}`.toLowerCase();
+          return allIds.some(id => hay.includes(id));
+        });
+        fresh = parseSmsBatchLoose(matched).filter(p => !ingestedHashes.has(p.hash));
+      } else {
+        const filtered = raw.filter(m => isLikelyBankSender(m.address));
+        const parsed = parseSmsBatch(filtered);
+        fresh = parsed.filter(p => p.type === 'debit' && !ingestedHashes.has(p.hash));
+      }
 
       let added = 0;
       if (fresh.length > 0) {
@@ -320,15 +319,18 @@ export function useSmsImport() {
     (async () => {
       stop = await startSmsListener((msg) => {
         const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
+        let p: ParsedSms | null;
         if (allIds.length > 0) {
           const hay = `${msg.address ?? ''} ${msg.body ?? ''}`.toLowerCase();
           if (!allIds.some(id => hay.includes(id))) return;
-        } else if (!isLikelyBankSender(msg.address)) {
-          return;
+          // Identifier matched → let AI classify. Loose parse so we don't gate.
+          p = parseSmsLoose(msg);
+        } else {
+          if (!isLikelyBankSender(msg.address)) return;
+          p = parseSms(msg);
+          if (!p) return;
+          if (p.type === 'credit') return;
         }
-        const p = parseSms(msg);
-        if (!p) return;
-        if (p.type === 'credit') return;
         if (ingestedHashes.has(p.hash)) return;
         if (cancelled) return;
         batch.push(p);

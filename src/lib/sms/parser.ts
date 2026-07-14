@@ -109,3 +109,43 @@ export function parseSmsBatch(messages: RawSms[]): ParsedSms[] {
   }
   return out;
 }
+
+/**
+ * Loose parse: never returns null. Extracts whatever it can from the SMS and
+ * always yields a candidate with a stable dedupe hash. Use when downstream AI
+ * is the source of truth for classification (identifier-matched SMS pipeline).
+ */
+export function parseSmsLoose(sms: RawSms): ParsedSms {
+  const body = sms.body || '';
+  const amtMatch = body.match(AMOUNT_RE) ?? body.match(FALLBACK_AMOUNT_RE);
+  const amount = amtMatch ? parseFloat(amtMatch[1].replace(/,/g, '')) : 0;
+  const last4Match = body.match(LAST4_RE);
+  const last4 = last4Match ? last4Match[1] : null;
+  const merchMatch = body.match(MERCHANT_RE);
+  let merchant = merchMatch ? merchMatch[1].trim() : (sms.address || 'SMS Transaction');
+  merchant = merchant.replace(/\s+on\s+\d.*$/i, '').trim();
+  if (merchant.length > 60) merchant = merchant.slice(0, 60);
+
+  const occurredAt = sms.date || Date.now();
+  const isoDate = new Date(occurredAt).toISOString().slice(0, 10);
+  const isCredit = hasAny(body, CREDIT_WORDS) && !hasAny(body, DEBIT_WORDS);
+  const type: 'debit' | 'credit' = isCredit ? 'credit' : 'debit';
+  const minute = Math.floor(occurredAt / 60000);
+  // Hash uses raw body so distinct SMS with same amount/minute still differ.
+  const hash = djb2(`${(sms.address || '').toUpperCase()}|${minute}|${body.slice(0, 120)}`);
+
+  return { amount, type, date: isoDate, merchant, last4, sender: sms.address || '', raw: body, occurredAt, hash };
+}
+
+/** Loose batch parse — always yields a candidate for every input. */
+export function parseSmsBatchLoose(messages: RawSms[]): ParsedSms[] {
+  const out: ParsedSms[] = [];
+  const seen = new Set<string>();
+  for (const m of messages) {
+    const p = parseSmsLoose(m);
+    if (seen.has(p.hash)) continue;
+    seen.add(p.hash);
+    out.push(p);
+  }
+  return out;
+}
