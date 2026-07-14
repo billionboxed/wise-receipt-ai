@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
-import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2, History, Info } from 'lucide-react';
+import { MessageSquare, Check, Trash2, AlertTriangle, Loader2, RotateCcw, Edit2, Info, ChevronDown, ChevronRight, Undo2 } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 import { useSmsImport, type PendingSms } from '@/hooks/useSmsImport';
 import { toast } from '@/hooks/use-toast';
 import { SmsPendingDialog } from '@/components/sms/SmsPendingDialog';
@@ -127,12 +124,15 @@ export default function SmsReview() {
     pending, busy, supported, prefs, identifiers,
     scanInbox, confirmPending, confirmMany,
     deletePending, deleteMany, updatePending,
+    restorePending, purgePending, emptyTrash,
   } = useSmsImport();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editRow, setEditRow] = useState<PendingSms | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
 
   const activeRows = useMemo(() => pending.filter(p => p.status === 'pending'), [pending]);
+  const trash = useMemo(() => pending.filter(p => p.status === 'deleted'), [pending]);
 
   // Re-check every time pending or transactions change — picks up manual entries instantly.
   const annotated = useMemo(() => {
@@ -174,8 +174,8 @@ export default function SmsReview() {
     toast({ title: 'Accounts updated' });
   };
 
-  const onScan = async (mode: 'new' | 'all' = 'new') => {
-    const { added, removed, autoAssigned } = await scanInbox({ fullRescan: mode === 'all' });
+  const onScan = async () => {
+    const { added, removed, autoAssigned } = await scanInbox({ fullRescan: true });
     const parts: string[] = [];
     if (added) parts.push(`${added} added`);
     if (removed) parts.push(`${removed} cleaned`);
@@ -184,9 +184,7 @@ export default function SmsReview() {
       title: parts.length ? 'Scan complete' : 'No new SMS',
       description: parts.length
         ? parts.join(' · ')
-        : mode === 'all'
-          ? 'Every bank SMS in your inbox has already been handled.'
-          : 'Nothing new from your bank SMS.',
+        : 'Every bank SMS in your inbox has already been handled.',
     });
   };
 
@@ -230,30 +228,10 @@ export default function SmsReview() {
           </div>
           {supported && prefs.enabled && (
             <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={busy}>
-                    {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1" />}
-                    Scan
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => onScan('new')}>
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    <div className="flex flex-col">
-                      <span>Scan new</span>
-                      <span className="text-[10px] text-muted-foreground">Since last scan</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onScan('all')}>
-                    <History className="w-4 h-4 mr-2" />
-                    <div className="flex flex-col">
-                      <span>Scan all SMS</span>
-                      <span className="text-[10px] text-muted-foreground">Entire inbox · skips already-handled</span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button variant="outline" size="sm" disabled={busy} onClick={onScan}>
+                {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1" />}
+                Scan
+              </Button>
             </div>
           )}
         </div>
@@ -337,6 +315,58 @@ export default function SmsReview() {
             toast({ title: 'Moved to Deleted SMS', description: 'Restore from Settings → SMS Auto-Import.' });
           }}
         />
+
+        <section className="rounded-xl glass-card border border-white/5">
+          <button
+            type="button"
+            onClick={() => setShowTrash(v => !v)}
+            className="w-full flex items-center justify-between gap-2 p-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              {showTrash ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              Deleted <span className="text-muted-foreground">({trash.length})</span>
+            </span>
+            {showTrash && trash.length > 0 && (
+              <span
+                role="button"
+                onClick={(e) => { e.stopPropagation(); emptyTrash(); }}
+                className="text-xs text-destructive inline-flex items-center gap-1 hover:underline"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Empty
+              </span>
+            )}
+          </button>
+          {showTrash && (
+            <div className="px-3 pb-3">
+              {trash.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nothing deleted yet.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {trash.map(t => (
+                    <div key={t.id} className="p-2 rounded-lg border border-border bg-background flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium truncate">{t.suggestedDescription || 'SMS Transaction'}</p>
+                          <span className="text-sm font-semibold whitespace-nowrap">{formatAmount(t.parsedAmount)}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(t.parsedDate), 'dd MMM yyyy')}
+                          {t.smsSender && <> • {t.smsSender}</>}
+                        </p>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Restore" onClick={() => restorePending(t.id)}>
+                        <Undo2 className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete permanently" onClick={() => purgePending(t.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </div>
     </Layout>
   );
