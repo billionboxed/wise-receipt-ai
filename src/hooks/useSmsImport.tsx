@@ -10,7 +10,7 @@ import {
   readInbox,
   startSmsListener,
 } from '@/lib/sms/native';
-import { parseSmsBatch, parseSmsBatchLoose, ParsedSms, parseSms, parseSmsLoose } from '@/lib/sms/parser';
+import { parseSmsBatch, parseSmsBatchLoose, ParsedSms, parseSms, parseSmsLoose, smsHash, legacyStrictHash, legacyLooseHash } from '@/lib/sms/parser';
 import { isLikelyBankSender } from '@/lib/sms/senders';
 import type { Transaction } from '@/types/expense';
 import { findBestCategory } from '@/utils/categoryMatcher';
@@ -105,7 +105,20 @@ export function useSmsImport() {
     setCardMap((c.data || []).map(r => ({ last4: r.last4, accountId: r.account_id })));
     setIdentifiers((ids.data || []).map(r => ({ id: r.id, accountId: r.account_id, identifier: r.identifier })));
     setPending((pend.data || []).map(mapPending));
-    setIngestedHashes(new Set((ing.data || []).map((r: any) => r.sms_hash)));
+    const hashSet = new Set<string>((ing.data || []).map((r: any) => r.sms_hash));
+    // Seed from existing pending rows so a rescan never resurrects them even
+    // if their hash was never written to sms_ingested (older row, failed insert, etc.).
+    const pendingHashes = (pend.data || [])
+      .map((r: any) => r.sms_hash)
+      .filter((h: string) => h && !hashSet.has(h));
+    if (pendingHashes.length > 0 && user) {
+      pendingHashes.forEach((h: string) => hashSet.add(h));
+      // Fire-and-forget backfill; don't block UI on it.
+      supabase.from('sms_ingested')
+        .upsert(pendingHashes.map((h: string) => ({ user_id: user.id, sms_hash: h })), { onConflict: 'user_id,sms_hash', ignoreDuplicates: true })
+        .then(() => {});
+    }
+    setIngestedHashes(hashSet);
     setLoading(false);
   }, [user]);
 
@@ -239,6 +252,22 @@ export function useSmsImport() {
     return mapped;
   }, [user]);
 
+  /** Mark a set of SMS hashes as processed forever. Idempotent. */
+  const markIngested = useCallback(async (hashes: string[]) => {
+    if (!user || hashes.length === 0) return;
+    const unique = Array.from(new Set(hashes.filter(Boolean)));
+    if (unique.length === 0) return;
+    setIngestedHashes(prev => {
+      const next = new Set(prev);
+      unique.forEach(h => next.add(h));
+      return next;
+    });
+    await supabase.from('sms_ingested').upsert(
+      unique.map(h => ({ user_id: user.id, sms_hash: h })),
+      { onConflict: 'user_id,sms_hash', ignoreDuplicates: true },
+    );
+  }, [user]);
+
   const scanInbox = useCallback(async (
     opts: { fullRescan?: boolean } = {},
   ): Promise<{ added: number; removed: number; autoAssigned: number }> => {
@@ -259,6 +288,37 @@ export function useSmsImport() {
         : (prefs.lastScanAt ? new Date(prefs.lastScanAt).getTime() : Date.now() - 30 * 24 * 60 * 60 * 1000);
       const raw = await readInbox(sinceEpochMs);
       const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
+      // Compute canonical + legacy hashes for every incoming SMS so we can
+      // recognize anything we've already processed under an older hash format
+      // and skip it (upgrading it to the canonical hash for next time).
+      const legacyToCanonical = new Map<string, string>();
+      for (const m of raw) {
+        const canonical = smsHash(m);
+        legacyToCanonical.set(legacyLooseHash(m), canonical);
+        // Strict hash needs parsed fields; try both debit and credit variants.
+        const parsed = parseSms(m);
+        if (parsed) {
+          legacyToCanonical.set(
+            legacyStrictHash({ amount: parsed.amount, occurredAt: parsed.occurredAt, last4: parsed.last4, sender: parsed.sender, type: 'debit' }),
+            canonical,
+          );
+          legacyToCanonical.set(
+            legacyStrictHash({ amount: parsed.amount, occurredAt: parsed.occurredAt, last4: parsed.last4, sender: parsed.sender, type: 'credit' }),
+            canonical,
+          );
+        }
+      }
+      // Backfill: any legacy hash present in sms_ingested → also mark its canonical
+      // hash as ingested locally so subsequent filter steps drop it in O(1).
+      const toBackfill: string[] = [];
+      const isProcessed = (canonical: string) => ingestedHashes.has(canonical);
+      for (const [legacy, canonical] of legacyToCanonical.entries()) {
+        if (ingestedHashes.has(legacy) && !ingestedHashes.has(canonical)) {
+          toBackfill.push(canonical);
+        }
+      }
+      if (toBackfill.length > 0) await markIngested(toBackfill);
+
       // Two structurally different pipelines:
       //  - With identifiers: user has told us which accounts to track. Trust the
       //    identifier match as the gate and let AI classify every remaining SMS.
@@ -271,11 +331,28 @@ export function useSmsImport() {
           const hay = `${m.address ?? ''} ${m.body ?? ''}`.toLowerCase();
           return allIds.some(id => hay.includes(id));
         });
-        fresh = parseSmsBatchLoose(matched).filter(p => !ingestedHashes.has(p.hash));
+        fresh = parseSmsBatchLoose(matched).filter(p => !isProcessed(p.hash));
       } else {
         const filtered = raw.filter(m => isLikelyBankSender(m.address));
         const parsed = parseSmsBatch(filtered);
-        fresh = parsed.filter(p => p.type === 'debit' && !ingestedHashes.has(p.hash));
+        fresh = parsed.filter(p => p.type === 'debit' && !isProcessed(p.hash));
+      }
+
+      // Server-side safety net: local state can be stale right after reload.
+      if (fresh.length > 0 && user) {
+        const candidateHashes = fresh.map(f => f.hash);
+        const { data: existing } = await supabase
+          .from('sms_ingested')
+          .select('sms_hash')
+          .eq('user_id', user.id)
+          .in('sms_hash', candidateHashes);
+        if (existing && existing.length > 0) {
+          const already = new Set(existing.map((r: any) => r.sms_hash));
+          if (already.size > 0) {
+            await markIngested(Array.from(already));
+            fresh = fresh.filter(f => !already.has(f.hash));
+          }
+        }
       }
 
       let added = 0;
@@ -294,7 +371,7 @@ export function useSmsImport() {
     } finally {
       setBusy(false);
     }
-  }, [supported, identifiers, ingestedHashes, prefs.lastScanAt, savePrefs, toPendingRows, persistPending]);
+  }, [supported, identifiers, ingestedHashes, prefs.lastScanAt, savePrefs, toPendingRows, persistPending, markIngested, user]);
 
   useEffect(() => {
     if (!supported || !prefs.enabled) return;
@@ -373,9 +450,10 @@ export function useSmsImport() {
       return false;
     }
     await supabase.from('sms_pending').delete().eq('id', id);
+    if (row.smsHash) await markIngested([row.smsHash]);
     setPending(prev => prev.filter(p => p.id !== id));
     return true;
-  }, [pending, addTransaction]);
+  }, [pending, addTransaction, markIngested]);
 
   const confirmMany = useCallback(async (ids: string[]) => {
     let ok = 0;
@@ -392,8 +470,10 @@ export function useSmsImport() {
       toast({ title: 'Could not delete', description: error.message, variant: 'destructive' });
       return;
     }
+    const row = pending.find(p => p.id === id);
+    if (row?.smsHash) await markIngested([row.smsHash]);
     setPending(prev => prev.map(p => p.id === id ? { ...p, status: 'deleted' } : p));
-  }, []);
+  }, [pending, markIngested]);
 
   const deleteMany = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -402,8 +482,10 @@ export function useSmsImport() {
       toast({ title: 'Could not delete', description: error.message, variant: 'destructive' });
       return;
     }
+    const hashes = pending.filter(p => ids.includes(p.id)).map(p => p.smsHash).filter(Boolean);
+    if (hashes.length > 0) await markIngested(hashes);
     setPending(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'deleted' } : p));
-  }, []);
+  }, [pending, markIngested]);
 
   const restorePending = useCallback(async (id: string) => {
     const { error } = await supabase.from('sms_pending').update({ status: 'pending' }).eq('id', id);
@@ -415,15 +497,19 @@ export function useSmsImport() {
   }, []);
 
   const purgePending = useCallback(async (id: string) => {
+    const row = pending.find(p => p.id === id);
     await supabase.from('sms_pending').delete().eq('id', id);
+    if (row?.smsHash) await markIngested([row.smsHash]);
     setPending(prev => prev.filter(p => p.id !== id));
-  }, []);
+  }, [pending, markIngested]);
 
   const emptyTrash = useCallback(async () => {
     if (!user) return;
+    const hashes = pending.filter(p => p.status === 'deleted').map(p => p.smsHash).filter(Boolean);
     await supabase.from('sms_pending').delete().eq('user_id', user.id).eq('status', 'deleted');
+    if (hashes.length > 0) await markIngested(hashes);
     setPending(prev => prev.filter(p => p.status !== 'deleted'));
-  }, [user]);
+  }, [user, pending, markIngested]);
 
   const updatePending = useCallback(async (
     id: string,
