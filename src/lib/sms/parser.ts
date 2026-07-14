@@ -43,6 +43,35 @@ function djb2(str: string): string {
   return (h >>> 0).toString(36);
 }
 
+/**
+ * Canonical hash for an SMS. Derived only from raw fields so strict and loose
+ * parsers always agree. Normalizes sender casing and trims body to avoid
+ * false-misses from trivial whitespace differences.
+ */
+export function smsHash(sms: RawSms): string {
+  const sender = (sms.address || '').toUpperCase().trim();
+  const minute = Math.floor((sms.date || 0) / 60000);
+  const body = (sms.body || '').trim();
+  return djb2(`${sender}|${minute}|${body}`);
+}
+
+/**
+ * Legacy hash formats we used to write into sms_ingested. Kept so a rescan can
+ * still recognize previously-processed SMS and upgrade them to the canonical
+ * hash without a DB migration.
+ */
+export function legacyStrictHash(parsed: {
+  amount: number; occurredAt: number; last4: string | null; sender: string; type: 'debit' | 'credit';
+}): string {
+  const minute = Math.floor(parsed.occurredAt / 60000);
+  return djb2(`${parsed.amount.toFixed(2)}|${minute}|${parsed.last4 ?? ''}|${(parsed.sender || '').toUpperCase()}|${parsed.type}`);
+}
+
+export function legacyLooseHash(sms: RawSms): string {
+  const minute = Math.floor((sms.date || 0) / 60000);
+  return djb2(`${(sms.address || '').toUpperCase()}|${minute}|${(sms.body || '').slice(0, 120)}`);
+}
+
 /** Extract a transaction from a single SMS, or null if it does not look like one. */
 export function parseSms(sms: RawSms): ParsedSms | null {
   const body = sms.body || '';
@@ -79,9 +108,7 @@ export function parseSms(sms: RawSms): ParsedSms | null {
 
   const type: 'debit' | 'credit' = isCredit && !isDebit ? 'credit' : 'debit';
 
-  // Dedupe hash: amount + minute-bucket + last4 + sender
-  const minute = Math.floor(occurredAt / 60000);
-  const hash = djb2(`${amount.toFixed(2)}|${minute}|${last4 ?? ''}|${(sms.address || '').toUpperCase()}|${type}`);
+  const hash = smsHash(sms);
 
   return {
     amount,
@@ -130,9 +157,7 @@ export function parseSmsLoose(sms: RawSms): ParsedSms {
   const isoDate = new Date(occurredAt).toISOString().slice(0, 10);
   const isCredit = hasAny(body, CREDIT_WORDS) && !hasAny(body, DEBIT_WORDS);
   const type: 'debit' | 'credit' = isCredit ? 'credit' : 'debit';
-  const minute = Math.floor(occurredAt / 60000);
-  // Hash uses raw body so distinct SMS with same amount/minute still differ.
-  const hash = djb2(`${(sms.address || '').toUpperCase()}|${minute}|${body.slice(0, 120)}`);
+  const hash = smsHash(sms);
 
   return { amount, type, date: isoDate, merchant, last4, sender: sms.address || '', raw: body, occurredAt, hash };
 }
