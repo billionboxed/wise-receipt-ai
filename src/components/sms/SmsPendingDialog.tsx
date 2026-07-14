@@ -4,22 +4,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, Trash2, AlertTriangle } from 'lucide-react';
+import { Check, Trash2, AlertTriangle, X } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format, parseISO } from 'date-fns';
 import type { PendingSms } from '@/hooks/useSmsImport';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: PendingSms | null;
-  onConfirm: (id: string, overrides: { date: string; description: string; amount: number; type: 'debit' | 'credit'; categoryId: string | null; accountId: string | null; }) => Promise<void> | void;
+  onConfirm: (id: string, overrides: { date: string; description: string; amount: number; type: 'debit' | 'credit'; categoryId: string | null; accountId: string | null; tagIds: string[]; }) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
 }
 
 export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete }: Props) {
-  const { categories, accounts, transactions } = useExpense();
+  const { categories, accounts, tags, transactions } = useExpense();
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.combined.localeCompare(b.combined)), [categories]);
   const sortedAccounts = useMemo(() => [...accounts].sort((a, b) => a.name.localeCompare(b.name)), [accounts]);
 
@@ -29,6 +31,7 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
     amount: '',
     categoryId: '',
     accountId: '',
+    tagIds: [] as string[],
   });
 
   useEffect(() => {
@@ -39,6 +42,7 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
       amount: String(row.parsedAmount),
       categoryId: row.suggestedCategoryId ?? '',
       accountId: row.suggestedAccountId ?? '',
+      tagIds: [],
     });
   }, [row, open]);
 
@@ -60,8 +64,16 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
       type: 'debit',
       categoryId: form.categoryId || null,
       accountId: form.accountId || null,
+      tagIds: form.tagIds,
     });
     onOpenChange(false);
+  };
+
+  const toggleTag = (id: string) => {
+    setForm(f => ({
+      ...f,
+      tagIds: f.tagIds.includes(id) ? f.tagIds.filter(t => t !== id) : [...f.tagIds, id],
+    }));
   };
 
   const handleDelete = async () => {
@@ -120,6 +132,38 @@ export function SmsPendingDialog({ open, onOpenChange, row, onConfirm, onDelete 
                 {sortedAccounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tags</Label>
+            <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-background/50 border border-border/50 min-h-[48px]">
+              {tags.filter(t => !t.isArchived || form.tagIds.includes(t.id)).length === 0 && (
+                <span className="text-xs text-muted-foreground">No tags yet.</span>
+              )}
+              {tags
+                .filter(t => !t.isArchived || form.tagIds.includes(t.id))
+                .map(tag => {
+                  const isSelected = form.tagIds.includes(tag.id);
+                  return (
+                    <Badge
+                      key={tag.id}
+                      variant="secondary"
+                      className={cn("cursor-pointer transition-all hover:scale-105", tag.isArchived && "opacity-60")}
+                      style={{
+                        backgroundColor: isSelected ? tag.color : 'transparent',
+                        color: isSelected ? '#ffffff' : tag.color,
+                        borderColor: tag.color,
+                        borderWidth: '1px',
+                        textShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                      }}
+                      onClick={() => toggleTag(tag.id)}
+                    >
+                      {tag.name}
+                      {isSelected && <X className="w-3 h-3 ml-1" />}
+                    </Badge>
+                  );
+                })}
+            </div>
           </div>
 
           {row.smsRaw && (
