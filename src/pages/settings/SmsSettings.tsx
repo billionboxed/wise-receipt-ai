@@ -1,6 +1,6 @@
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Smartphone, Loader2, RotateCcw, Info, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Smartphone, Loader2, RotateCcw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,19 +8,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSmsImport } from '@/hooks/useSmsImport';
 import { useExpense } from '@/context/ExpenseContext';
 import { toast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
-import { useCurrency } from '@/context/CurrencyContext';
 
 export default function SmsSettings() {
   const { accounts } = useExpense();
-  const { formatAmount } = useCurrency();
   const {
     supported, loading, busy, prefs,
     savePrefs, scanInbox,
-    pending, restorePending, purgePending, emptyTrash,
   } = useSmsImport();
-
-  const trash = pending.filter(p => p.status === 'deleted');
 
   const onToggle = async (enabled: boolean) => {
     await savePrefs({ enabled });
@@ -32,8 +26,8 @@ export default function SmsSettings() {
     }
   };
 
-  const handleScan = async (fullRescan: boolean) => {
-    const { added, removed, autoAssigned } = await scanInbox({ fullRescan });
+  const handleScan = async () => {
+    const { added, removed, autoAssigned } = await scanInbox({ fullRescan: true });
     const parts: string[] = [];
     if (added) parts.push(`${added} added`);
     if (removed) parts.push(`${removed} cleaned`);
@@ -124,12 +118,9 @@ export default function SmsSettings() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => handleScan(false)} disabled={!supported || busy}>
+                <Button onClick={handleScan} disabled={!supported || busy}>
                   {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />}
-                  Scan new
-                </Button>
-                <Button variant="outline" onClick={() => handleScan(true)} disabled={!supported || busy}>
-                  Scan all SMS
+                  Scan
                 </Button>
                 <NavLink to="/sms-review" className="ml-auto">
                   <Button variant="ghost">Open SMS inbox →</Button>
@@ -138,49 +129,6 @@ export default function SmsSettings() {
             </div>
           </>
         )}
-
-        {/* Deleted SMS archive */}
-        <div className="p-4 rounded-xl glass-card border border-white/5 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-medium">Deleted SMS ({trash.length})</p>
-              <p className="text-sm text-muted-foreground">
-                Discarded SMS land here. Restore to send them back to your inbox, or empty to forget them forever.
-              </p>
-            </div>
-            {trash.length > 0 && (
-              <Button size="sm" variant="ghost" className="text-destructive" onClick={emptyTrash}>
-                <Trash2 className="w-4 h-4 mr-1" /> Empty
-              </Button>
-            )}
-          </div>
-          {trash.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nothing deleted yet.</p>
-          ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {trash.map(t => (
-                <div key={t.id} className="p-2 rounded-lg border border-border bg-background flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium truncate">{t.suggestedDescription || 'SMS Transaction'}</p>
-                      <span className="text-sm font-semibold whitespace-nowrap">{formatAmount(t.parsedAmount)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {format(parseISO(t.parsedDate), 'dd MMM yyyy')}
-                      {t.smsSender && <> • {t.smsSender}</>}
-                    </p>
-                  </div>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" title="Restore" onClick={() => restorePending(t.id)}>
-                    <Undo2 className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete permanently" onClick={() => purgePending(t.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </Layout>
   );
