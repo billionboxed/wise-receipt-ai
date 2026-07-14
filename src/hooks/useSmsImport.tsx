@@ -66,9 +66,7 @@ function mapPending(r: any): PendingSms {
 export function useSmsImport() {
   const { user } = useAuth();
   const { accounts, categories, addTransaction } = useExpense();
-  const currency = (() => {
-    try { return useCurrency().currency.code; } catch { return undefined; }
-  })();
+  const currency = useCurrency().currency.code;
 
   const [prefs, setPrefs] = useState<SmsPreferences>(DEFAULT_PREFS);
   const [cardMap, setCardMap] = useState<{ last4: string; accountId: string }[]>([]);
