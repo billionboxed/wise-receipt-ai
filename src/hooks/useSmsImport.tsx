@@ -258,11 +258,18 @@ export function useSmsImport() {
         ? undefined
         : (prefs.lastScanAt ? new Date(prefs.lastScanAt).getTime() : Date.now() - 30 * 24 * 60 * 60 * 1000);
       const raw = await readInbox(sinceEpochMs);
-      const filtered = raw.filter(m => isLikelyBankSender(m.address));
-      const parsed = parseSmsBatch(filtered);
-      const debits = parsed.filter(p => p.type === 'debit');
-
       const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
+      // When the user has identifiers, trust them as the primary filter — many
+      // bank/wallet sender IDs (Jupiter, CSB, niche NBFCs) aren't in our built-in
+      // list, so relying on it alone drops real transaction SMS.
+      const preFiltered = allIds.length > 0
+        ? raw.filter(m => {
+            const hay = `${m.address ?? ''} ${m.body ?? ''}`.toLowerCase();
+            return allIds.some(id => hay.includes(id));
+          })
+        : raw.filter(m => isLikelyBankSender(m.address));
+      const parsed = parseSmsBatch(preFiltered);
+      const debits = parsed.filter(p => p.type === 'debit');
       const idFiltered = allIds.length === 0
         ? debits
         : debits.filter(p => {
@@ -312,15 +319,16 @@ export function useSmsImport() {
 
     (async () => {
       stop = await startSmsListener((msg) => {
-        if (!isLikelyBankSender(msg.address)) return;
+        const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
+        if (allIds.length > 0) {
+          const hay = `${msg.address ?? ''} ${msg.body ?? ''}`.toLowerCase();
+          if (!allIds.some(id => hay.includes(id))) return;
+        } else if (!isLikelyBankSender(msg.address)) {
+          return;
+        }
         const p = parseSms(msg);
         if (!p) return;
         if (p.type === 'credit') return;
-        const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
-        if (allIds.length > 0) {
-          const hay = `${p.sender} ${p.raw}`.toLowerCase();
-          if (!allIds.some(id => hay.includes(id))) return;
-        }
         if (ingestedHashes.has(p.hash)) return;
         if (cancelled) return;
         batch.push(p);
