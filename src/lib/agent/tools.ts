@@ -282,6 +282,17 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "set_sms_track_from",
+    description:
+      "Set the date from which SMS are tracked (yyyy-mm-dd). Older SMS are ignored by scans and hidden from the inbox. Pass null to track all time.",
+    parameters: {
+      type: "object",
+      properties: { date: { type: ["string", "null"], description: "yyyy-mm-dd or null" } },
+      required: ["date"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "reapply_identifiers",
     description:
       "Re-run the current SMS identifiers over all pending rows: auto-assign matching account, soft-delete non-matching rows.",

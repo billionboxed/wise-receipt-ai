@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSmsImport } from '@/hooks/useSmsImport';
 import { useExpense } from '@/context/ExpenseContext';
 import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
 
 export default function SmsSettings() {
   const { accounts } = useExpense();
@@ -97,6 +99,33 @@ export default function SmsSettings() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Track-from date */}
+            <div className="p-4 rounded-xl glass-card border border-white/5 space-y-3">
+              <div>
+                <p className="font-medium">Track SMS from</p>
+                <p className="text-sm text-muted-foreground">
+                  {prefs.trackFrom
+                    ? `Ignoring SMS before ${format(new Date(prefs.trackFrom + 'T00:00:00'), 'd MMM yyyy')}.`
+                    : 'All time. Pick a date to ignore older SMS.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  className="w-auto"
+                  value={prefs.trackFrom ?? ''}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={(e) => savePrefs({ trackFrom: e.target.value || null })}
+                />
+                <Button variant="secondary" onClick={() => savePrefs({ trackFrom: format(new Date(), 'yyyy-MM-dd') })}>
+                  Start fresh from today
+                </Button>
+                {prefs.trackFrom && (
+                  <Button variant="ghost" onClick={() => savePrefs({ trackFrom: null })}>Clear</Button>
+                )}
+              </div>
             </div>
 
             <Alert>

@@ -276,6 +276,7 @@ export type Database = {
           default_account_id: string | null
           enabled: boolean
           last_scan_at: string | null
+          track_from: string | null
           updated_at: string
           user_id: string
         }
@@ -284,6 +285,7 @@ export type Database = {
           default_account_id?: string | null
           enabled?: boolean
           last_scan_at?: string | null
+          track_from?: string | null
           updated_at?: string
           user_id: string
         }
@@ -292,6 +294,7 @@ export type Database = {
           default_account_id?: string | null
           enabled?: boolean
           last_scan_at?: string | null
+          track_from?: string | null
           updated_at?: string
           user_id?: string
         }

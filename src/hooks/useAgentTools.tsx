@@ -417,6 +417,17 @@ export function useAgentTools() {
         });
       }
 
+      case 'set_sms_track_from': {
+        return safe(async () => {
+          const d = args.date ? String(args.date).slice(0, 10) : null;
+          if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('Date must be yyyy-mm-dd.');
+          const prev = sms.prefs.trackFrom;
+          await sms.savePrefs({ trackFrom: d });
+          undo.set({ label: 'Undo: restore previous SMS start date', run: async () => { await sms.savePrefs({ trackFrom: prev }); } });
+          return { trackFrom: d ?? 'all time' };
+        });
+      }
+
       // -------- Bulk / approval-required --------
       case 'scan_sms': {
         return safe(async () => {

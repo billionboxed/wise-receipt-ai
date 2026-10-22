@@ -1,0 +1,1 @@
+ALTER TABLE public.sms_preferences ADD COLUMN IF NOT EXISTS track_from date;
