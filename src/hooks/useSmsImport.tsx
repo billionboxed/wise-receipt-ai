@@ -21,6 +21,8 @@ export interface SmsPreferences {
   enabled: boolean;
   defaultAccountId: string | null;
   lastScanAt: string | null;
+  /** yyyy-MM-dd. SMS before this date are ignored. Null = all time. */
+  trackFrom: string | null;
 }
 
 export interface PendingSms {
@@ -43,7 +45,16 @@ const DEFAULT_PREFS: SmsPreferences = {
   enabled: false,
   defaultAccountId: null,
   lastScanAt: null,
+  trackFrom: null,
 };
+
+/** Epoch ms of local start-of-day for a yyyy-MM-dd string, or null. */
+export function trackFromEpoch(trackFrom: string | null): number | null {
+  if (!trackFrom) return null;
+  const [y, m, d] = trackFrom.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d).getTime();
+}
 
 function mapPending(r: any): PendingSms {
   return {
@@ -98,6 +109,7 @@ export function useSmsImport() {
         enabled: p.data.enabled,
         defaultAccountId: p.data.default_account_id,
         lastScanAt: p.data.last_scan_at,
+        trackFrom: (p.data as any).track_from ?? null,
       });
     }
     setCardMap((c.data || []).map(r => ({ last4: r.last4, accountId: r.account_id })));
@@ -131,7 +143,8 @@ export function useSmsImport() {
       enabled: merged.enabled,
       default_account_id: merged.defaultAccountId,
       last_scan_at: merged.lastScanAt,
-    });
+      track_from: merged.trackFrom,
+    } as any);
   }, [user, prefs]);
 
   const addIdentifier = useCallback(async (accountId: string, identifier: string) => {
@@ -281,10 +294,12 @@ export function useSmsImport() {
           return empty;
         }
       }
-      const sinceEpochMs = opts.fullRescan
+      const baseSince = opts.fullRescan
         ? undefined
         : (prefs.lastScanAt ? new Date(prefs.lastScanAt).getTime() : Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const raw = await readInbox(sinceEpochMs);
+      const floor = trackFromEpoch(prefs.trackFrom);
+      const sinceEpochMs = floor == null ? baseSince : Math.max(baseSince ?? 0, floor);
+      const raw = (await readInbox(sinceEpochMs)).filter(m => floor == null || (m.date || 0) >= floor);
       const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
       // Compute canonical + legacy hashes for every incoming SMS so we can
       // recognize anything we've already processed under an older hash format
@@ -369,7 +384,7 @@ export function useSmsImport() {
     } finally {
       setBusy(false);
     }
-  }, [supported, identifiers, ingestedHashes, prefs.lastScanAt, savePrefs, toPendingRows, persistPending, markIngested, user]);
+  }, [supported, identifiers, ingestedHashes, prefs.lastScanAt, prefs.trackFrom, savePrefs, toPendingRows, persistPending, markIngested, user]);
 
   useEffect(() => {
     if (!supported || !prefs.enabled) return;
@@ -393,6 +408,8 @@ export function useSmsImport() {
 
     (async () => {
       stop = await startSmsListener((msg) => {
+        const floor = trackFromEpoch(prefs.trackFrom);
+        if (floor != null && (msg.date || Date.now()) < floor) return;
         const allIds = identifiers.map(i => i.identifier.toLowerCase()).filter(Boolean);
         let p: ParsedSms | null;
         if (allIds.length > 0) {
@@ -419,7 +436,7 @@ export function useSmsImport() {
       if (timer) clearTimeout(timer);
       stop?.();
     };
-  }, [supported, prefs.enabled, identifiers, ingestedHashes, toPendingRows, persistPending]);
+  }, [supported, prefs.enabled, prefs.trackFrom, identifiers, ingestedHashes, toPendingRows, persistPending]);
 
   // ---- pending-row actions ----
 
@@ -556,6 +573,12 @@ export function useSmsImport() {
   // Keep ref in sync so scanInbox can invoke it without a circular dep.
   useEffect(() => { reapplyIdentifiersRef.current = reapplyIdentifiers; }, [reapplyIdentifiers]);
 
+  // Hide (but keep) inbox rows older than the user's track-from date.
+  const visiblePending = useMemo(() => {
+    if (!prefs.trackFrom) return pending;
+    return pending.filter(p => p.parsedDate >= prefs.trackFrom!);
+  }, [pending, prefs.trackFrom]);
+
   return {
     supported,
     loading,
@@ -563,7 +586,7 @@ export function useSmsImport() {
     prefs,
     cardMap,
     identifiers,
-    pending,
+    pending: visiblePending,
     savePrefs,
     addIdentifier,
     removeIdentifier,
