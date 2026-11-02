@@ -19,7 +19,7 @@
       {
         "name": "get_overview",
         "title": "Get account overview",
-        "description": "List the signed-in user's accounts, categories (Main > Sub), tags, SMS identifiers and SMS settings, with IDs to use in other tools.",
+        "description": "List the signed-in user's accounts, categories (Main > Sub), tags, SMS identifiers, SMS settings, and the saved assistant memory (preferences + merchant rules), with IDs to use in other tools.",
         "annotations": {
           "readOnlyHint": true,
           "openWorldHint": false
@@ -160,7 +160,7 @@
       {
         "name": "add_expense",
         "title": "Add expense",
-        "description": "Add an expense (or a credit/refund). Category and account are required; get IDs from get_overview.",
+        "description": "Add an expense (or a credit/refund). Category and account are required. Refuses if the same date + whole amount already exists unless force is true.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -204,6 +204,10 @@
                 "credit"
               ],
               "description": "debit = expense (default), credit = refund"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Add even if a possible duplicate exists (only when the user confirms it's a different purchase)"
             }
           },
           "required": [
@@ -609,6 +613,144 @@
           "required": [
             "action",
             "ids"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_memory",
+        "title": "Get assistant memory",
+        "description": "Read the user's saved assistant preferences and merchant rules. Follow them in every chat.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "manage_preference",
+        "title": "Save or delete preference",
+        "description": "Save a standing instruction the user wants remembered across chats (e.g. 'Don't ask to confirm, just add'), or delete one by id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "save",
+                "delete"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 500,
+              "description": "Required for save"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Required for delete"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "manage_merchant_rule",
+        "title": "Save or delete merchant rule",
+        "description": "Remember which category/account/tags to use for a merchant (e.g. McDonald's → Food > Dining Out, HDFC Card). Saving the same merchant again updates it. Delete by id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "save",
+                "delete"
+              ]
+            },
+            "merchant": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 80,
+              "description": "Merchant name as it appears on receipts; required for save"
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tag_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Required for delete"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "find_duplicates",
+        "title": "Check if already recorded",
+        "description": "Check whether an expense with the same date and same whole-number amount already exists (e.g. a re-shared receipt).",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "YYYY-MM-DD"
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "date",
+            "amount"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"

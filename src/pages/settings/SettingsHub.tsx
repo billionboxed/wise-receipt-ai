@@ -1,7 +1,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette, PlayCircle, FileJson, MessageSquare } from 'lucide-react';
+import { FolderTree, Tags, Wallet, LogOut, ChevronRight, Coins, RefreshCcw, Palette, PlayCircle, FileJson, MessageSquare, Brain } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,12 @@ const settingsItems = [
     description: 'Capture bank SMS as expenses (Android)',
     path: '/settings/sms',
     icon: MessageSquare,
+  },
+  {
+    label: 'Assistant Memory',
+    description: 'What ChatGPT and AI chat remember',
+    path: '/settings/memory',
+    icon: Brain,
   },
 ];
 
