@@ -82,11 +82,25 @@ async function lookups(sb) {
   return { cats, accs, tags };
 }
 
+// src/lib/mcp/memory.ts
+async function loadMemory(sb) {
+  const [p, r] = await Promise.all([
+    sb.from("assistant_preferences").select("id, text").order("created_at"),
+    sb.from("merchant_rules").select("id, merchant_pattern, category_id, account_id, tag_ids").order("merchant_pattern")
+  ]);
+  return { preferences: p.data ?? [], merchant_rules: r.data ?? [] };
+}
+async function findDuplicates(sb, date, amount) {
+  const n = Math.trunc(amount);
+  const { data } = await sb.from("transactions").select("id, date, description, amount, account_id").eq("date", date).gte("amount", n).lt("amount", n + 1);
+  return (data ?? []).map((t) => ({ ...t, amount: Number(t.amount) }));
+}
+
 // src/lib/mcp/tools/get-overview.ts
 var get_overview_default = defineTool({
   name: "get_overview",
   title: "Get account overview",
-  description: "List the signed-in user's accounts, categories (Main > Sub), tags, SMS identifiers and SMS settings, with IDs to use in other tools.",
+  description: "List the signed-in user's accounts, categories (Main > Sub), tags, SMS identifiers, SMS settings, and the saved assistant memory (preferences + merchant rules), with IDs to use in other tools.",
   inputSchema: {},
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async (_args, ctx) => {
@@ -99,6 +113,7 @@ var get_overview_default = defineTool({
       sb.from("sms_preferences").select("*").maybeSingle(),
       sb.from("transactions").select("id", { count: "exact", head: true })
     ]);
+    const memory = await loadMemory(sb);
     const err = a.error || c.error || t.error;
     if (err) fail(err.message);
     const data = {
@@ -106,7 +121,8 @@ var get_overview_default = defineTool({
       categories: (c.data ?? []).map((x) => ({ id: x.id, name: `${x.main} > ${x.sub}` })),
       tags: t.data ?? [],
       sms_preferences: p.data ?? null,
-      total_expenses: n.count ?? 0
+      total_expenses: n.count ?? 0,
+      memory
     };
     return ok(JSON.stringify(data), data);
   }
@@ -231,7 +247,7 @@ import { z as z3 } from "npm:zod@^3.25.76";
 var add_expense_default = defineTool4({
   name: "add_expense",
   title: "Add expense",
-  description: "Add an expense (or a credit/refund). Category and account are required; get IDs from get_overview.",
+  description: "Add an expense (or a credit/refund). Category and account are required. Refuses if the same date + whole amount already exists unless force is true.",
   inputSchema: {
     date: z3.string().describe("YYYY-MM-DD"),
     description: z3.string().min(1).max(200),
@@ -239,11 +255,18 @@ var add_expense_default = defineTool4({
     category_id: z3.string().uuid(),
     account_id: z3.string().uuid(),
     tag_ids: z3.array(z3.string().uuid()).optional(),
-    type: z3.enum(["debit", "credit"]).optional().describe("debit = expense (default), credit = refund")
+    type: z3.enum(["debit", "credit"]).optional().describe("debit = expense (default), credit = refund"),
+    force: z3.boolean().optional().describe("Add even if a possible duplicate exists (only when the user confirms it's a different purchase)")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async (a, ctx) => {
     const { sb, userId } = db(ctx);
+    if (!a.force) {
+      const dups = await findDuplicates(sb, a.date, a.amount);
+      if (dups.length) {
+        return ok(`Not added: already recorded (${dups.map((d) => `${d.description} \u20B9${d.amount}`).join(", ")}). Pass force:true only if the user says it's a different purchase.`, { added: false, duplicate_of: dups });
+      }
+    }
     const { data, error } = await sb.from("transactions").insert({
       user_id: userId,
       date: a.date,
@@ -257,7 +280,7 @@ var add_expense_default = defineTool4({
       source: "manual"
     }).select("id").single();
     if (error) fail(error.message);
-    return ok(`Added expense ${data.id}`, { id: data.id });
+    return ok(`Added expense ${data.id}`, { added: true, id: data.id });
   }
 });
 
@@ -563,13 +586,120 @@ var list_recurring_default = defineTool14({
   }
 });
 
+// src/lib/mcp/tools/get-memory.ts
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.4.0";
+var get_memory_default = defineTool15({
+  name: "get_memory",
+  title: "Get assistant memory",
+  description: "Read the user's saved assistant preferences and merchant rules. Follow them in every chat.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: async (_a, ctx) => {
+    const { sb } = db(ctx);
+    const m = await loadMemory(sb);
+    const L = await lookups(sb);
+    const data = {
+      preferences: m.preferences,
+      merchant_rules: m.merchant_rules.map((r) => ({
+        ...r,
+        category: r.category_id ? L.cats.get(r.category_id) ?? null : null,
+        account: r.account_id ? L.accs.get(r.account_id) ?? null : null,
+        tags: (r.tag_ids ?? []).map((id) => L.tags.get(id) ?? id)
+      }))
+    };
+    return ok(JSON.stringify(data), data);
+  }
+});
+
+// src/lib/mcp/tools/manage-preference.ts
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.4.0";
+import { z as z13 } from "npm:zod@^3.25.76";
+var manage_preference_default = defineTool16({
+  name: "manage_preference",
+  title: "Save or delete preference",
+  description: "Save a standing instruction the user wants remembered across chats (e.g. 'Don't ask to confirm, just add'), or delete one by id.",
+  inputSchema: {
+    action: z13.enum(["save", "delete"]),
+    text: z13.string().min(2).max(500).optional().describe("Required for save"),
+    id: z13.string().uuid().optional().describe("Required for delete")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async (a, ctx) => {
+    const { sb, userId } = db(ctx);
+    if (a.action === "delete") {
+      if (!a.id) fail("id is required");
+      const { error: error2 } = await sb.from("assistant_preferences").delete().eq("id", a.id);
+      if (error2) fail(error2.message);
+      return ok("Preference deleted", { id: a.id });
+    }
+    if (!a.text) fail("text is required");
+    const { data, error } = await sb.from("assistant_preferences").insert({ user_id: userId, text: a.text.trim() }).select("id").single();
+    if (error) fail(error.message);
+    return ok(`Preference saved ${data.id}`, { id: data.id });
+  }
+});
+
+// src/lib/mcp/tools/manage-merchant-rule.ts
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.4.0";
+import { z as z14 } from "npm:zod@^3.25.76";
+var manage_merchant_rule_default = defineTool17({
+  name: "manage_merchant_rule",
+  title: "Save or delete merchant rule",
+  description: "Remember which category/account/tags to use for a merchant (e.g. McDonald's \u2192 Food > Dining Out, HDFC Card). Saving the same merchant again updates it. Delete by id.",
+  inputSchema: {
+    action: z14.enum(["save", "delete"]),
+    merchant: z14.string().min(2).max(80).optional().describe("Merchant name as it appears on receipts; required for save"),
+    category_id: z14.string().uuid().optional(),
+    account_id: z14.string().uuid().optional(),
+    tag_ids: z14.array(z14.string().uuid()).optional(),
+    id: z14.string().uuid().optional().describe("Required for delete")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async (a, ctx) => {
+    const { sb, userId } = db(ctx);
+    if (a.action === "delete") {
+      if (!a.id) fail("id is required");
+      const { error: error2 } = await sb.from("merchant_rules").delete().eq("id", a.id);
+      if (error2) fail(error2.message);
+      return ok("Rule deleted", { id: a.id });
+    }
+    if (!a.merchant) fail("merchant is required");
+    if (!a.category_id && !a.account_id) fail("Pass at least a category_id or account_id");
+    const { data, error } = await sb.from("merchant_rules").upsert({
+      user_id: userId,
+      merchant_pattern: a.merchant.trim().toLowerCase(),
+      category_id: a.category_id ?? null,
+      account_id: a.account_id ?? null,
+      tag_ids: a.tag_ids ?? []
+    }, { onConflict: "user_id,merchant_pattern" }).select("id").single();
+    if (error) fail(error.message);
+    return ok(`Rule saved ${data.id}`, { id: data.id });
+  }
+});
+
+// src/lib/mcp/tools/find-duplicates.ts
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.4.0";
+import { z as z15 } from "npm:zod@^3.25.76";
+var find_duplicates_default = defineTool18({
+  name: "find_duplicates",
+  title: "Check if already recorded",
+  description: "Check whether an expense with the same date and same whole-number amount already exists (e.g. a re-shared receipt).",
+  inputSchema: { date: z15.string().describe("YYYY-MM-DD"), amount: z15.number().positive() },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: async (a, ctx) => {
+    const { sb } = db(ctx);
+    const matches = await findDuplicates(sb, a.date, a.amount);
+    return ok(matches.length ? `Already recorded: ${JSON.stringify(matches)}` : "No existing match", { matches });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "mmnwilwobtcjfmfvfial";
 var mcp_default = defineMcp({
   name: "transferred-smart-expense-manager",
   title: "Transferred Smart Expense Manager",
   version: "0.1.0",
-  instructions: "ClearSpends expense tracker for the signed-in user. Call get_overview first to learn account, category (Main > Sub) and tag IDs. Use list_expenses and spending_summary for analysis. Every expense needs a category and an account. Confirm with the user before deleting. SMS scanning itself only runs in the Android app; here you can manage SMS drafts and identifiers.",
+  instructions: "ClearSpends expense tracker for the signed-in user. ALWAYS call get_overview at the start of every chat: it returns account, category (Main > Sub) and tag IDs plus the user's saved memory. Follow every saved preference (e.g. if one says don't ask to confirm, add directly). If a merchant rule matches a receipt's merchant, use its category/account/tags without asking. When the user answers a question about category/account for a merchant, offer to remember it with manage_merchant_rule (save immediately if they say 'remember'). Save standing instructions with manage_preference. add_expense rejects duplicates (same date + whole amount); if it reports one, tell the user it's already recorded instead of re-adding. Every expense needs a category and an account. Confirm with the user before deleting. SMS scanning only runs in the Android app; here you can manage SMS drafts and identifiers.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -588,7 +718,11 @@ var mcp_default = defineMcp({
     manage_sms_identifier_default,
     list_sms_drafts_default,
     confirm_sms_draft_default,
-    update_sms_draft_default
+    update_sms_draft_default,
+    get_memory_default,
+    manage_preference_default,
+    manage_merchant_rule_default,
+    find_duplicates_default
   ]
 });
 
