@@ -17,6 +17,7 @@ import Transactions from "./pages/Transactions";
 import UploadPage from "./pages/UploadPage";
 import Analytics from "./pages/Analytics";
 import Auth from "./pages/Auth";
+import OAuthConsent from "./pages/OAuthConsent";
 import Install from "./pages/Install";
 import About from "./pages/About";
 import AboutPrint from "./pages/AboutPrint";
