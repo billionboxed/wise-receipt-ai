@@ -104,13 +104,18 @@ function ChatInner() {
   // Stops when the model returns no tool_calls, or when a needsApproval call is pending.
   const runLoop = useCallback(async (history: ApiMessage[]) => {
     let current = history;
+    const [mp, mr] = await Promise.all([
+      supabase.from('assistant_preferences').select('text'),
+      supabase.from('merchant_rules').select('merchant_pattern, category_id, account_id, tag_ids'),
+    ]);
+    const memoryContext = `User preferences (always follow): ${JSON.stringify((mp.data ?? []).map((p) => p.text))}\nMerchant rules (use these category/account IDs for matching merchants without asking): ${JSON.stringify(mr.data ?? [])}`;
     for (let step = 0; step < 8; step++) {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('agent-chat', {
         body: {
           messages: current,
           tools: TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
-          systemContext: `Currency: ${currency.code} (${currency.symbol})\n${summaryContext}`,
+          systemContext: `Currency: ${currency.code} (${currency.symbol})\n${memoryContext}\n${summaryContext}`,
         },
       });
       setLoading(false);
