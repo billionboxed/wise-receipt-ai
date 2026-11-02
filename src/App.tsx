@@ -73,6 +73,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       <Route path="/install" element={<Install />} />
       <Route path="/about" element={<About />} />
       <Route path="/about/print" element={<AboutPrint />} />
