@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,12 +15,16 @@ import { isNativeMobileApp, signInWithGoogleNative } from '@/lib/auth/nativeGoog
 export default function Auth() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const rawNext = params.get('next');
+  const next = rawNext ? oauthReturnPath(rawNext) : '/dashboard';
+  const isOAuthReturn = next.startsWith('/.lovable/oauth/');
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
-      if (isNativeMobileApp()) {
+      if (isNativeMobileApp() && !isOAuthReturn) {
         const { error } = await signInWithGoogleNative();
         if (error) {
           toast({
@@ -32,7 +37,7 @@ export default function Auth() {
       }
 
       const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: `${window.location.origin}/auth`,
+        redirect_uri: rawNext ? new URL(`/auth?next=${encodeURIComponent(next)}`, window.location.origin).href : `${window.location.origin}/auth`,
       });
       if (result.error) {
         toast({
@@ -43,7 +48,7 @@ export default function Auth() {
         return;
       }
       if (!result.redirected) {
-        navigate('/dashboard');
+        if (isOAuthReturn) window.location.href = next; else navigate(next);
       }
     } finally {
       setGoogleLoading(false);
@@ -52,9 +57,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      if (isOAuthReturn) window.location.href = next; else navigate(next);
     }
-  }, [user, navigate]);
+  }, [user, navigate, next, isOAuthReturn]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
