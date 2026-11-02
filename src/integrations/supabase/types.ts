@@ -105,6 +105,27 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           combined: string
@@ -131,6 +152,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      merchant_rules: {
+        Row: {
+          account_id: string | null
+          category_id: string | null
+          created_at: string
+          id: string
+          merchant_pattern: string
+          tag_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_pattern: string
+          tag_ids?: string[]
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_pattern?: string
+          tag_ids?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_rules_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recurring_expenses: {
         Row: {
