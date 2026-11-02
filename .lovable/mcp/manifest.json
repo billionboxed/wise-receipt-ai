@@ -1,0 +1,620 @@
+{
+  "version": 1,
+  "sdk_version": "3.4.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://mmnwilwobtcjfmfvfial.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "transferred-smart-expense-manager",
+      "version": "0.1.0",
+      "title": "Transferred Smart Expense Manager"
+    },
+    "tools": [
+      {
+        "name": "get_overview",
+        "title": "Get account overview",
+        "description": "List the signed-in user's accounts, categories (Main > Sub), tags, SMS identifiers and SMS settings, with IDs to use in other tools.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_expenses",
+        "title": "List expenses",
+        "description": "List expenses with optional filters (date range, account, category, tag, amount, text). Returns resolved names.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Start date YYYY-MM-DD (inclusive)"
+            },
+            "to": {
+              "type": "string",
+              "description": "End date YYYY-MM-DD (inclusive)"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tag_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "min_amount": {
+              "type": "number"
+            },
+            "max_amount": {
+              "type": "number"
+            },
+            "search": {
+              "type": "string",
+              "description": "Text to find in description"
+            },
+            "sort": {
+              "type": "string",
+              "enum": [
+                "date_desc",
+                "date_asc",
+                "amount_desc",
+                "recent_added"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Default 100"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "spending_summary",
+        "title": "Spending summary",
+        "description": "Totals for a date range grouped by category, main category, account, tag, month or description (merchant). Credits/refunds are subtracted.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Start date YYYY-MM-DD"
+            },
+            "to": {
+              "type": "string",
+              "description": "End date YYYY-MM-DD"
+            },
+            "group_by": {
+              "type": "string",
+              "enum": [
+                "category",
+                "main_category",
+                "account",
+                "tag",
+                "month",
+                "merchant"
+              ]
+            },
+            "top": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Return only top N groups"
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "group_by"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_recurring",
+        "title": "List recurring expenses",
+        "description": "List the user's recurring expenses (subscriptions, rent, etc.).",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_expense",
+        "title": "Add expense",
+        "description": "Add an expense (or a credit/refund). Category and account are required; get IDs from get_overview.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "YYYY-MM-DD"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tag_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "debit",
+                "credit"
+              ],
+              "description": "debit = expense (default), credit = refund"
+            }
+          },
+          "required": [
+            "date",
+            "description",
+            "amount",
+            "category_id",
+            "account_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_expense",
+        "title": "Update expenses",
+        "description": "Edit one or more expenses. Only the fields you pass are changed (e.g. bulk recategorize by passing several IDs and a category_id).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 500
+            },
+            "date": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tag_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Replaces all tags"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "debit",
+                "credit"
+              ]
+            }
+          },
+          "required": [
+            "ids"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_expenses",
+        "title": "Delete expenses",
+        "description": "Permanently delete expenses by ID. Confirm with the user before calling.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 500
+            }
+          },
+          "required": [
+            "ids"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "manage_account",
+        "title": "Create or rename account",
+        "description": "Create a new account (bank, credit, cash, wallet) or rename/retype an existing one by passing its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Omit to create"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "bank",
+                "credit",
+                "cash",
+                "wallet"
+              ]
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "manage_category",
+        "title": "Create or rename category",
+        "description": "Create a Main > Sub category, or rename an existing one by passing its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Omit to create"
+            },
+            "main": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "sub": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          "required": [
+            "main",
+            "sub"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "manage_tag",
+        "title": "Create, rename or archive tag",
+        "description": "Create a tag, or update an existing tag's name, color or archived state by passing its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Omit to create"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "color": {
+              "type": "string",
+              "description": "Hex like #6b7280"
+            },
+            "is_archived": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "manage_sms_identifier",
+        "title": "Add or remove SMS identifier",
+        "description": "Add an SMS identifier (e.g. card last-4 or bank name) to an account, or remove one by id. Takes effect on the next scan in the Android app.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "add",
+                "remove"
+              ]
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Required for add"
+            },
+            "identifier": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 40,
+              "description": "Required for add"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Identifier id, required for remove"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_sms_drafts",
+        "title": "List SMS drafts",
+        "description": "List SMS-detected expenses waiting in the SMS Inbox (pending) or in its Deleted section.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "deleted"
+              ],
+              "description": "Default pending"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "confirm_sms_draft",
+        "title": "Confirm SMS draft",
+        "description": "Turn a pending SMS draft into a real expense, optionally overriding its fields. Category and account must be set.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "date": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "tag_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_sms_draft",
+        "title": "Edit, delete or restore SMS draft",
+        "description": "Edit a pending SMS draft's suggested fields, move drafts to Deleted, or restore deleted drafts. Does not create expenses.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "edit",
+                "delete",
+                "restore"
+              ]
+            },
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "minItems": 1,
+              "maxItems": 500
+            },
+            "date": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "action",
+            "ids"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
