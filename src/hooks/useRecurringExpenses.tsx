@@ -21,6 +21,15 @@ export function useRecurringExpenses() {
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Backup catch-up: once per session, add any missed recurring entries for this user.
+  useEffect(() => {
+    if (!user) return;
+    const key = `recurring-catchup-${user.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.functions.invoke('process-recurring-expenses', { body: {} }).catch(() => {});
+  }, [user]);
+
   const fetchRecurringExpenses = useCallback(async () => {
     if (!user) {
       setLoading(false);
