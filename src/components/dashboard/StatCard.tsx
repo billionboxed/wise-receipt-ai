@@ -10,6 +10,7 @@ interface StatCardProps {
   icon: LucideIcon;
   iconColor?: 'primary' | 'success' | 'destructive' | 'accent';
   delay?: number;
+  onClick?: () => void;
 }
 
 const iconColorClasses = {
@@ -34,13 +35,20 @@ export function StatCard({
   icon: Icon,
   iconColor = 'primary',
   delay = 0,
+  onClick,
 }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      whileTap={onClick ? { scale: 0.97 } : undefined}
       className={cn(
+        onClick && 'cursor-pointer select-none',
         'relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 lg:p-6 transition-all duration-500 group',
         'bg-card border border-border hover:border-primary/30',
         'backdrop-blur-xl shadow-card',

@@ -7,10 +7,12 @@ import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { AccountSummary } from '@/components/dashboard/AccountSummary';
 import { TagsSpending } from '@/components/dashboard/TagsSpending';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
+import { DrillDownSheet, useDrillDown } from '@/components/dashboard/DrillDownSheet';
 import { Wallet, TrendingUp, TrendingDown, CreditCard } from 'lucide-react';
 
 export default function Dashboard() {
   const { filteredTransactions } = useFilteredTransactions();
+  const openDrill = useDrillDown();
 
   const stats = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.status === 'confirmed' && t.type === 'debit');
@@ -54,10 +56,10 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} icon={Wallet} iconColor="destructive" delay={0} />
-          <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="accent" delay={0.1} />
-          <StatCard title="Last Month" value={`₹${stats.lastMonthExpense.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="primary" delay={0.2} />
-          <StatCard title="Avg. Transaction" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="success" delay={0.3} />
+          <StatCard title="Total Expenses" value={`₹${stats.totalExpense.toLocaleString('en-IN')}`} icon={Wallet} iconColor="destructive" delay={0} onClick={() => openDrill('period', 'all')} />
+          <StatCard title="This Month" value={`₹${stats.thisMonthExpense.toLocaleString('en-IN')}`} change={`${parseFloat(stats.expenseChange) > 0 ? '+' : ''}${stats.expenseChange}% from last month`} changeType={parseFloat(stats.expenseChange) > 0 ? 'negative' : 'positive'} icon={TrendingDown} iconColor="accent" delay={0.1} onClick={() => openDrill('period', 'this-month')} />
+          <StatCard title="Last Month" value={`₹${stats.lastMonthExpense.toLocaleString('en-IN')}`} icon={TrendingUp} iconColor="primary" delay={0.2} onClick={() => openDrill('period', 'last-month')} />
+          <StatCard title="Avg. Transaction" value={`₹${Math.round(stats.avgTransaction).toLocaleString('en-IN')}`} change={`${stats.transactionCount} transactions`} changeType="neutral" icon={CreditCard} iconColor="success" delay={0.3} onClick={() => openDrill('period', 'all')} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
@@ -71,6 +73,7 @@ export default function Dashboard() {
           <TagsSpending />
         </div>
       </div>
+      <DrillDownSheet />
     </Layout>
   );
 }

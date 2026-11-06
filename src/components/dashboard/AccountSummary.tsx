@@ -3,11 +3,13 @@ import { motion } from 'framer-motion';
 import { useExpense } from '@/context/ExpenseContext';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
 import { cn } from '@/lib/utils';
+import { useDrillDown } from '@/components/dashboard/DrillDownSheet';
 import { CreditCard, Building2 } from 'lucide-react';
 
 export function AccountSummary() {
   const { accounts } = useExpense();
   const { filteredTransactions } = useFilteredTransactions();
+  const openDrill = useDrillDown();
 
   const accountBalances = useMemo(() => {
     return accounts.map(account => {
@@ -50,8 +52,11 @@ export function AccountSummary() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 + index * 0.05 }}
+            onClick={() => openDrill('account', account.id)}
+            whileTap={{ scale: 0.98 }}
+            role="button"
             className={cn(
-              'p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border transition-all duration-300 hover:border-primary/30 group',
+              'cursor-pointer select-none p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border transition-all duration-300 hover:border-primary/30 group',
               account.type === 'credit'
                 ? 'bg-primary/5 hover:shadow-glow'
                 : 'bg-success/5 hover:shadow-[0_0_30px_hsl(var(--success)/0.1)]'

@@ -21,11 +21,14 @@ function hexToGrayscale(hex: string): number {
   return 40 + luminance * 30;
 }
 
+import { useDrillDown } from '@/components/dashboard/DrillDownSheet';
+
 export function TagsSpending() {
   const { tags } = useExpense();
   const { filteredTransactions } = useFilteredTransactions();
   const { theme } = useTheme();
   const isMonochrome = theme === 'mono';
+  const openDrill = useDrillDown();
 
   const tagSpending = useMemo(() => {
     const spending: Record<string, number> = {};
@@ -93,7 +96,10 @@ export function TagsSpending() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="group"
+            onClick={() => openDrill('tag', tag.id)}
+            whileTap={{ scale: 0.98 }}
+            role="button"
+            className="group cursor-pointer select-none rounded-lg -mx-2 px-2 py-1 hover:bg-muted/50 transition-colors"
           >
             <div className="flex items-center justify-between mb-1.5 sm:mb-2">
               <div className="flex items-center gap-2">

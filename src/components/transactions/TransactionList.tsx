@@ -58,6 +58,8 @@ interface TransactionListProps {
   onEditTransaction?: (transaction: Transaction) => void;
   onCopyTransaction?: (transaction: Transaction) => void;
   initialCategoryFilter?: string;
+  initialAccountFilter?: string;
+  initialTagFilter?: string;
 }
 
 interface SwipeableTransactionCardProps {
@@ -315,7 +317,7 @@ function SwipeableTransactionCard({
   );
 }
 
-export function TransactionList({ onEditTransaction, onCopyTransaction, initialCategoryFilter = 'all' }: TransactionListProps) {
+export function TransactionList({ onEditTransaction, onCopyTransaction, initialCategoryFilter = 'all', initialAccountFilter = 'all', initialTagFilter = 'all' }: TransactionListProps) {
   const {
     transactions,
     categories,
@@ -332,9 +334,9 @@ export function TransactionList({ onEditTransaction, onCopyTransaction, initialC
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter);
-  const [accountFilter, setAccountFilter] = useState<string>('all');
+  const [accountFilter, setAccountFilter] = useState<string>(initialAccountFilter);
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [tagFilter, setTagFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>(initialTagFilter);
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

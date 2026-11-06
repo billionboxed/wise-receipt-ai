@@ -18,13 +18,15 @@ export default function Transactions() {
 
   // Read initial category filter from URL
   const initialCategoryFilter = searchParams.get('category') || 'all';
+  const initialAccountFilter = searchParams.get('account') || 'all';
+  const initialTagFilter = searchParams.get('tag') || 'all';
   
   // Clear the URL param after it's been read (to allow manual filter changes)
   useEffect(() => {
-    if (searchParams.has('category')) {
+    if (['category', 'account', 'tag'].some(k => searchParams.has(k))) {
       // We don't immediately clear it - let TransactionList read it first
       const timer = setTimeout(() => {
-        searchParams.delete('category');
+        ['category', 'account', 'tag'].forEach(k => searchParams.delete(k));
         setSearchParams(searchParams, { replace: true });
       }, 100);
       return () => clearTimeout(timer);
@@ -97,6 +99,8 @@ export default function Transactions() {
           onEditTransaction={handleEditTransaction} 
           onCopyTransaction={handleCopyTransaction}
           initialCategoryFilter={initialCategoryFilter}
+          initialAccountFilter={initialAccountFilter}
+          initialTagFilter={initialTagFilter}
         />
 
         {/* Transaction Dialog */}

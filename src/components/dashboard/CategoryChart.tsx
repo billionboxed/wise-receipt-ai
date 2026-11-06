@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { ChevronRight } from 'lucide-react';
 import { useExpense } from '@/context/ExpenseContext';
 import { useFilteredTransactions } from '@/hooks/useFilteredTransactions';
-import { TransactionPreviewDrawer } from '@/components/transactions/TransactionPreviewDrawer';
+import { useDrillDown } from '@/components/dashboard/DrillDownSheet';
 
 const chartColors = [
   'hsl(var(--chart-1))',
@@ -27,10 +27,10 @@ const chartColors = [
 export function CategoryChart() {
   const { getCategoryById } = useExpense();
   const { filteredTransactions } = useFilteredTransactions();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const openDrill = useDrillDown();
 
   const handleCategoryClick = (categoryName: string) => {
-    setSelectedCategory(categoryName);
+    openDrill('category', categoryName);
   };
 
   const data = useMemo(() => {
@@ -155,13 +155,6 @@ export function CategoryChart() {
           ))}
         </div>
       </div>
-
-      <TransactionPreviewDrawer
-        open={!!selectedCategory}
-        onOpenChange={(open) => !open && setSelectedCategory(null)}
-        categoryFilter={selectedCategory || undefined}
-        title={selectedCategory || undefined}
-      />
     </motion.div>
   );
 }
